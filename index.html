@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Mike's Navigator - Komplett Edition</title>
+    <title>Mike's Navigator - Pro Edition</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: #001524; font-family: sans-serif; }
@@ -23,47 +23,88 @@
 
         .controls-left { position: absolute; top: 10px; left: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
         .controls-right { position: absolute; top: 10px; right: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
-        .btn { background: #ffffff; border: none; padding: 10px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 10px; text-transform: uppercase; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        .btn { background: #ffffff; border: none; padding: 10px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 10px; text-transform: uppercase; box-shadow: 0 2px 5px rgba(0,0,0,0.3); min-width: 110px; color: #333; }
         .btn-red { background: #ff5252; color: white; }
-        .btn-green { background: #4CAF50; color: white; }
-        .btn-purple { background: #9c27b0; color: white; }
+        .btn-green { background: #76b852; color: white; }
+        .btn-blue { background: #00d4ff; color: #001524; }
 
-        #settings-modal {
+        .modal {
             display: none; position: fixed; z-index: 3000; left: 50%; top: 50%; transform: translate(-50%, -50%);
-            background: #001b2e; color: white; padding: 20px; border-radius: 15px; border: 2px solid #00d4ff; width: 85%; max-width: 320px;
+            background: #0d2131; color: white; padding: 25px; border-radius: 18px; width: 85%; max-width: 310px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7); max-height: 85vh; overflow-y: auto;
         }
-        .fuel-guide-box { background: rgba(0, 212, 255, 0.1); padding: 12px; border-radius: 10px; font-size: 11px; margin: 10px 0; border-left: 4px solid #00d4ff; }
-        input { width: 100%; padding: 10px; margin: 5px 0 15px 0; border-radius: 5px; border: none; font-size: 16px; }
+        
+        .close-x { position: absolute; top: 15px; right: 15px; font-size: 24px; color: #888; cursor: pointer; font-weight: bold; line-height: 1; padding: 5px; }
+        .close-x:hover { color: #fff; }
+
+        .fuel-detail-box {
+            background: rgba(0, 150, 200, 0.15); border-left: 4px solid #00d4ff;
+            padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 11px; line-height: 1.6; color: #e0e0e0;
+        }
+
+        .symbol-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: white; border-radius: 4px; font-weight: bold; position: relative; }
+        .grynna-icon { color: blue; font-size: 20px; }
+
+        .modal label { font-size: 12px; font-weight: bold; display: block; margin-bottom: 5px; }
+        .modal input { width: 100%; padding: 14px; margin-bottom: 20px; border-radius: 10px; border: none; background: #2c2c2c; color: white; font-size: 16px; box-sizing: border-box; }
+        .btn-save { background: #76b852; color: white; width: 100%; padding: 16px; border-radius: 10px; border: none; font-weight: bold; font-size: 12px; text-transform: uppercase; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div id="settings-modal">
-    <h3 style="margin:0; color:#00d4ff;">⛽ Bränsleberäkning</h3>
-    <div class="fuel-guide-box">
-        <b>Riktvärden (l/nm):</b><br>
-        • Lågfart: 0.2 (Johnson 8hk)<br>
-        • Marsch: 0.5 (Johnson 8hk)
+<div id="settings-modal" class="modal">
+    <span class="close-x" onclick="closeModal('settings-modal')">&times;</span>
+    <h3 style="margin:0; display:flex; align-items:center; gap:10px;">⛽ Motor & Bränsle</h3>
+    <div class="fuel-detail-box">
+        <b>Hur det fungerar:</b><br>
+        Appen mäter din hastighet och sträcka via GPS. Genom att ange förbrukning per sjömil (l/nm) kan vi beräkna totalåtgången i realtid.<br><br>
+        <b>Riktvärden för Johnson 8hk:</b><br>
+        • <b>Lågfart (0-4 knop):</b> ca 0.2 l/nm<br>
+        • <b>Marschfart (4+ knop):</b> ca 0.5 l/nm
     </div>
-    <label style="font-size:12px;">Lågfart (< 4 knop):</label>
-    <input type="number" id="burn-low" value="0.2" step="0.1">
-    <label style="font-size:12px;">Marschfart (> 4 knop):</label>
-    <input type="number" id="burn-high" value="0.5" step="0.1">
-    <button class="btn btn-green" style="width:100%" onclick="closeSettings()">SPARA</button>
+    <label>Lågfart (l/nm):</label>
+    <input type="number" id="burn-low" step="0.1">
+    <label>Marschfart (l/nm):</label>
+    <input type="number" id="burn-high" step="0.1">
+    <button class="btn-save" onclick="saveSettings()">SPARA OCH TILLÄMPA</button>
+</div>
+
+<div id="legend-modal" class="modal">
+    <span class="close-x" onclick="closeModal('legend-modal')">&times;</span>
+    <h3 style="color:#00d4ff; margin:0 0 15px 0;">❓ Sjökortsnyckel</h3>
+    <div style="display:flex; flex-direction:column; gap:15px; font-size:12px;">
+        <div style="display:flex; align-items:center; gap:15px;">
+            <div class="symbol-box">
+                <span class="grynna-icon">+</span>
+                <span style="position:absolute; top:2px; left:2px; color:blue; font-size:10px;">.</span>
+                <span style="position:absolute; bottom:2px; right:2px; color:blue; font-size:10px;">.</span>
+            </div>
+            <div><b>Grynna/Bränning:</b> Farligt grund under eller i vattenytan. Undvik området!</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:15px;">
+            <div style="width:12px;height:12px;background:#f1c40f;border-radius:50%; margin-left:10px;"></div>
+            <div><b>Waypoint:</b> Planerad ruttpunkt i din ruttplanering.</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:15px;">
+            <div style="font-size:24px; width:32px; text-align:center;">⚓</div>
+            <div><b>Ankarvakt:</b> Bevakar om farkosten driver utanför satt radie.</div>
+        </div>
+    </div>
+    <button class="btn-save" style="background:#555; margin-top:20px;" onclick="closeModal('legend-modal')">STÄNG</button>
 </div>
 
 <div class="controls-left">
     <button class="btn" onclick="centerMap()">📍 CENTRERA</button>
     <button class="btn" onclick="toggleNight()">🌙 NATT-LÄGE</button>
     <button class="btn btn-red" onclick="clearRoute()">🗑️ RENSA RUTT</button>
-    <button class="btn" style="background:#e91e63; color:white;" onclick="resetFuel()">⛽ NOLLA LITER</button>
+    <button class="btn btn-red" onclick="resetFuel()">⛽ NOLLA LITER</button>
 </div>
 
 <div class="controls-right">
-    <button class="btn btn-green" onclick="alert('Ljud aktiverat')">🔊 LJUD PÅ</button>
-    <button class="btn btn-purple" onclick="openSettings()">⛽ MOTOR</button>
-    <button class="btn" onclick="alert('Ankarvakt satt!')">⚓ ANKARVAKT</button>
-    <button class="btn" style="background:#607d8b; color:white;" onclick="alert('Logg sparad!')">📝 LOGG</button>
+    <button class="btn btn-green" onclick="alert('Ljud på')">🔊 LJUD PÅ</button>
+    <button class="btn btn-blue" onclick="openModal('legend-modal')">❓ SYMBOLER</button>
+    <button class="btn btn-purple" onclick="openModal('settings-modal')">⛽ MOTOR</button>
+    <button class="btn" style="background:#333; color:white;" onclick="alert('Ankarvakt aktiv!')">⚓ ANKARVAKT</button>
 </div>
 
 <div id="info-panel">
@@ -78,7 +119,6 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    const API_KEY = 'e48efe6e08a9c83ecbd88fbb817431b9';
     var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([57.62, 11.93], 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png').addTo(map);
@@ -89,34 +129,43 @@
     });
     var marker = L.marker([57.62, 11.93], {icon: boatIcon}).addTo(map);
     
-    // Ruttplanering
     var routePoints = [], routeLine = L.polyline([], {color:'#f1c40f', weight:4, dashArray:'10,10'}).addTo(map);
-    
     map.on('click', e => { 
         routePoints.push(e.latlng); 
         routeLine.setLatLngs(routePoints); 
         L.circleMarker(e.latlng, {radius:6, color:'#f1c40f', fillOpacity:1, className:'route-dot'}).addTo(map); 
     });
 
+    var burnLow = 0.2, burnHigh = 0.5, totalFuel = 0, lastPos = null;
+
+    // Ladda sparade inställningar
+    window.onload = () => {
+        burnLow = parseFloat(localStorage.getItem('burnLow')) || 0.2;
+        burnHigh = parseFloat(localStorage.getItem('burnHigh')) || 0.5;
+        document.getElementById('burn-low').value = burnLow;
+        document.getElementById('burn-high').value = burnHigh;
+    };
+
+    function saveSettings() {
+        burnLow = parseFloat(document.getElementById('burn-low').value);
+        burnHigh = parseFloat(document.getElementById('burn-high').value);
+        localStorage.setItem('burnLow', burnLow);
+        localStorage.setItem('burnHigh', burnHigh);
+        closeModal('settings-modal');
+    }
+
+    function openModal(id) { document.getElementById(id).style.display = 'block'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
     function clearRoute() { 
         routePoints = []; routeLine.setLatLngs([]); 
         map.eachLayer(l => { if(l.options && l.options.className === 'route-dot') map.removeLayer(l); }); 
-    }
-
-    var lastPos = null, totalFuel = 0, burnLow = 0.2, burnHigh = 0.5;
-
-    function openSettings() { document.getElementById('settings-modal').style.display = 'block'; }
-    function closeSettings() { 
-        burnLow = parseFloat(document.getElementById('burn-low').value);
-        burnHigh = parseFloat(document.getElementById('burn-high').value);
-        document.getElementById('settings-modal').style.display = 'none'; 
     }
     function resetFuel() { totalFuel = 0; document.getElementById('fuel').innerText = "0.0"; }
 
     navigator.geolocation.watchPosition(p => {
         let cur = L.latLng(p.coords.latitude, p.coords.longitude);
         marker.setLatLng(cur);
-        let knt = p.coords.speed * 1.9438 || 0;
+        let knt = (p.coords.speed || 0) * 1.9438;
         let hdg = p.coords.heading || 0;
         document.getElementById('speed').innerText = knt.toFixed(1);
         document.getElementById('heading').innerText = Math.round(hdg) + "°";
@@ -133,4 +182,5 @@
     function toggleNight() { document.body.classList.toggle('night-mode'); }
 </script>
 </body>
-    </html>
+</html>
+
