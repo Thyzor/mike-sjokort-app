@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Mike's Navigator - Anchor Guard Edition</title>
+    <title>Mike's Navigator - Safe Reset Edition</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: #001524; font-family: sans-serif; }
@@ -29,6 +29,7 @@
         .btn-blue { background: #00d4ff; color: #001524; }
         .btn-active { background: #ff9800 !important; color: white !important; border: 2px solid white; }
 
+        /* Modal Design */
         .modal {
             display: none; position: fixed; z-index: 3000; left: 50%; top: 50%; transform: translate(-50%, -50%);
             background: #0d2131; color: white; padding: 25px; border-radius: 18px; width: 85%; max-width: 310px;
@@ -48,9 +49,26 @@
         .modal label { font-size: 12px; font-weight: bold; display: block; margin-bottom: 5px; }
         .modal input { width: 100%; padding: 14px; margin-bottom: 20px; border-radius: 10px; border: none; background: #2c2c2c; color: white; font-size: 16px; box-sizing: border-box; }
         .btn-save { background: #76b852; color: white; width: 100%; padding: 16px; border-radius: 10px; border: none; font-weight: bold; font-size: 12px; text-transform: uppercase; cursor: pointer; }
+        
+        /* Specifik Reset-varnings design */
+        .confirm-box { text-align: center; }
+        .confirm-btns { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-cancel { background: #555; color: white; flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
+        .btn-confirm { background: #76b852; color: white; flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
+
+<div id="reset-modal" class="modal">
+    <div class="confirm-box">
+        <h3 style="margin-top:0;">Nollställ mätare?</h3>
+        <p style="font-size: 13px; color: #ccc;">Vill du verkligen nollställa trippmätaren för bränsle?</p>
+        <div class="confirm-btns">
+            <button class="btn-cancel" onclick="closeModal('reset-modal')">AVBRYT</button>
+            <button class="btn-confirm" onclick="confirmReset()">JA, NOLLSTÄLL</button>
+        </div>
+    </div>
+</div>
 
 <div id="settings-modal" class="modal">
     <span class="close-x" onclick="closeModal('settings-modal')">&times;</span>
@@ -97,7 +115,7 @@
     <button class="btn" onclick="centerMap()">📍 CENTRERA</button>
     <button class="btn" onclick="toggleNight()">🌙 NATT-LÄGE</button>
     <button class="btn btn-red" onclick="clearRoute()">🗑️ RENSA RUTT</button>
-    <button class="btn btn-red" onclick="resetFuel()">⛽ NOLLSTÄLL TRIPPMÄTARE</button>
+    <button class="btn btn-red" onclick="openModal('reset-modal')">⛽ NOLLSTÄLL TRIPPMÄTARE</button>
 </div>
 
 <div class="controls-right">
@@ -129,7 +147,6 @@
     });
     var marker = L.marker([57.62, 11.93], {icon: boatIcon}).addTo(map);
     
-    // Ruttplanering
     var routePoints = [], routeLine = L.polyline([], {color:'#f1c40f', weight:4, dashArray:'10,10'}).addTo(map);
     map.on('click', e => { 
         routePoints.push(e.latlng); 
@@ -137,7 +154,6 @@
         L.circleMarker(e.latlng, {radius:6, color:'#f1c40f', fillOpacity:1, className:'route-dot'}).addTo(map); 
     });
 
-    // Ankarvakt variabler
     var anchorCircle = null, anchorCenter = null, isAnchorActive = false;
     function toggleAnchorGuard() {
         if (!isAnchorActive) {
@@ -149,7 +165,6 @@
         } else {
             if(anchorCircle) map.removeLayer(anchorCircle);
             isAnchorActive = false;
-            anchorCenter = null;
             document.getElementById('anchor-btn').classList.remove('btn-active');
             document.getElementById('anchor-btn').innerText = "⚓ ANKARVAKT";
         }
@@ -172,46 +187,43 @@
         closeModal('settings-modal');
     }
 
+    function confirmReset() {
+        totalFuel = 0;
+        document.getElementById('fuel').innerText = "0.0";
+        closeModal('reset-modal');
+    }
+
     function openModal(id) { document.getElementById(id).style.display = 'block'; }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    
     function clearRoute() { 
         routePoints = []; routeLine.setLatLngs([]); 
         map.eachLayer(l => { if(l.options && l.options.className === 'route-dot') map.removeLayer(l); }); 
-    }
-    function resetFuel() { 
-        if(confirm("Vill du nollställa trippmätaren för bränsle?")) {
-            totalFuel = 0; document.getElementById('fuel').innerText = "0.0"; 
-        }
     }
 
     navigator.geolocation.watchPosition(p => {
         let cur = L.latLng(p.coords.latitude, p.coords.longitude);
         marker.setLatLng(cur);
-        
         let knt = (p.coords.speed || 0) * 1.9438;
         let hdg = p.coords.heading || 0;
         document.getElementById('speed').innerText = knt.toFixed(1);
         document.getElementById('heading').innerText = Math.round(hdg) + "°";
         document.getElementById('boat-arrow').style.transform = `rotate(${hdg}deg)`;
 
-        // Bränsleberäkning
         if(lastPos) {
             let d = cur.distanceTo(lastPos) / 1852;
             totalFuel += (d * (knt > 4 ? burnHigh : burnLow));
             document.getElementById('fuel').innerText = totalFuel.toFixed(1);
         }
 
-        // Ankarvakt logik
         if (isAnchorActive && anchorCenter) {
             let dist = cur.distanceTo(anchorCenter);
             if (dist > 30) {
                 anchorCircle.setStyle({ color: 'red', fillColor: 'red' });
-                if(Math.round(dist) % 5 === 0) alert("VARNING: ANKARVAKT! Båten har drivit " + Math.round(dist) + " meter.");
             } else {
                 anchorCircle.setStyle({ color: '#00d4ff', fillColor: '#00d4ff' });
             }
         }
-
         lastPos = cur;
     }, null, { enableHighAccuracy: true });
 
@@ -220,4 +232,3 @@
 </script>
 </body>
 </html>
-
