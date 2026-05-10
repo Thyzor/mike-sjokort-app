@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Mike's Navigator Master</title>
+    <title>Mike's Navigator Ultimate Pro</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: #001524; font-family: sans-serif; }
@@ -46,21 +46,20 @@
     <button id="audio-btn" class="btn" style="background:#4CAF50; color:white;" onclick="enableAudio()">🔊 AKTIVERA SYSTEM</button>
     <button id="mute-btn" class="btn" style="display:none; background:rgba(0,0,0,0.6); color:white;" onclick="toggleMute()">🔇 LJUD PÅ</button>
     <button id="anchor-btn" class="btn" onclick="toggleAnchor()">⚓ ANKARVAKT: AV</button>
-    <button class="btn" style="background:#ff9800; color:white;" onclick="window.open('https://www.marinetraffic.com/', '_blank')">🚢 AIS-TRAFIK</button>
 </div>
 
 <div class="controls">
     <button class="btn" onclick="centerMap()">📍 CENTRERA</button>
     <button class="btn" style="background:#4ec3f7;" onclick="toggleNight()">🌙 NATT-LÄGE</button>
+    <button class="btn" style="background:#ff5252; color:white;" onclick="clearRoute()">🗑️ RENSA RUTT</button>
     <button class="btn" style="background:#e91e63; color:white;" onclick="saveLog()">📝 LOGGA PLATS</button>
-    <button class="btn" style="background:#4CAF50; color:white;" onclick="updateAll()">🔄 UPPDATERA DATA</button>
 </div>
 
 <div id="info-panel">
     <div class="info-item"><div class="info-label">Knop</div><div id="speed" class="info-value">0.0</div></div>
     <div class="info-item"><div class="info-label">Liter</div><div id="fuel" class="info-value">0.0</div></div>
-    <div class="info-item"><div class="info-label">Djup</div><div id="depth" class="info-value">--</div><div style="font-size:7px">m</div></div>
-    <div class="info-item"><div class="info-label">Vind</div><div id="wind-speed" class="info-value">--</div><div style="font-size:7px">m/s</div></div>
+    <div class="info-item"><div class="info-label">Djup</div><div id="depth" class="info-value">--</div></div>
+    <div class="info-item"><div class="info-label">Vind</div><div id="wind-speed" class="info-value">--</div></div>
 </div>
 
 <div id="map"></div>
@@ -78,16 +77,35 @@
     });
     var marker = L.marker([0,0], {icon: boatIcon}).addTo(map);
     
-    // Tracking & Stats
-    var track = L.polyline([], {color: '#00d4ff', weight: 4, opacity: 0.7}).addTo(map);
+    // Rutt & Tracking
+    var routePoints = [];
+    var routeLine = L.polyline([], {color: '#f1c40f', weight: 4, dashArray: '10, 10'}).addTo(map);
+    var trackLine = L.polyline([], {color: '#00d4ff', weight: 3, opacity: 0.6}).addTo(map);
+    
     var lastPos = null, totalDist = 0, anchorPos = null, anchorCircle = null;
     var audioCtx = null, audioEnabled = false, isMuted = false, hazards = [], isAnchorActive = false;
+
+    // Planera rutt genom klick
+    map.on('click', function(e) {
+        routePoints.push(e.latlng);
+        routeLine.setLatLngs(routePoints);
+        L.circleMarker(e.latlng, {radius: 5, color: '#f1c40f', fillOpacity: 1}).addTo(map);
+    });
+
+    function clearRoute() {
+        routePoints = [];
+        routeLine.setLatLngs([]);
+        map.eachLayer(function(layer) {
+            if (layer instanceof L.CircleMarker && layer !== marker) map.removeLayer(layer);
+        });
+    }
 
     function enableAudio() {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         audioEnabled = true;
         document.getElementById('audio-btn').style.display = 'none';
         document.getElementById('mute-btn').style.display = 'block';
+        updateAll();
         beep(440);
     }
 
@@ -109,20 +127,17 @@
 
     function saveLog() {
         const p = marker.getLatLng();
-        const v = document.getElementById('wind-speed').innerText;
-        alert(`📝 LOGG SPARAD\nTid: ${new Date().toLocaleTimeString()}\nPos: ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}\nVind: ${v} m/s`);
+        alert(`📝 LOGG SPARAD\nTid: ${new Date().toLocaleTimeString()}\nPos: ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`);
     }
 
     async function updateAll() {
         let pos = marker.getLatLng();
         if(pos.lat === 0) return;
         
-        // Vind
         fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${pos.lat}&lon=${pos.lng}&appid=${WEATHER_API_KEY}&units=metric`)
             .then(r => r.json()).then(data => { if(data.wind) document.getElementById('wind-speed').innerText = data.wind.speed.toFixed(1); });
 
-        // Djup & Hinder
-        const query = `[out:json][timeout:25];(node["seamark:type"](around:1200,${pos.lat},${pos.lng});node["seamark:depth"](around:1200,${pos.lat},${pos.lng});way["seamark:type"](around:1200,${pos.lat},${pos.lng}););out center;`;
+        const query = `[out:json][timeout:25];(node["seamark:type"](around:1200,${pos.lat},${pos.lng});node["seamark:depth"](around:1200,${pos.lat},${pos.lng}););out center;`;
         fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`)
             .then(r => r.json()).then(data => {
                 hazards = data.elements;
@@ -141,9 +156,8 @@
     navigator.geolocation.watchPosition(function(p) {
         let cur = L.latLng(p.coords.latitude, p.coords.longitude);
         marker.setLatLng(cur);
-        track.addLatLng(cur);
+        trackLine.addLatLng(cur);
 
-        // Bränsle & Distans (1.2 liter per distansminut)
         if(lastPos) {
             let dist = cur.distanceTo(lastPos) / 1852;
             totalDist += dist;
@@ -151,27 +165,18 @@
         }
         lastPos = cur;
 
-        // Ankarvakt-check
-        if(isAnchorActive && anchorPos.distanceTo(cur) > 35) { beep(1200); document.getElementById('dist-text').innerText = "DRIVIT UTANFÖR RADIE!"; }
+        if(isAnchorActive && anchorPos.distanceTo(cur) > 35) { beep(1200); }
 
-        // Kurs & Fart
-        if(p.coords.heading !== null) { 
-            document.getElementById('boat-dir').style.transform = `rotate(${p.coords.heading}deg)`; 
-            document.getElementById('course').innerText = Math.round(p.coords.heading) + "°"; 
-        }
+        if(p.coords.heading !== null) { document.getElementById('boat-dir').style.transform = `rotate(${p.coords.heading}deg)`; }
         document.getElementById('speed').innerText = (p.coords.speed * 1.9438 || 0).toFixed(1);
         
         // Hinder-check
-        let nearH = 1000;
         hazards.forEach(h => {
             if(h.tags && (h.tags["seamark:type"] === "rock" || h.tags["seamark:hazard"])) {
                 let d = map.distance([cur.lat, cur.lng], [h.lat || h.center.lat, h.lon || h.center.lon]);
-                if(d < nearH) nearH = d;
+                if(d < 150) { document.getElementById('hazard-warning').style.display='block'; beep(880); }
             }
         });
-        if(nearH < 150) { document.getElementById('hazard-warning').style.display='block'; document.getElementById('dist-text').innerText = Math.round(nearH)+"m till hinder"; beep(880); }
-        else { document.getElementById('hazard-warning').style.display='none'; }
-
     }, null, { enableHighAccuracy: true });
 
     setInterval(updateAll, 45000);
