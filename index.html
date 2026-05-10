@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Mike's Navigator - Ultimate Pro Edition</title>
+    <title>Mike's Navigator - Navigator Pro</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root { --main-cyan: #00d4ff; --bg-dark: #001524; --panel-bg: rgba(0, 21, 36, 0.92); }
@@ -11,7 +11,6 @@
         #map { height: 100%; width: 100%; }
         
         .night-mode #map { filter: invert(100%) hue-rotate(180deg) brightness(0.6) contrast(1.3) sepia(0.3); }
-        .night-mode #info-panel { background: rgba(20, 0, 0, 0.95); border-color: #ff3e3e; color: #ff3e3e; }
 
         #info-panel { 
             position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); 
@@ -31,8 +30,8 @@
         .btn-red { background: #ff5252; color: white; }
         .btn-green { background: #76b852; color: white; }
         .btn-blue { background: var(--main-cyan); color: #001524; }
+        .btn-purple { background: #a855f7; color: white; }
         .btn-orange { background: #ff9800; color: white; }
-        .btn-active { background: #ff9800 !important; color: white !important; border: 2px solid white; }
 
         .modal {
             display: none; position: fixed; z-index: 3000; left: 50%; top: 50%; transform: translate(-50%, -50%);
@@ -47,8 +46,12 @@
             padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 11px; line-height: 1.6; color: #e0e0e0;
         }
 
-        .symbol-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: white; border-radius: 4px; position: relative; color: #333; }
-        .grynna-icon { color: blue; font-size: 20px; font-weight: bold; }
+        /* Sjökortsnyckel Grafik */
+        .legend-row { display: flex; align-items: center; gap: 15px; margin-bottom: 12px; font-size: 11px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
+        .symbol-box { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; background: white; border-radius: 4px; color: #333; font-weight: bold; font-size: 18px; flex-shrink: 0; }
+        .spar-red { width: 6px; height: 20px; background: red; border: 1px solid #000; }
+        .spar-green { width: 6px; height: 20px; background: #00ff00; border: 1px solid #000; }
+        .cardinal-n { width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 12px solid black; }
     </style>
 </head>
 <body>
@@ -59,14 +62,14 @@
         <p style="font-size: 13px; color: #ccc;">Vill du verkligen nollställa trippmätaren för bränsle?</p>
         <div style="display:flex; gap:10px; margin-top:20px;">
             <button style="flex:1; padding:12px; background:#555; color:white; border:none; border-radius:8px; font-weight:bold;" onclick="closeModal('reset-modal')">AVBRYT</button>
-            <button style="flex:1; padding:12px; background:#76b852; color:white; border:none; border-radius:8px; font-weight:bold;" onclick="confirmReset()">JA, NOLLSTÄLL</button>
+            <button style="flex:1; padding:12px; background:#76b852; color:white; border:none; border-radius:8px; font-weight:bold;" onclick="confirmReset()">JA</button>
         </div>
     </div>
 </div>
 
 <div id="settings-modal" class="modal">
     <span class="close-x" onclick="closeModal('settings-modal')">&times;</span>
-    <h3 style="margin:0; display:flex; align-items:center; gap:10px;">⛽ Motor & Bränsle</h3>
+    <h3 style="margin:0;">⛽ Motor & Bränsle</h3>
     <div class="fuel-detail-box">
         <b>Hur det fungerar:</b><br>
         Appen mäter din hastighet och sträcka via GPS. Genom att ange förbrukning per sjömil (l/nm) kan vi beräkna totalåtgången i realtid.<br><br>
@@ -78,25 +81,35 @@
     <input type="number" id="burn-low" step="0.1" style="width:100%; padding:12px; margin:5px 0 15px 0; border-radius:8px; border:none; background:#2c2c2c; color:white;">
     <label style="font-size:12px; font-weight:bold;">Marschfart (l/nm):</label>
     <input type="number" id="burn-high" step="0.1" style="width:100%; padding:12px; margin:5px 0 15px 0; border-radius:8px; border:none; background:#2c2c2c; color:white;">
-    <button style="width:100%; padding:16px; background:#76b852; color:white; border:none; border-radius:10px; font-weight:bold; cursor:pointer;" onclick="saveSettings()">SPARA OCH TILLÄMPA</button>
+    <button style="width:100%; padding:16px; background:#76b852; color:white; border:none; border-radius:10px; font-weight:bold;" onclick="saveSettings()">SPARA</button>
 </div>
 
 <div id="legend-modal" class="modal">
     <span class="close-x" onclick="closeModal('legend-modal')">&times;</span>
     <h3 style="color:var(--main-cyan); margin:0 0 15px 0;">❓ Sjökortsnyckel</h3>
-    <div style="display:flex; flex-direction:column; gap:15px; font-size:12px;">
-        <div style="display:flex; align-items:center; gap:15px;">
-            <div class="symbol-box"><span class="grynna-icon">+</span></div>
-            <div><b>Grynna/Bränning:</b> Farligt grund under eller i vattenytan. Undvik!</div>
+    
+    <div class="legend-row">
+        <div class="symbol-box" style="color:blue;">+</div>
+        <div><b>Grynna/Bränning:</b> Farligt grund. Undvik!</div>
+    </div>
+    <div class="legend-row">
+        <div class="symbol-box"><div class="spar-red"></div></div>
+        <div><b>Babordsprick (Röd):</b> Hålls på babord sida vid infart i farled.</div>
+    </div>
+    <div class="legend-row">
+        <div class="symbol-box"><div class="spar-green"></div></div>
+        <div><b>Styrbordsprick (Grön):</b> Hålls på styrbord sida vid infart.</div>
+    </div>
+    <div class="legend-row">
+        <div class="symbol-box" style="background:yellow; flex-direction:column;">
+            <div class="cardinal-n"></div>
+            <div class="cardinal-n" style="margin-top:2px;"></div>
         </div>
-        <div style="display:flex; align-items:center; gap:15px;">
-            <div style="width:12px;height:12px;background:#f1c40f;border-radius:50%; margin-left:10px;"></div>
-            <div><b>Waypoint:</b> Planerad ruttpunkt.</div>
-        </div>
-        <div style="display:flex; align-items:center; gap:15px;">
-            <div style="font-size:24px; width:32px; text-align:center;">⚓</div>
-            <div><b>Ankarvakt:</b> Bevakar om båten driver utanför 30m.</div>
-        </div>
+        <div><b>Nordmärke:</b> Passera NORR om detta märke. Svart upptill, gul nedtill.</div>
+    </div>
+    <div class="legend-row">
+        <div style="font-size:20px; width:30px; text-align:center;">⚓</div>
+        <div><b>Ankarvakt:</b> Cirkel visar 30m radie. Blir röd vid drift.</div>
     </div>
 </div>
 
@@ -119,7 +132,7 @@
 <div class="controls-right">
     <button id="sound-btn" class="btn btn-green" onclick="toggleSound()">🔊 LJUD PÅ</button>
     <button class="btn btn-blue" onclick="openModal('legend-modal')">❓ SYMBOLER</button>
-    <button class="btn btn-purple" onclick="openModal('settings-modal')" style="background:#a855f7; color:white;">⛽ MOTOR</button>
+    <button class="btn btn-purple" onclick="openModal('settings-modal')">⛽ MOTOR</button>
     <button id="anchor-btn" class="btn" style="background:#333; color:white;" onclick="toggleAnchorGuard()">⚓ ANKARVAKT</button>
     <button class="btn btn-orange" onclick="showLog()">📋 LOGGBOK</button>
 </div>
@@ -146,25 +159,24 @@
         updateETA();
     });
 
-    var totalFuel = 0, lastPos = null, isSoundOn = true, startTime = new Date();
+    var totalFuel = 0, lastPos = null, isSoundOn = true, startTime = new Date(), lastKnt = 0;
 
-    // Batteri
     if(navigator.getBattery) {
-        navigator.getBattery().then(batt => {
-            const updateBatt = () => { document.getElementById('batt').innerText = Math.round(batt.level * 100) + "%"; };
-            updateBatt(); batt.onlevelchange = updateBatt;
+        navigator.getBattery().then(b => {
+            const u = () => { document.getElementById('batt').innerText = Math.round(b.level * 100) + "%"; };
+            u(); b.onlevelchange = u;
         });
     }
 
     function goHome() {
-        let home = L.latLng(57.621, 11.934);
-        L.polyline([marker.getLatLng(), home], {color:'cyan', weight:2, dashArray:'5,5'}).addTo(map);
-        map.flyTo(home, 15);
+        let h = L.latLng(57.621, 11.934);
+        L.polyline([marker.getLatLng(), h], {color:'cyan', weight:2, dashArray:'5,5'}).addTo(map);
+        map.flyTo(h, 15);
     }
 
     function showLog() {
-        let time = Math.round((new Date() - startTime) / 60000);
-        alert(`LOGGBOK\n----------------\nTid: ${time} min\nBränsle: ${totalFuel.toFixed(2)} L`);
+        let t = Math.round((new Date() - startTime) / 60000);
+        alert(`LOGGBOK\n----------------\nTid: ${t} min\nBränsle: ${totalFuel.toFixed(2)} L`);
     }
 
     function updateETA() {
@@ -184,14 +196,14 @@
     function toggleNight() { document.body.classList.toggle('night-mode'); }
     function centerMap() { map.panTo(marker.getLatLng()); }
 
-    var anchorCircle = null, isAnchorActive = false, lastKnt = 0;
+    var anchorCircle = null, isAnchorActive = false;
     function toggleAnchorGuard() {
         if (!isAnchorActive) {
             anchorCircle = L.circle(marker.getLatLng(), { radius: 30, color: '#00d4ff' }).addTo(map);
-            isAnchorActive = true; document.getElementById('anchor-btn').classList.add('btn-active');
+            isAnchorActive = true; document.getElementById('anchor-btn').style.background = "#ff9800";
         } else {
             if(anchorCircle) map.removeLayer(anchorCircle);
-            isAnchorActive = false; document.getElementById('anchor-btn').classList.remove('btn-active');
+            isAnchorActive = false; document.getElementById('anchor-btn').style.background = "#333";
         }
     }
 
