@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Mike's Navigator - Professional Edition</title>
+    <title>Mike's Navigator - Anchor Guard Edition</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: #001524; font-family: sans-serif; }
@@ -27,15 +27,16 @@
         .btn-red { background: #ff5252; color: white; }
         .btn-green { background: #76b852; color: white; }
         .btn-blue { background: #00d4ff; color: #001524; }
+        .btn-active { background: #ff9800 !important; color: white !important; border: 2px solid white; }
 
         .modal {
             display: none; position: fixed; z-index: 3000; left: 50%; top: 50%; transform: translate(-50%, -50%);
-            background: #0d2131; color: white; padding: 25px; border-radius: 188px; width: 85%; max-width: 310px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.7); max-height: 85vh; overflow-y: auto; border-radius: 18px;
+            background: #0d2131; color: white; padding: 25px; border-radius: 18px; width: 85%; max-width: 310px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7); max-height: 85vh; overflow-y: auto;
         }
         
         .close-x { position: absolute; top: 15px; right: 15px; font-size: 24px; color: #888; cursor: pointer; font-weight: bold; line-height: 1; padding: 5px; }
-        
+
         .fuel-detail-box {
             background: rgba(0, 150, 200, 0.15); border-left: 4px solid #00d4ff;
             padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 11px; line-height: 1.6; color: #e0e0e0;
@@ -86,7 +87,7 @@
         </div>
         <div style="display:flex; align-items:center; gap:15px;">
             <div style="font-size:24px; width:32px; text-align:center;">⚓</div>
-            <div><b>Ankarvakt:</b> Bevakar om farkosten driver utanför satt radie.</div>
+            <div><b>Ankarvakt:</b> Bevakar om farkosten driver utanför en radie av 30m.</div>
         </div>
     </div>
     <button class="btn-save" style="background:#555; margin-top:20px;" onclick="closeModal('legend-modal')">STÄNG</button>
@@ -103,7 +104,7 @@
     <button class="btn btn-green" onclick="alert('Ljud på')">🔊 LJUD PÅ</button>
     <button class="btn btn-blue" onclick="openModal('legend-modal')">❓ SYMBOLER</button>
     <button class="btn btn-purple" onclick="openModal('settings-modal')">⛽ MOTOR</button>
-    <button class="btn" style="background:#333; color:white;" onclick="alert('Ankarvakt aktiv!')">⚓ ANKARVAKT</button>
+    <button id="anchor-btn" class="btn" style="background:#333; color:white;" onclick="toggleAnchorGuard()">⚓ ANKARVAKT</button>
 </div>
 
 <div id="info-panel">
@@ -128,12 +129,31 @@
     });
     var marker = L.marker([57.62, 11.93], {icon: boatIcon}).addTo(map);
     
+    // Ruttplanering
     var routePoints = [], routeLine = L.polyline([], {color:'#f1c40f', weight:4, dashArray:'10,10'}).addTo(map);
     map.on('click', e => { 
         routePoints.push(e.latlng); 
         routeLine.setLatLngs(routePoints); 
         L.circleMarker(e.latlng, {radius:6, color:'#f1c40f', fillOpacity:1, className:'route-dot'}).addTo(map); 
     });
+
+    // Ankarvakt variabler
+    var anchorCircle = null, anchorCenter = null, isAnchorActive = false;
+    function toggleAnchorGuard() {
+        if (!isAnchorActive) {
+            anchorCenter = marker.getLatLng();
+            anchorCircle = L.circle(anchorCenter, { radius: 30, color: '#00d4ff', fillColor: '#00d4ff', fillOpacity: 0.2 }).addTo(map);
+            isAnchorActive = true;
+            document.getElementById('anchor-btn').classList.add('btn-active');
+            document.getElementById('anchor-btn').innerText = "⚓ VAKT AKTIV";
+        } else {
+            if(anchorCircle) map.removeLayer(anchorCircle);
+            isAnchorActive = false;
+            anchorCenter = null;
+            document.getElementById('anchor-btn').classList.remove('btn-active');
+            document.getElementById('anchor-btn').innerText = "⚓ ANKARVAKT";
+        }
+    }
 
     var burnLow = 0.2, burnHigh = 0.5, totalFuel = 0, lastPos = null;
 
@@ -158,27 +178,40 @@
         routePoints = []; routeLine.setLatLngs([]); 
         map.eachLayer(l => { if(l.options && l.options.className === 'route-dot') map.removeLayer(l); }); 
     }
-
     function resetFuel() { 
         if(confirm("Vill du nollställa trippmätaren för bränsle?")) {
-            totalFuel = 0; 
-            document.getElementById('fuel').innerText = "0.0"; 
+            totalFuel = 0; document.getElementById('fuel').innerText = "0.0"; 
         }
     }
 
     navigator.geolocation.watchPosition(p => {
         let cur = L.latLng(p.coords.latitude, p.coords.longitude);
         marker.setLatLng(cur);
+        
         let knt = (p.coords.speed || 0) * 1.9438;
         let hdg = p.coords.heading || 0;
         document.getElementById('speed').innerText = knt.toFixed(1);
         document.getElementById('heading').innerText = Math.round(hdg) + "°";
         document.getElementById('boat-arrow').style.transform = `rotate(${hdg}deg)`;
+
+        // Bränsleberäkning
         if(lastPos) {
             let d = cur.distanceTo(lastPos) / 1852;
             totalFuel += (d * (knt > 4 ? burnHigh : burnLow));
             document.getElementById('fuel').innerText = totalFuel.toFixed(1);
         }
+
+        // Ankarvakt logik
+        if (isAnchorActive && anchorCenter) {
+            let dist = cur.distanceTo(anchorCenter);
+            if (dist > 30) {
+                anchorCircle.setStyle({ color: 'red', fillColor: 'red' });
+                if(Math.round(dist) % 5 === 0) alert("VARNING: ANKARVAKT! Båten har drivit " + Math.round(dist) + " meter.");
+            } else {
+                anchorCircle.setStyle({ color: '#00d4ff', fillColor: '#00d4ff' });
+            }
+        }
+
         lastPos = cur;
     }, null, { enableHighAccuracy: true });
 
@@ -187,3 +220,4 @@
 </script>
 </body>
 </html>
+
