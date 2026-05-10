@@ -13,21 +13,34 @@
             z-index: 1000; background: rgba(0, 21, 36, 0.92); color: #00d4ff; 
             padding: 12px 20px; border-radius: 25px; border: 1px solid #00d4ff; 
             display: flex; gap: 12px; backdrop-filter: blur(8px); pointer-events: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
         }
         .info-item { text-align: center; min-width: 48px; }
-        .info-label { font-size: 8px; text-transform: uppercase; opacity: 0.7; }
+        .info-label { font-size: 8px; text-transform: uppercase; opacity: 0.7; letter-spacing: 0.5px; }
         .info-value { font-size: 17px; font-weight: 800; }
         .controls { position: absolute; z-index: 1000; display: flex; flex-direction: column; gap: 6px; top: 10px; left: 10px; }
-        .btn { background: #ffffff; border: none; padding: 10px 14px; border-radius: 8px; font-weight: 900; font-size: 11px; cursor: pointer; text-transform: uppercase; }
-        #hazard-warning { display: none; position: absolute; top: 20%; left: 50%; transform: translateX(-50%); z-index: 2000; background: #ff1a1a; color: white; padding: 20px; border-radius: 12px; font-weight: bold; border: 4px solid white; }
+        .btn { 
+            background: #ffffff; border: none; padding: 10px 14px; border-radius: 8px; 
+            font-weight: 900; cursor: pointer; font-size: 11px; color: #000; 
+            text-align: center; box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+            text-transform: uppercase;
+        }
+        #hazard-warning { 
+            display: none; position: absolute; top: 20%; left: 50%; transform: translateX(-50%); 
+            z-index: 2000; background: #ff1a1a; color: white; padding: 20px; border-radius: 12px; 
+            font-weight: bold; font-size: 18px; text-align: center; animation: blink 0.8s infinite; border: 4px solid white;
+        }
+        @keyframes blink { 0% {transform: translateX(-50%) scale(1);} 50% {transform: translateX(-50%) scale(1.05);} 100% {transform: translateX(-50%) scale(1);} }
     </style>
 </head>
 <body>
 
 <div id="hazard-warning">⚠️ GRUND NÄRA!<br><small id="dist-text"></small></div>
+
 <div class="controls">
     <button class="btn" onclick="centerMap()">📍 CENTRERA</button>
     <button class="btn" style="background:#ff5252; color:white;" onclick="clearRoute()">🗑️ RENSA</button>
+    <button class="btn" style="background:#4CAF50; color:white;" onclick="updateAll()">🔄 UPPDATERA</button>
 </div>
 
 <div id="info-panel">
@@ -43,44 +56,73 @@
 <script>
     const WEATHER_API_KEY = 'e48efe6e08a9c83ecbd88fbb817431b9'; 
     var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([57.62, 11.93], 14);
+    
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
 
-    var boatIcon = L.divIcon({ html: '<div style="width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-bottom:25px solid #ff3e3e;"></div>', iconSize: [20, 25], iconAnchor: [10, 12] });
+    var boatIcon = L.divIcon({ 
+        html: '<div style="width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-bottom:25px solid #ff3e3e;filter:drop-shadow(0 0 2px black);"></div>', 
+        iconSize: [20, 25], 
+        iconAnchor: [10, 12] 
+    });
     var marker = L.marker([0,0], {icon: boatIcon}).addTo(map);
+    var hazards = [];
 
     async function updateWeather(lat, lon) {
         try {
             const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${WEATHER_API_KEY}&units=metric`);
             const data = await res.json();
             if(data.wind) document.getElementById('wind-speed').innerText = data.wind.speed.toFixed(1);
-        } catch (e) { console.log(e); }
+        } catch (e) { console.log("Väderfel", e); }
     }
 
-    async function updateDepthData(lat, lon) {
-        // Bredare sökning: letar efter alla noder och vägar med djuptaggar
-        const query = `[out:json][timeout:25];(node["seamark:type"="depth_area"](around:800,${lat},${lon});node["seamark:depth"](around:800,${lat},${lon});way["seamark:type"="depth_area"](around:800,${lat},${lon}););out center;`;
+    async function updateDepthAndHazards(lat, lon) {
+        const query = `[out:json][timeout:25];(node["seamark:type"](around:1000,${lat},${lon});node["seamark:depth"](around:1000,${lat},${lon});way["seamark:type"](around:1000,${lat},${lon}););out center;`;
         try {
             const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
             const data = await res.json();
+            hazards = data.elements;
             
             let bestDepth = "--";
-            let minDistance = 1000;
-
+            let minD = 1000;
             data.elements.forEach(el => {
                 let dLat = el.lat || (el.center ? el.center.lat : null);
                 let dLon = el.lon || (el.center ? el.center.lon : null);
-                
-                if (dLat && dLon && el.tags && (el.tags["seamark:depth"] || el.tags["depth"])) {
-                    let dist = map.distance([lat, lon], [dLat, dLon]);
-                    if (dist < minDistance) {
-                        minDistance = dist;
-                        bestDepth = el.tags["seamark:depth"] || el.tags["depth"];
-                    }
+                if(dLat && el.tags && (el.tags["seamark:depth"] || el.tags["depth"])) {
+                    let d = map.distance([lat, lon], [dLat, dLon]);
+                    if(d < minD) { minD = d; bestDepth = el.tags["seamark:depth"] || el.tags["depth"]; }
                 }
             });
             document.getElementById('depth').innerText = bestDepth;
-        } catch (e) { console.log("Djupfel:", e); }
+        } catch (e) { console.log("Datafel", e); }
+    }
+
+    function checkHazards(lat, lon) {
+        let nearest = 1000;
+        hazards.forEach(h => {
+            if(h.tags && h.tags["seamark:type"] && h.tags["seamark:type"].includes("hazard")) {
+                let dLat = h.lat || (h.center ? h.center.lat : null);
+                let dLon = h.lon || (h.center ? h.center.lon : null);
+                if(dLat) {
+                    let d = map.distance([lat, lon], [dLat, dLon]);
+                    if (d < nearest) nearest = d;
+                }
+            }
+        });
+        if (nearest < 150) {
+            document.getElementById('hazard-warning').style.display = 'block';
+            document.getElementById('dist-text').innerText = Math.round(nearest) + " m till hinder";
+        } else {
+            document.getElementById('hazard-warning').style.display = 'none';
+        }
+    }
+
+    function updateAll() {
+        let pos = marker.getLatLng();
+        if(pos.lat !== 0) {
+            updateWeather(pos.lat, pos.lng);
+            updateDepthAndHazards(pos.lat, pos.lng);
+        }
     }
 
     navigator.geolocation.watchPosition(function(p) {
@@ -89,15 +131,16 @@
         marker.setLatLng([lat, lon]);
         if(p.coords.speed) document.getElementById('speed').innerText = (p.coords.speed * 1.9438).toFixed(1);
         if(p.coords.heading) document.getElementById('course').innerText = Math.round(p.coords.heading) + "°";
+        checkHazards(lat, lon);
     }, null, { enableHighAccuracy: true });
 
-    // Uppdatera varannan minut
-    setInterval(() => {
-        let pos = marker.getLatLng();
-        if(pos.lat !== 0) { updateWeather(pos.lat, pos.lng); updateDepthData(pos.lat, pos.lng); }
-    }, 120000);
+    // Initial körning och sedan var 60:e sekund
+    setTimeout(updateAll, 2000);
+    setInterval(updateAll, 60000);
 
     function centerMap() { map.panTo(marker.getLatLng()); }
+    function clearRoute() { /* Implementera rutt-rensning om du har polylines */ }
 </script>
 </body>
 </html>
+
