@@ -10,6 +10,7 @@
         #map { height: 100%; width: 100%; transition: filter 0.5s; }
         .night-mode #map { filter: invert(100%) hue-rotate(180deg) brightness(0.7) opacity(0.8) sepia(100%) saturate(500%) hue-rotate(-50deg); }
         
+        /* Paneler */
         #info-panel { 
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); 
             z-index: 1000; background: rgba(0, 21, 36, 0.94); color: #00d4ff; 
@@ -20,17 +21,22 @@
         .info-label { font-size: 8px; text-transform: uppercase; opacity: 0.7; }
         .info-value { font-size: 17px; font-weight: 800; }
 
+        /* Knappar */
         .controls { position: absolute; z-index: 1000; display: flex; flex-direction: column; gap: 6px; top: 10px; left: 10px; }
         .top-right { position: absolute; z-index: 1000; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
-        
         .btn { 
             background: #ffffff; border: none; padding: 10px 14px; border-radius: 8px; 
             font-weight: 900; cursor: pointer; font-size: 11px; color: #000; 
             box-shadow: 0 3px 8px rgba(0,0,0,0.4); text-transform: uppercase;
         }
-        .btn-active { background: #ff5252 !important; color: white !important; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
 
+        /* Settings Modal */
+        #settings-modal {
+            display: none; position: fixed; z-index: 3000; left: 50%; top: 50%; transform: translate(-50%, -50%);
+            background: #001b2e; color: white; padding: 20px; border-radius: 15px; border: 2px solid #00d4ff; width: 80%;
+        }
+        #settings-modal input { width: 100%; padding: 10px; margin: 10px 0; border-radius: 5px; border: none; }
+        
         #hazard-warning { 
             display: none; position: absolute; top: 20%; left: 50%; transform: translateX(-50%); 
             z-index: 2000; background: #ff1a1a; color: white; padding: 20px; border-radius: 12px; 
@@ -40,19 +46,27 @@
 </head>
 <body>
 
-<div id="hazard-warning">⚠️ GRUND NÄRA!<br><small id="dist-text"></small></div>
+<div id="hazard-warning">⚠️ GRUND NÄRA!</div>
+
+<div id="settings-modal">
+    <h3>Motorinställningar</h3>
+    <label>Lågfart (l/distans):</label>
+    <input type="number" id="burn-low" value="0.5" step="0.1">
+    <label>Marschfart (l/distans):</label>
+    <input type="number" id="burn-high" value="1.2" step="0.1">
+    <button class="btn" style="background:#4CAF50; color:white; width:100%;" onclick="closeSettings()">SPARA</button>
+</div>
 
 <div class="top-right">
-    <button id="audio-btn" class="btn" style="background:#4CAF50; color:white;" onclick="enableAudio()">🔊 AKTIVERA SYSTEM</button>
-    <button id="mute-btn" class="btn" style="display:none; background:rgba(0,0,0,0.6); color:white;" onclick="toggleMute()">🔇 LJUD PÅ</button>
-    <button id="anchor-btn" class="btn" onclick="toggleAnchor()">⚓ ANKARVAKT: AV</button>
+    <button id="audio-btn" class="btn" style="background:#4CAF50; color:white;" onclick="enableAudio()">🔊 STARTA</button>
+    <button class="btn" style="background:#9c27b0; color:white;" onclick="openSettings()">⚙️ MOTOR</button>
+    <button id="anchor-btn" class="btn" onclick="toggleAnchor()">⚓ ANKARVAKT</button>
 </div>
 
 <div class="controls">
     <button class="btn" onclick="centerMap()">📍 CENTRERA</button>
-    <button class="btn" style="background:#4ec3f7;" onclick="toggleNight()">🌙 NATT-LÄGE</button>
-    <button class="btn" style="background:#ff5252; color:white;" onclick="clearRoute()">🗑️ RENSA RUTT</button>
-    <button class="btn" style="background:#e91e63; color:white;" onclick="saveLog()">📝 LOGGA PLATS</button>
+    <button class="btn" style="background:#4ec3f7;" onclick="toggleNight()">🌙 NATT</button>
+    <button class="btn" style="background:#ff5252; color:white;" onclick="clearRoute()">🗑️ RUTT</button>
 </div>
 
 <div id="info-panel">
@@ -66,122 +80,52 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    const WEATHER_API_KEY = 'e48efe6e08a9c83ecbd88fbb817431b9'; 
+    const WEATHER_API_KEY = 'e48efe6e08a9c83ecbd88fbb817431b9';
     var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([57.62, 11.93], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
 
-    var boatIcon = L.divIcon({ 
-        html: '<div id="boat-dir" style="width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-bottom:25px solid #ff3e3e;filter:drop-shadow(0 0 2px black);"></div>', 
-        iconSize: [20, 25], iconAnchor: [10, 12] 
-    });
-    var marker = L.marker([0,0], {icon: boatIcon}).addTo(map);
+    var marker = L.marker([0,0], {icon: L.divIcon({html:'<div id="boat-dir" style="width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-bottom:25px solid #ff3e3e;"></div>', iconSize:[20,25]})}).addTo(map);
     
-    // Rutt & Tracking
-    var routePoints = [];
-    var routeLine = L.polyline([], {color: '#f1c40f', weight: 4, dashArray: '10, 10'}).addTo(map);
-    var trackLine = L.polyline([], {color: '#00d4ff', weight: 3, opacity: 0.6}).addTo(map);
+    var routePoints = [], routeLine = L.polyline([], {color:'#f1c40f', dashArray:'10,10'}).addTo(map);
+    var trackLine = L.polyline([], {color:'#00d4ff', weight:3}).addTo(map);
     
-    var lastPos = null, totalDist = 0, anchorPos = null, anchorCircle = null;
-    var audioCtx = null, audioEnabled = false, isMuted = false, hazards = [], isAnchorActive = false;
+    var lastPos = null, totalFuel = 0, burnLow = 0.5, burnHigh = 1.2;
+    var audioCtx = null, hazards = [];
 
-    // Planera rutt genom klick
-    map.on('click', function(e) {
-        routePoints.push(e.latlng);
-        routeLine.setLatLngs(routePoints);
-        L.circleMarker(e.latlng, {radius: 5, color: '#f1c40f', fillOpacity: 1}).addTo(map);
-    });
+    map.on('click', e => { routePoints.push(e.latlng); routeLine.setLatLngs(routePoints); L.circleMarker(e.latlng, {radius:4, color:'#f1c40f'}).addTo(map); });
 
-    function clearRoute() {
-        routePoints = [];
-        routeLine.setLatLngs([]);
-        map.eachLayer(function(layer) {
-            if (layer instanceof L.CircleMarker && layer !== marker) map.removeLayer(layer);
-        });
+    function openSettings() { document.getElementById('settings-modal').style.display = 'block'; }
+    function closeSettings() { 
+        burnLow = parseFloat(document.getElementById('burn-low').value);
+        burnHigh = parseFloat(document.getElementById('burn-high').value);
+        document.getElementById('settings-modal').style.display = 'none'; 
     }
 
-    function enableAudio() {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        audioEnabled = true;
-        document.getElementById('audio-btn').style.display = 'none';
-        document.getElementById('mute-btn').style.display = 'block';
-        updateAll();
-        beep(440);
-    }
+    function clearRoute() { routePoints = []; routeLine.setLatLngs([]); }
 
-    function toggleMute() { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔊 LJUD AV" : "🔇 LJUD PÅ"; }
-    function beep(freq = 880) { if (!audioEnabled || isMuted) return; var osc = audioCtx.createOscillator(); var gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); osc.frequency.value = freq; gain.gain.setValueAtTime(0.1, audioCtx.currentTime); osc.start(); osc.stop(audioCtx.currentTime + 0.2); }
-
-    function toggleAnchor() {
-        isAnchorActive = !isAnchorActive;
-        const btn = document.getElementById('anchor-btn');
-        if(isAnchorActive) {
-            anchorPos = marker.getLatLng();
-            anchorCircle = L.circle(anchorPos, {radius: 35, color: '#ff5252', fillOpacity: 0.1}).addTo(map);
-            btn.innerText = "⚓ VAKT: AKTIV"; btn.classList.add('btn-active');
-        } else {
-            if(anchorCircle) map.removeLayer(anchorCircle);
-            btn.innerText = "⚓ ANKARVAKT: AV"; btn.classList.remove('btn-active');
-        }
-    }
-
-    function saveLog() {
-        const p = marker.getLatLng();
-        alert(`📝 LOGG SPARAD\nTid: ${new Date().toLocaleTimeString()}\nPos: ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`);
-    }
-
-    async function updateAll() {
-        let pos = marker.getLatLng();
-        if(pos.lat === 0) return;
-        
-        fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${pos.lat}&lon=${pos.lng}&appid=${WEATHER_API_KEY}&units=metric`)
-            .then(r => r.json()).then(data => { if(data.wind) document.getElementById('wind-speed').innerText = data.wind.speed.toFixed(1); });
-
-        const query = `[out:json][timeout:25];(node["seamark:type"](around:1200,${pos.lat},${pos.lng});node["seamark:depth"](around:1200,${pos.lat},${pos.lng}););out center;`;
-        fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`)
-            .then(r => r.json()).then(data => {
-                hazards = data.elements;
-                let bestD = "--", minD = 1500;
-                data.elements.forEach(el => {
-                    let dLat = el.lat || (el.center ? el.center.lat : null);
-                    if(dLat && el.tags && (el.tags["seamark:depth"] || el.tags["depth"])) {
-                        let d = map.distance([pos.lat, pos.lng], [dLat, (el.lon || el.center.lon)]);
-                        if(d < minD) { minD = d; bestD = el.tags["seamark:depth"] || el.tags["depth"]; }
-                    }
-                });
-                document.getElementById('depth').innerText = bestD;
-            });
-    }
-
-    navigator.geolocation.watchPosition(function(p) {
+    navigator.geolocation.watchPosition(p => {
         let cur = L.latLng(p.coords.latitude, p.coords.longitude);
         marker.setLatLng(cur);
         trackLine.addLatLng(cur);
+        
+        let speedKnots = p.coords.speed * 1.9438 || 0;
+        document.getElementById('speed').innerText = speedKnots.toFixed(1);
 
         if(lastPos) {
             let dist = cur.distanceTo(lastPos) / 1852;
-            totalDist += dist;
-            document.getElementById('fuel').innerText = (totalDist * 1.2).toFixed(1);
+            // Om vi kör fortare än 7 knop räknar vi Marschfart, annars Lågfart
+            let currentBurn = (speedKnots > 7) ? burnHigh : burnLow;
+            totalFuel += (dist * currentBurn);
+            document.getElementById('fuel').innerText = totalFuel.toFixed(1);
         }
         lastPos = cur;
-
-        if(isAnchorActive && anchorPos.distanceTo(cur) > 35) { beep(1200); }
-
-        if(p.coords.heading !== null) { document.getElementById('boat-dir').style.transform = `rotate(${p.coords.heading}deg)`; }
-        document.getElementById('speed').innerText = (p.coords.speed * 1.9438 || 0).toFixed(1);
-        
-        // Hinder-check
-        hazards.forEach(h => {
-            if(h.tags && (h.tags["seamark:type"] === "rock" || h.tags["seamark:hazard"])) {
-                let d = map.distance([cur.lat, cur.lng], [h.lat || h.center.lat, h.lon || h.center.lon]);
-                if(d < 150) { document.getElementById('hazard-warning').style.display='block'; beep(880); }
-            }
-        });
+        if(p.coords.heading) document.getElementById('boat-dir').style.transform = `rotate(${p.coords.heading}deg)`;
     }, null, { enableHighAccuracy: true });
 
-    setInterval(updateAll, 45000);
     function centerMap() { map.panTo(marker.getLatLng()); }
     function toggleNight() { document.body.classList.toggle('night-mode'); }
+    function enableAudio() { audioCtx = new AudioContext(); document.getElementById('audio-btn').style.display='none'; }
 </script>
 </body>
 </html>
