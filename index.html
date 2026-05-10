@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Mike's Navigator - Pro Edition</title>
+    <title>Mike's Navigator - Professional Edition</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: #001524; font-family: sans-serif; }
@@ -23,20 +23,19 @@
 
         .controls-left { position: absolute; top: 10px; left: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
         .controls-right { position: absolute; top: 10px; right: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
-        .btn { background: #ffffff; border: none; padding: 10px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 10px; text-transform: uppercase; box-shadow: 0 2px 5px rgba(0,0,0,0.3); min-width: 110px; color: #333; }
+        .btn { background: #ffffff; border: none; padding: 10px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 10px; text-transform: uppercase; box-shadow: 0 2px 5px rgba(0,0,0,0.3); min-width: 130px; color: #333; }
         .btn-red { background: #ff5252; color: white; }
         .btn-green { background: #76b852; color: white; }
         .btn-blue { background: #00d4ff; color: #001524; }
 
         .modal {
             display: none; position: fixed; z-index: 3000; left: 50%; top: 50%; transform: translate(-50%, -50%);
-            background: #0d2131; color: white; padding: 25px; border-radius: 18px; width: 85%; max-width: 310px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.7); max-height: 85vh; overflow-y: auto;
+            background: #0d2131; color: white; padding: 25px; border-radius: 188px; width: 85%; max-width: 310px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7); max-height: 85vh; overflow-y: auto; border-radius: 18px;
         }
         
         .close-x { position: absolute; top: 15px; right: 15px; font-size: 24px; color: #888; cursor: pointer; font-weight: bold; line-height: 1; padding: 5px; }
-        .close-x:hover { color: #fff; }
-
+        
         .fuel-detail-box {
             background: rgba(0, 150, 200, 0.15); border-left: 4px solid #00d4ff;
             padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 11px; line-height: 1.6; color: #e0e0e0;
@@ -97,7 +96,7 @@
     <button class="btn" onclick="centerMap()">📍 CENTRERA</button>
     <button class="btn" onclick="toggleNight()">🌙 NATT-LÄGE</button>
     <button class="btn btn-red" onclick="clearRoute()">🗑️ RENSA RUTT</button>
-    <button class="btn btn-red" onclick="resetFuel()">⛽ NOLLA LITER</button>
+    <button class="btn btn-red" onclick="resetFuel()">⛽ NOLLSTÄLL TRIPPMÄTARE</button>
 </div>
 
 <div class="controls-right">
@@ -138,7 +137,6 @@
 
     var burnLow = 0.2, burnHigh = 0.5, totalFuel = 0, lastPos = null;
 
-    // Ladda sparade inställningar
     window.onload = () => {
         burnLow = parseFloat(localStorage.getItem('burnLow')) || 0.2;
         burnHigh = parseFloat(localStorage.getItem('burnHigh')) || 0.5;
@@ -160,7 +158,13 @@
         routePoints = []; routeLine.setLatLngs([]); 
         map.eachLayer(l => { if(l.options && l.options.className === 'route-dot') map.removeLayer(l); }); 
     }
-    function resetFuel() { totalFuel = 0; document.getElementById('fuel').innerText = "0.0"; }
+
+    function resetFuel() { 
+        if(confirm("Vill du nollställa trippmätaren för bränsle?")) {
+            totalFuel = 0; 
+            document.getElementById('fuel').innerText = "0.0"; 
+        }
+    }
 
     navigator.geolocation.watchPosition(p => {
         let cur = L.latLng(p.coords.latitude, p.coords.longitude);
@@ -183,4 +187,3 @@
 </script>
 </body>
 </html>
-
