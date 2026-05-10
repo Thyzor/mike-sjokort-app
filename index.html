@@ -31,14 +31,14 @@
         #clear-btn { background: #ff3e3e; color: white; }
         #center-btn { background: #ffffff; color: #000; border: 2px solid #00d4ff; }
         
-        /* Båt-markör med riktning */
-        .boat-marker { transition: transform 0.5s linear; }
+        /* Stabiliserad båtpil */
+        .boat-container { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
         .boat-arrow {
             width: 0; height: 0; 
             border-left: 10px solid transparent;
             border-right: 10px solid transparent;
             border-bottom: 25px solid #ff3e3e;
-            filter: drop-shadow(0 0 5px rgba(0,0,0,0.5));
+            filter: drop-shadow(0 0 3px rgba(0,0,0,0.8));
         }
 
         .hint { background: rgba(0,0,0,0.6); color: white; padding: 6px; border-radius: 5px; font-size: 9px; text-align: center; line-height: 1.2; }
@@ -71,12 +71,12 @@
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
 
-    // Skapa båtpil istället för punkt
+    // Båtpil i en stabil container
     var boatIcon = L.divIcon({
-        className: 'boat-marker',
-        html: '<div class="boat-arrow"></div>',
-        iconSize: [20, 25],
-        iconAnchor: [10, 12]
+        className: 'custom-boat-icon',
+        html: '<div id="boat-dir" class="boat-container"><div class="boat-arrow"></div></div>',
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
     });
     
     var marker = L.marker([0,0], {icon: boatIcon}).addTo(map);
@@ -98,7 +98,6 @@
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         audioEnabled = true;
         document.getElementById('audio-btn').style.display = 'none';
-        beep(440);
     }
 
     function beep(freq = 880) {
@@ -157,12 +156,14 @@
         navigator.geolocation.watchPosition(function(p) {
             var lat = p.coords.latitude;
             var lon = p.coords.longitude;
-            marker.setLatLng([lat, lon]);
+            var pos = [lat, lon];
+            marker.setLatLng(pos);
             
-            // Uppdatera pilens riktning
+            // Uppdatera pilens rotation UTAN att flytta på markörens CSS-position
             if (p.coords.heading !== null) {
                 var heading = p.coords.heading;
-                document.querySelector('.boat-marker').style.transform = `rotate(${heading}deg)`;
+                var arrow = document.getElementById('boat-dir');
+                if(arrow) arrow.style.transform = `rotate(${heading}deg)`;
                 document.getElementById('course').innerHTML = Math.round(heading) + "°";
             }
             
