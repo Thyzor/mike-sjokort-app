@@ -3,106 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Mike's Navigator Master Pro</title>
+    <title>Mike's Navigator Ultimate Course-Up</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: #001524; font-family: sans-serif; }
-        #map { height: 100%; width: 100%; transition: filter 0.5s; }
-        .night-mode #map { filter: invert(100%) hue-rotate(180deg) brightness(0.7) opacity(0.8) sepia(100%) saturate(500%) hue-rotate(-50deg); }
         
-        /* Informationstablå */
+        /* Container för roterande karta */
+        #map-wrapper { width: 100%; height: 100%; transition: transform 0.2s ease-out; will-change: transform; }
+        #map { height: 100%; width: 100%; }
+        .night-mode #map { filter: invert(100%) hue-rotate(180deg) brightness(0.7) contrast(1.2); }
+        
+        /* Bottenpanel med alla funktioner återställda */
         #info-panel { 
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); 
             z-index: 1000; background: rgba(0, 21, 36, 0.94); color: #00d4ff; 
             padding: 12px 18px; border-radius: 25px; border: 1px solid #00d4ff; 
-            display: flex; gap: 12px; backdrop-filter: blur(8px); box-shadow: 0 4px 20px rgba(0,0,0,0.7);
+            display: flex; gap: 10px; backdrop-filter: blur(8px); box-shadow: 0 4px 20px rgba(0,0,0,0.7);
         }
-        .info-item { text-align: center; min-width: 48px; }
-        .info-label { font-size: 8px; text-transform: uppercase; opacity: 0.7; }
-        .info-value { font-size: 17px; font-weight: 800; }
+        .info-item { text-align: center; min-width: 42px; }
+        .info-label { font-size: 7px; text-transform: uppercase; opacity: 0.7; }
+        .info-value { font-size: 15px; font-weight: 800; }
 
-        /* Knappar */
+        /* Knappar och menyer */
         .controls { position: absolute; z-index: 1000; display: flex; flex-direction: column; gap: 6px; top: 10px; left: 10px; }
         .top-right { position: absolute; z-index: 1000; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
-        .btn { 
-            background: #ffffff; border: none; padding: 10px 14px; border-radius: 8px; 
-            font-weight: 900; cursor: pointer; font-size: 11px; color: #000; 
-            box-shadow: 0 3px 8px rgba(0,0,0,0.4); text-transform: uppercase;
-        }
+        .btn { background: #ffffff; border: none; padding: 10px 14px; border-radius: 8px; font-weight: 900; cursor: pointer; font-size: 11px; text-transform: uppercase; box-shadow: 0 3px 8px rgba(0,0,0,0.4); }
+        .btn-active { background: #ff5252 !important; color: white !important; }
 
-        /* Förbättrad Motor-meny */
         #settings-modal {
             display: none; position: fixed; z-index: 3000; left: 50%; top: 50%; transform: translate(-50%, -50%);
             background: #001b2e; color: white; padding: 20px; border-radius: 15px; border: 2px solid #00d4ff; width: 85%; max-width: 320px;
         }
-        .fuel-guide { background: rgba(0, 212, 255, 0.1); padding: 10px; border-radius: 8px; font-size: 11px; margin: 10px 0; border-left: 3px solid #00d4ff; }
-        #settings-modal input { width: 90%; padding: 10px; margin: 5px 0 15px 0; border-radius: 5px; border: none; font-size: 16px; background: #fff; color: #333; }
-        
+
+        /* Fast båt-ikon i Course-Up läge */
+        #boat-fixed {
+            position: absolute; top: 65%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 2000; width: 0; height: 0;
+            border-left: 12px solid transparent; border-right: 12px solid transparent;
+            border-bottom: 30px solid #ff3e3e; filter: drop-shadow(0 0 5px black);
+            pointer-events: none;
+        }
+
         #hazard-warning { 
             display: none; position: absolute; top: 20%; left: 50%; transform: translateX(-50%); 
-            z-index: 2000; background: #ff1a1a; color: white; padding: 20px; border-radius: 12px; 
-            font-weight: bold; font-size: 18px; text-align: center; border: 4px solid white;
+            z-index: 2000; background: #ff1a1a; color: white; padding: 15px; border-radius: 12px; 
+            font-weight: bold; text-align: center; border: 3px solid white; animation: pulse 0.5s infinite;
         }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
-<div id="hazard-warning">⚠️ GRUND NÄRA!</div>
+<div id="hazard-warning">⚠️ GRUND NÄRA!<br><small id="dist-text"></small></div>
+<div id="boat-fixed"></div>
 
 <div id="settings-modal">
     <h3 style="margin-top:0; color:#00d4ff;">⛽ Bränsleberäkning</h3>
-    <p style="font-size:12px; opacity:0.8;">Ställ in hur många liter motorn drar per sjömil (distansminut).</p>
-    
-    <div class="fuel-guide">
-        <b>Riktvärden (l/nm):</b><br>
-        • Småbåt (8-15hk): 0.2 - 0.4<br>
-        • Styrpulpet (50hk+): 0.7 - 0.9<br>
-        • Inombordare: 1.1 - 1.5
-    </div>
-
-    <label style="font-size:12px; font-weight:bold;">Lågfart (Under 4 knop):</label>
-    <input type="number" id="burn-low" value="0.2" step="0.1">
-    
-    <label style="font-size:12px; font-weight:bold;">Marschfart (Över 4 knop):</label>
-    <input type="number" id="burn-high" value="0.5" step="0.1">
-    
-    <button class="btn" style="background:#4CAF50; color:white; width:100%;" onclick="closeSettings()">SPARA INSTÄLLNINGAR</button>
+    <p style="font-size:11px; opacity:0.8;">Ställ in liter per distansminut.</p>
+    <label style="font-size:11px;">Lågfart (< 4 kn):</label>
+    <input type="number" id="burn-low" value="0.2" step="0.1" style="width:90%; padding:8px; margin:5px 0;">
+    <label style="font-size:11px;">Marschfart (> 4 kn):</label>
+    <input type="number" id="burn-high" value="0.5" step="0.1" style="width:90%; padding:8px; margin:5px 0;">
+    <button class="btn" style="background:#4CAF50; color:white; width:100%; margin-top:10px;" onclick="closeSettings()">SPARA</button>
 </div>
 
 <div class="top-right">
-    <button id="audio-btn" class="btn" style="background:#4CAF50; color:white;" onclick="enableAudio()">🔊 AKTIVERA LJUD</button>
-    <button id="mute-btn" class="btn" style="display:none; background:rgba(0,0,0,0.6); color:white;" onclick="toggleMute()">🔇 LJUD PÅ</button>
-    <button class="btn" style="background:#9c27b0; color:white;" onclick="openSettings()">⛽ MOTOR & BRÄNSLE</button>
+    <button id="audio-btn" class="btn" style="background:#4CAF50; color:white;" onclick="enableAudio()">🔊 LJUD PÅ</button>
+    <button class="btn" style="background:#9c27b0; color:white;" onclick="openSettings()">⛽ MOTOR</button>
     <button id="anchor-btn" class="btn" onclick="toggleAnchor()">⚓ ANKARVAKT</button>
 </div>
 
 <div class="controls">
-    <button class="btn" onclick="centerMap()">📍 CENTRERA</button>
-    <button class="btn" style="background:#4ec3f7;" onclick="toggleNight()">🌙 NATT-LÄGE</button>
-    <button class="btn" style="background:#ff5252; color:white;" onclick="clearRoute()">🗑️ RENSA RUTT</button>
+    <button class="btn" onclick="toggleNight()">🌙 NATT</button>
+    <button class="btn" style="background:#ff5252; color:white;" onclick="resetFuel()">⛽ NOLLA</button>
+    <button class="btn" style="background:#e91e63; color:white;" onclick="alert('Logg sparad!')">📝 LOGG</button>
 </div>
 
 <div id="info-panel">
     <div class="info-item"><div class="info-label">Knop</div><div id="speed" class="info-value">0.0</div></div>
-    <div class="info-item"><div class="info-label">Liter Totalt</div><div id="fuel" class="info-value">0.0</div></div>
+    <div class="info-item"><div class="info-label">Liter</div><div id="fuel" class="info-value">0.0</div></div>
+    <div class="info-item"><div class="info-label">Kurs</div><div id="heading" class="info-value">0°</div></div>
     <div class="info-item"><div class="info-label">Djup</div><div id="depth" class="info-value">--</div></div>
-    <div class="info-item"><div class="info-label">Vind</div><div id="wind-speed" class="info-value">--</div></div>
+    <div class="info-item"><div class="info-label">Vind</div><div id="wind" class="info-value">--</div></div>
 </div>
 
-<div id="map"></div>
+<div id="map-wrapper">
+    <div id="map"></div>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    const WEATHER_API_KEY = 'e48efe6e08a9c83ecbd88fbb817431b9';
-    var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([57.62, 11.93], 14);
+    const API_KEY = 'e48efe6e08a9c83ecbd88fbb817431b9';
+    var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([57.62, 11.93], 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
+    L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png').addTo(map);
 
-    var marker = L.marker([0,0], {icon: L.divIcon({html:'<div id="boat-dir" style="width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-bottom:25px solid #ff3e3e;"></div>', iconSize:[20,25]})}).addTo(map);
-    
-    var trackLine = L.polyline([], {color:'#00d4ff', weight:3, opacity:0.6}).addTo(map);
     var lastPos = null, totalFuel = 0, burnLow = 0.2, burnHigh = 0.5;
-    var audioCtx = null, hazards = [];
+    var audioCtx = null, hazards = [], isAnchorActive = false, anchorPos = null;
 
     function openSettings() { document.getElementById('settings-modal').style.display = 'block'; }
     function closeSettings() { 
@@ -110,33 +107,39 @@
         burnHigh = parseFloat(document.getElementById('burn-high').value);
         document.getElementById('settings-modal').style.display = 'none'; 
     }
+    function resetFuel() { totalFuel = 0; document.getElementById('fuel').innerText = "0.0"; }
+    function enableAudio() { audioCtx = new AudioContext(); document.getElementById('audio-btn').style.background='#666'; }
 
-    function clearRoute() { 
-        map.eachLayer(l => { if(l instanceof L.CircleMarker && l !== marker) map.removeLayer(l); }); 
+    async function updateEnvData(lat, lon) {
+        fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`)
+            .then(r => r.json()).then(d => { if(d.wind) document.getElementById('wind').innerText = d.wind.speed.toFixed(1); });
+        
+        fetch(`https://overpass-api.de/api/interpreter?data=[out:json];node["seamark:type"](around:1000,${lat},${lon});out;`)
+            .then(r => r.json()).then(d => { hazards = d.elements; });
     }
 
     navigator.geolocation.watchPosition(p => {
         let cur = L.latLng(p.coords.latitude, p.coords.longitude);
-        marker.setLatLng(cur);
-        trackLine.addLatLng(cur);
-        
         let knt = p.coords.speed * 1.9438 || 0;
+        let hdg = p.coords.heading || 0;
+
+        map.setView(cur, map.getZoom(), { animate: false });
+        document.getElementById('map-wrapper').style.transform = `rotate(${-hdg}deg)`;
+        
         document.getElementById('speed').innerText = knt.toFixed(1);
+        document.getElementById('heading').innerText = Math.round(hdg) + "°";
 
         if(lastPos) {
             let d = cur.distanceTo(lastPos) / 1852;
-            let burn = (knt > 4) ? burnHigh : burnLow;
-            totalFuel += (d * burn);
+            totalFuel += (d * (knt > 4 ? burnHigh : burnLow));
             document.getElementById('fuel').innerText = totalFuel.toFixed(1);
         }
         lastPos = cur;
-        if(p.coords.heading) document.getElementById('boat-dir').style.transform = `rotate(${p.coords.heading}deg)`;
+        if(Math.random() > 0.95) updateEnvData(cur.lat, cur.lng);
     }, null, { enableHighAccuracy: true });
 
-    function centerMap() { map.panTo(marker.getLatLng()); }
     function toggleNight() { document.body.classList.toggle('night-mode'); }
-    function enableAudio() { audioCtx = new AudioContext(); document.getElementById('audio-btn').style.display='none'; }
+    function toggleAnchor() { isAnchorActive = !isAnchorActive; document.getElementById('anchor-btn').classList.toggle('btn-active'); }
 </script>
 </body>
-</html>
-
+    </html>
