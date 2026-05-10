@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Min Sjönäravigering</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: #001524; font-family: sans-serif; }
+        #map { height: 100%; width: 100%; }
+        #info-panel { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(0, 21, 36, 0.85); color: #00d4ff; padding: 15px 25px; border-radius: 50px; border: 1px solid #00d4ff; display: flex; gap: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); pointer-events: none; backdrop-filter: blur(5px); }
+        .stat-box { text-align: center; }
+        .stat-label { font-size: 10px; text-transform: uppercase; display: block; color: #aaa; }
+        .stat-value { font-size: 20px; font-weight: bold; }
+    </style>
+</head>
+<body>
+<div id="info-panel">
+    <div class="stat-box"><span class="stat-label">SOG (Knop)</span><span id="speed" class="stat-value">0.0</span></div>
+    <div class="stat-box"><span class="stat-label">COG</span><span id="course" class="stat-value">---&deg;</span></div>
+</div>
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([57.62, 11.93], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
+    var boatIcon = L.divIcon({ className: 'boat-marker', html: '<div style="background-color: #ff3e3e; width: 15px; height: 15px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>', iconSize: [20, 20] });
+    var marker = L.marker([0, 0], {icon: boatIcon}).addTo(map);
+    var circle = L.circle([0, 0], {radius: 0, color: '#00d4ff', fillOpacity: 0.1}).addTo(map);
+    if ("geolocation" in navigator) {
+        navigator.geolocation.watchPosition(function(position) {
+            var lat = position.coords.latitude;
+            var lon = position.coords.longitude;
+            var accuracy = position.coords.accuracy;
+            var speedMs = position.coords.speed;
+            var heading = position.coords.heading;
+            var newPos = [lat, lon];
+            marker.setLatLng(newPos);
+            circle.setLatLng(newPos);
+            circle.setRadius(accuracy);
+            map.panTo(newPos);
+            if (speedMs !== null) { document.getElementById('speed').innerHTML = (speedMs * 1.94384).toFixed(1); }
+            if (heading !== null) { document.getElementById('course').innerHTML = Math.round(heading) + "&deg;"; }
+        }, function(error) { console.log(error.message); }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 });
+    }
+    L.control.zoom({ position: 'topright' }).addTo(map);
+</script>
+</body>
+</html>
