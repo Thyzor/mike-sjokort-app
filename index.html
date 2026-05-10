@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Mike's Navigator - Complete Pro Edition</title>
+    <title>Mike's Navigator - Service Edition</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root { --main-cyan: #00d4ff; --bg-dark: #001524; --panel-bg: rgba(0, 21, 36, 0.92); --sos-red: #ff0000; }
@@ -19,7 +19,7 @@
             display: flex; gap: 5px; backdrop-filter: blur(5px); width: 95%; max-width: 520px;
             justify-content: space-around; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
-        .info-item { text-align: center; min-width: 50px; }
+        .info-item { text-align: center; min-width: 45px; }
         .info-label { font-size: 7px; text-transform: uppercase; opacity: 0.8; margin-bottom: 2px; }
         .info-value { font-size: 13px; font-weight: 800; }
 
@@ -31,11 +31,8 @@
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
         .btn-white { background: #ffffff; }
         .btn-red { background: #ff5252; color: white; }
-        .btn-green { background: #76b852; color: white; }
         .btn-blue { background: var(--main-cyan); color: #001524; }
         .btn-purple { background: #a855f7; color: white; }
-        .btn-orange { background: #ff9800; color: white; }
-        .btn-active { background: #ff9800 !important; color: white !important; border: 2px solid white; }
 
         .modal {
             display: none; position: fixed; z-index: 3000; left: 50%; top: 50%; transform: translate(-50%, -50%);
@@ -44,11 +41,13 @@
         }
         
         .close-x { position: absolute; top: 15px; right: 15px; font-size: 24px; color: #888; cursor: pointer; font-weight: bold; }
-        .fuel-detail-box { background: rgba(0, 150, 200, 0.15); border-left: 4px solid var(--main-cyan); padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 11px; line-height: 1.6; color: #e0e0e0; }
         .legend-row { display: flex; align-items: center; gap: 15px; margin-bottom: 12px; font-size: 11px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
-        .symbol-box { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; background: white; border-radius: 4px; color: #333; font-weight: bold; font-size: 18px; flex-shrink: 0; }
-        .sos-coord-box { background: #1a0000; border: 2px solid var(--sos-red); padding: 15px; border-radius: 10px; text-align: center; margin: 15px 0; }
-        .sos-val { font-family: monospace; font-size: 16px; color: #ff5252; font-weight: bold; }
+        .symbol-box { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; background: white; border-radius: 4px; color: #333; font-weight: bold; font-size: 16px; flex-shrink: 0; }
+        
+        /* Service-ikoner */
+        .fuel-icon { background: #ff9800; color: white; border-radius: 4px; border: 1px solid white; text-align: center; line-height: 22px; font-size: 14px; width: 24px; height: 24px; }
+        .shop-icon { background: #9c27b0; color: white; border-radius: 4px; border: 1px solid white; text-align: center; line-height: 22px; font-size: 14px; width: 24px; height: 24px; }
+        .harbor-icon { background: #0072ff; color: white; border-radius: 50%; border: 2px solid white; text-align: center; line-height: 20px; font-weight: bold; width: 20px; height: 20px; }
     </style>
 </head>
 <body>
@@ -56,9 +55,9 @@
 <div id="sos-modal" class="modal">
     <span class="close-x" onclick="closeModal('sos-modal')">&times;</span>
     <h2 style="color:var(--sos-red); text-align:center;">SOS / LARM</h2>
-    <div class="sos-coord-box">
-        <div id="sos-lat" class="sos-val">Söker position...</div>
-        <div id="sos-lon" class="sos-val"></div>
+    <div style="background: #1a0000; border: 2px solid var(--sos-red); padding: 15px; border-radius: 10px; text-align: center; margin: 15px 0;">
+        <div id="sos-lat" style="font-family: monospace; font-size: 16px; color: #ff5252; font-weight: bold;">Söker position...</div>
+        <div id="sos-lon" style="font-family: monospace; font-size: 16px; color: #ff5252; font-weight: bold;"></div>
     </div>
     <a href="tel:112"><button style="width:100%; padding:18px; background:var(--sos-red); color:white; border:none; border-radius:12px; font-weight:bold; font-size:16px; margin-bottom:10px;">RING 112</button></a>
     <a href="tel:0200290090"><button style="width:100%; padding:15px; background:#ff9800; color:white; border:none; border-radius:12px; font-weight:bold;">RING SJÖASSISTANS</button></a>
@@ -67,37 +66,25 @@
 <div id="settings-modal" class="modal">
     <span class="close-x" onclick="closeModal('settings-modal')">&times;</span>
     <h3>⛽ Motor & Bränsle</h3>
-    <div class="fuel-detail-box">
-        <b>Hur det fungerar:</b><br>
-        Appen mäter hastighet och sträcka via GPS. Förbrukning beräknas i realtid.<br><br>
-        <b>Johnson 8hk Riktvärden:</b><br>
-        • Lågfart (0-4 kn): ca 0.2 l/nm<br>
-        • Marsch (4+ kn): ca 0.5 l/nm
+    <div style="background: rgba(0, 150, 200, 0.15); border-left: 4px solid var(--main-cyan); padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 11px; line-height: 1.6;">
+        <b>Beräkning för Johnson 8hk:</b><br>
+        Lågfart (0-4 kn): ca 0.2 l/nm<br>
+        Marsch (4+ kn): ca 0.5 l/nm
     </div>
-    <label style="font-size:12px;">Lågfart (l/nm):</label>
+    <label style="font-size:11px;">Lågfart (l/nm):</label>
     <input type="number" id="burn-low" step="0.1" style="width:100%; padding:10px; margin-bottom:10px; background:#222; color:white; border:none; border-radius:5px;">
-    <label style="font-size:12px;">Marschfart (l/nm):</label>
+    <label style="font-size:11px;">Marschfart (l/nm):</label>
     <input type="number" id="burn-high" step="0.1" style="width:100%; padding:10px; margin-bottom:15px; background:#222; color:white; border:none; border-radius:5px;">
-    <button style="width:100%; padding:15px; background:#76b852; color:white; border:none; border-radius:8px; font-weight:bold;" onclick="saveSettings()">SPARA</button>
+    <button style="width:100%; padding:15px; background:#76b852; color:white; border:none; border-radius:8px; font-weight:bold;" onclick="saveSettings()">SPARA KONFIGURATION</button>
 </div>
 
 <div id="legend-modal" class="modal">
     <span class="close-x" onclick="closeModal('legend-modal')">&times;</span>
-    <h3 style="color:var(--main-cyan);">❓ Sjökortsnyckel</h3>
-    <div class="legend-row"><div class="symbol-box" style="color:blue;">+</div><div><b>Grynna:</b> Farligt grund.</div></div>
-    <div class="legend-row"><div class="symbol-box"><div style="width:6px;height:20px;background:red;border:1px solid #000;"></div></div><div><b>Babord (Röd):</b> Passera med märket på vänster sida vid infart.</div></div>
-    <div class="legend-row"><div class="symbol-box"><div style="width:6px;height:20px;background:#00ff00;border:1px solid #000;"></div></div><div><b>Styrbord (Grön):</b> Passera på höger sida vid infart.</div></div>
-    <div class="legend-row"><div style="font-size:24px; width:30px; text-align:center;">⚓</div><div><b>Ankarvakt:</b> Bevakar drift (30m).</div></div>
-</div>
-
-<div id="reset-modal" class="modal">
-    <div style="text-align:center;">
-        <h3>Nollställ tripp?</h3>
-        <div style="display:flex; gap:10px; margin-top:20px;">
-            <button style="flex:1; padding:12px; background:#555; border:none; border-radius:8px; color:white;" onclick="closeModal('reset-modal')">AVBRYT</button>
-            <button style="flex:1; padding:12px; background:#76b852; border:none; border-radius:8px; color:white;" onclick="confirmReset()">JA</button>
-        </div>
-    </div>
+    <h3 style="color:var(--main-cyan);">❓ Sjökortsnyckel & Service</h3>
+    <div class="legend-row"><div class="symbol-box" style="background:#ff9800; color:white;">⛽</div><div><b>Sjömack:</b> Tanka bensin/diesel.</div></div>
+    <div class="legend-row"><div class="symbol-box" style="background:#9c27b0; color:white;">🛒</div><div><b>Proviant:</b> Matbutik nära hamnen.</div></div>
+    <div class="legend-row"><div class="symbol-box" style="background:#0072ff; color:white;">H</div><div><b>Gästhamn:</b> Service och bryggplats.</div></div>
+    <div class="legend-row"><div class="symbol-box" style="color:blue;">+</div><div><b>Grynna:</b> Farligt område.</div></div>
 </div>
 
 <div id="info-panel">
@@ -117,49 +104,58 @@
 </div>
 
 <div class="controls-right">
-    <button id="sound-btn" class="btn btn-green" onclick="toggleSound()">🔊 LJUD PÅ</button>
+    <button id="sound-btn" class="btn btn-white" onclick="toggleSound()">🔊 LJUD PÅ</button>
     <button class="btn btn-blue" onclick="openModal('legend-modal')">❓ SYMBOLER</button>
     <button class="btn btn-purple" onclick="openModal('settings-modal')">⛽ MOTOR</button>
     <button id="anchor-btn" class="btn" style="background:#333; color:white;" onclick="toggleAnchorGuard()">⚓ ANKARVAKT</button>
-    <button class="btn btn-orange" onclick="showLog()">📋 LOGGBOK</button>
-    <button class="btn btn-red" onclick="openModal('reset-modal')">⛽ NOLL TRIP</button>
 </div>
 
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([57.62, 11.93], 15);
+    var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([57.62, 11.93], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png').addTo(map);
 
     var boatIcon = L.divIcon({ html: '<div id="boat-arrow" style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:22px solid #ff3e3e;transition:transform 0.5s;"></div>', iconSize:[16,22], iconAnchor:[8,11] });
     var marker = L.marker([57.62, 11.93], {icon: boatIcon}).addTo(map);
-    
-    var routePoints = [], routeLine = L.polyline([], {color:'#f1c40f', weight:4, dashArray:'10,10'}).addTo(map);
-    map.on('click', e => { routePoints.push(e.latlng); routeLine.setLatLngs(routePoints); L.circleMarker(e.latlng, {radius:6, color:'#f1c40f', fillOpacity:1, className:'route-dot'}).addTo(map); updateETA(); });
 
-    var totalFuel = 0, lastPos = null, isSoundOn = true, lastKnt = 0, startTime = new Date();
+    // --- SERVICE & HAMN DATA ---
+    var poi = [
+        { name: "Donsö Sjömack", pos: [57.598, 11.798], type: "fuel", info: "Bensin & Diesel vid kaj." },
+        { name: "Donsö (Nära macken)", pos: [57.599, 11.799], type: "shop", info: "ICA Nära Donsö." },
+        { name: "Vrångö Gästhamn", pos: [57.574, 11.782], type: "guest", info: "Gästplatser och service." },
+        { name: "Vrångö Butik", pos: [57.575, 11.783], type: "shop", info: "Mataffär öppen året runt." },
+        { name: "Långedrag Mack", pos: [57.669, 11.861], type: "fuel", info: "Sjömack vid GKSS." }
+    ];
 
-    if(navigator.getBattery) { navigator.getBattery().then(b => { const u = () => { document.getElementById('batt').innerText = Math.round(b.level * 100) + "%"; }; u(); b.onlevelchange = u; }); }
+    poi.forEach(p => {
+        var iconHtml = p.type === "fuel" ? "⛽" : (p.type === "shop" ? "🛒" : "H");
+        var iconClass = p.type === "fuel" ? "fuel-icon" : (p.type === "shop" ? "shop-icon" : "harbor-icon");
+        var pIcon = L.divIcon({ className: iconClass, html: iconHtml, iconSize: [24, 24] });
+        L.marker(p.pos, {icon: pIcon}).addTo(map).bindPopup(`<b>${p.name}</b><br>${p.info}`);
+    });
 
-    function openSOS() { document.getElementById('sos-lat').innerText = "LAT: " + marker.getLatLng().lat.toFixed(5); document.getElementById('sos-lon').innerText = "LON: " + marker.getLatLng().lng.toFixed(5); openModal('sos-modal'); }
-    function goHome() { map.flyTo([57.621, 11.934], 15); }
-    function showLog() { alert(`LOGGBOK\n----------------\nTid: ${Math.round((new Date() - startTime)/60000)} min\nBränsle: ${totalFuel.toFixed(2)} L`); }
-    function updateETA() { if(routePoints.length > 0 && lastKnt > 1) { let d = marker.getLatLng().distanceTo(routePoints[routePoints.length-1])/1852; let eta = new Date(new Date().getTime() + (d/lastKnt)*3600000); document.getElementById('eta').innerText = eta.getHours() + ":" + (eta.getMinutes()<10?'0':'') + eta.getMinutes(); } }
-    function toggleSound() { isSoundOn = !isSoundOn; document.getElementById('sound-btn').innerText = isSoundOn ? "🔊 LJUD PÅ" : "🔈 LJUD AV"; document.getElementById('sound-btn').className = isSoundOn ? "btn btn-green" : "btn btn-white"; }
+    var totalFuel = 0, lastPos = null, isSoundOn = true, lastKnt = 0;
+
+    function openSOS() { 
+        document.getElementById('sos-lat').innerText = "LAT: " + marker.getLatLng().lat.toFixed(5); 
+        document.getElementById('sos-lon').innerText = "LON: " + marker.getLatLng().lng.toFixed(5); 
+        openModal('sos-modal'); 
+    }
+
+    function goHome() { map.flyTo([57.621, 11.934], 14); }
     function openModal(id) { document.getElementById(id).style.display = 'block'; }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
     function saveSettings() { localStorage.setItem('burnLow', document.getElementById('burn-low').value); localStorage.setItem('burnHigh', document.getElementById('burn-high').value); closeModal('settings-modal'); }
-    function confirmReset() { totalFuel = 0; document.getElementById('fuel').innerText = "0.0"; closeModal('reset-modal'); }
-    function clearRoute() { routePoints = []; routeLine.setLatLngs([]); map.eachLayer(l => { if(l.options && l.options.className === 'route-dot') map.removeLayer(l); }); }
     function toggleNight() { document.body.classList.toggle('night-mode'); }
     function centerMap() { map.panTo(marker.getLatLng()); }
 
     var anchorCircle = null, isAnchorActive = false;
     function toggleAnchorGuard() {
-        if (!isAnchorActive) { anchorCircle = L.circle(marker.getLatLng(), { radius: 30, color: '#00d4ff' }).addTo(map); isAnchorActive = true; document.getElementById('anchor-btn').classList.add('btn-active'); }
-        else { if(anchorCircle) map.removeLayer(anchorCircle); isAnchorActive = false; document.getElementById('anchor-btn').classList.remove('btn-active'); }
+        if (!isAnchorActive) { anchorCircle = L.circle(marker.getLatLng(), { radius: 30, color: '#00d4ff' }).addTo(map); isAnchorActive = true; }
+        else { if(anchorCircle) map.removeLayer(anchorCircle); isAnchorActive = false; }
     }
 
     navigator.geolocation.watchPosition(p => {
@@ -175,12 +171,13 @@
             totalFuel += (d * burn);
             document.getElementById('fuel').innerText = totalFuel.toFixed(1);
         }
-        if (isAnchorActive && cur.distanceTo(anchorCircle.getLatLng()) > 30) { anchorCircle.setStyle({color:'red'}); if(isSoundOn) alert("LARM: ANKARE DRIVER!"); }
         lastPos = cur;
     }, null, { enableHighAccuracy: true });
 
-    window.onload = () => { document.getElementById('burn-low').value = localStorage.getItem('burnLow') || 0.2; document.getElementById('burn-high').value = localStorage.getItem('burnHigh') || 0.5; };
+    window.onload = () => {
+        document.getElementById('burn-low').value = localStorage.getItem('burnLow') || 0.2;
+        document.getElementById('burn-high').value = localStorage.getItem('burnHigh') || 0.5;
+    };
 </script>
 </body>
 </html>
-
