@@ -7,7 +7,9 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: #001524; font-family: sans-serif; }
-        #map { height: 100%; width: 100%; }
+        #map { height: 100%; width: 100%; transition: filter 0.5s; }
+        .night-mode #map { filter: invert(100%) hue-rotate(180deg) brightness(0.7) opacity(0.8) sepia(100%) saturate(500%) hue-rotate(-50deg); }
+        
         #info-panel { 
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); 
             z-index: 1000; background: rgba(0, 21, 36, 0.92); color: #00d4ff; 
@@ -16,14 +18,15 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.6);
         }
         .info-item { text-align: center; min-width: 48px; }
-        .info-label { font-size: 8px; text-transform: uppercase; opacity: 0.7; letter-spacing: 0.5px; }
+        .info-label { font-size: 8px; text-transform: uppercase; opacity: 0.7; }
         .info-value { font-size: 17px; font-weight: 800; }
+
         .controls { position: absolute; z-index: 1000; display: flex; flex-direction: column; gap: 6px; top: 10px; left: 10px; }
+        .top-right { position: absolute; z-index: 1000; top: 10px; right: 10px; }
         .btn { 
             background: #ffffff; border: none; padding: 10px 14px; border-radius: 8px; 
             font-weight: 900; cursor: pointer; font-size: 11px; color: #000; 
-            text-align: center; box-shadow: 0 3px 6px rgba(0,0,0,0.3);
-            text-transform: uppercase;
+            text-align: center; box-shadow: 0 3px 6px rgba(0,0,0,0.3); text-transform: uppercase;
         }
         #hazard-warning { 
             display: none; position: absolute; top: 20%; left: 50%; transform: translateX(-50%); 
@@ -37,9 +40,14 @@
 
 <div id="hazard-warning">⚠️ GRUND NÄRA!<br><small id="dist-text"></small></div>
 
+<div class="top-right">
+    <button id="audio-btn" class="btn" style="background:#4CAF50; color:white;" onclick="enableAudio()">🔊 AKTIVERA LJUD</button>
+    <button id="mute-btn" class="btn" style="display:none; background:rgba(0,0,0,0.6); color:white; border:1px solid #00d4ff;" onclick="toggleMute()">🔇 LJUD PÅ</button>
+</div>
+
 <div class="controls">
     <button class="btn" onclick="centerMap()">📍 CENTRERA</button>
-    <button class="btn" style="background:#ff5252; color:white;" onclick="clearRoute()">🗑️ RENSA</button>
+    <button class="btn" style="background:#4ec3f7;" onclick="toggleNight()">🌙 NATT-LÄGE</button>
     <button class="btn" style="background:#4CAF50; color:white;" onclick="updateAll()">🔄 UPPDATERA</button>
 </div>
 
@@ -56,35 +64,41 @@
 <script>
     const WEATHER_API_KEY = 'e48efe6e08a9c83ecbd88fbb817431b9'; 
     var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([57.62, 11.93], 14);
-    
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
 
-    var boatIcon = L.divIcon({ 
-        html: '<div style="width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-bottom:25px solid #ff3e3e;filter:drop-shadow(0 0 2px black);"></div>', 
-        iconSize: [20, 25], 
-        iconAnchor: [10, 12] 
-    });
+    var boatIcon = L.divIcon({ html: '<div id="boat-dir" style="width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-bottom:25px solid #ff3e3e;filter:drop-shadow(0 0 2px black);"></div>', iconSize: [20, 25], iconAnchor: [10, 12] });
     var marker = L.marker([0,0], {icon: boatIcon}).addTo(map);
-    var hazards = [];
+    var audioCtx = null, audioEnabled = false, isMuted = false, hazards = [];
+
+    function enableAudio() {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        audioEnabled = true;
+        document.getElementById('audio-btn').style.display = 'none';
+        document.getElementById('mute-btn').style.display = 'block';
+        updateAll();
+        beep(440);
+    }
+
+    function toggleMute() { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔊 LJUD AV" : "🔇 LJUD PÅ"; }
+    function beep(freq = 880) { if (!audioEnabled || !audioCtx || isMuted) return; var osc = audioCtx.createOscillator(); var gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); osc.frequency.value = freq; gain.gain.setValueAtTime(0.1, audioCtx.currentTime); osc.start(); osc.stop(audioCtx.currentTime + 0.2); }
 
     async function updateWeather(lat, lon) {
         try {
             const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${WEATHER_API_KEY}&units=metric`);
             const data = await res.json();
             if(data.wind) document.getElementById('wind-speed').innerText = data.wind.speed.toFixed(1);
-        } catch (e) { console.log("Väderfel", e); }
+        } catch (e) { console.log(e); }
     }
 
     async function updateDepthAndHazards(lat, lon) {
-        const query = `[out:json][timeout:25];(node["seamark:type"](around:1000,${lat},${lon});node["seamark:depth"](around:1000,${lat},${lon});way["seamark:type"](around:1000,${lat},${lon}););out center;`;
+        const query = `[out:json][timeout:25];(node["seamark:type"](around:1200,${lat},${lon});node["seamark:depth"](around:1200,${lat},${lon});way["seamark:type"](around:1200,${lat},${lon}););out center;`;
         try {
             const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
             const data = await res.json();
             hazards = data.elements;
-            
             let bestDepth = "--";
-            let minD = 1000;
+            let minD = 1500;
             data.elements.forEach(el => {
                 let dLat = el.lat || (el.center ? el.center.lat : null);
                 let dLon = el.lon || (el.center ? el.center.lon : null);
@@ -94,13 +108,13 @@
                 }
             });
             document.getElementById('depth').innerText = bestDepth;
-        } catch (e) { console.log("Datafel", e); }
+        } catch (e) { console.log(e); }
     }
 
     function checkHazards(lat, lon) {
         let nearest = 1000;
         hazards.forEach(h => {
-            if(h.tags && h.tags["seamark:type"] && h.tags["seamark:type"].includes("hazard")) {
+            if(h.tags && h.tags["seamark:type"] && (h.tags["seamark:type"].includes("hazard") || h.tags["seamark:type"] === "rock")) {
                 let dLat = h.lat || (h.center ? h.center.lat : null);
                 let dLon = h.lon || (h.center ? h.center.lon : null);
                 if(dLat) {
@@ -112,34 +126,30 @@
         if (nearest < 150) {
             document.getElementById('hazard-warning').style.display = 'block';
             document.getElementById('dist-text').innerText = Math.round(nearest) + " m till hinder";
-        } else {
-            document.getElementById('hazard-warning').style.display = 'none';
-        }
+            beep(880);
+        } else { document.getElementById('hazard-warning').style.display = 'none'; }
     }
 
     function updateAll() {
         let pos = marker.getLatLng();
-        if(pos.lat !== 0) {
-            updateWeather(pos.lat, pos.lng);
-            updateDepthAndHazards(pos.lat, pos.lng);
-        }
+        if(pos.lat !== 0) { updateWeather(pos.lat, pos.lng); updateDepthAndHazards(pos.lat, pos.lng); }
     }
 
     navigator.geolocation.watchPosition(function(p) {
         let lat = p.coords.latitude;
         let lon = p.coords.longitude;
         marker.setLatLng([lat, lon]);
+        if (p.coords.heading !== null) { 
+            document.getElementById('boat-dir').style.transform = `rotate(${p.coords.heading}deg)`; 
+            document.getElementById('course').innerText = Math.round(p.coords.heading) + "°"; 
+        }
         if(p.coords.speed) document.getElementById('speed').innerText = (p.coords.speed * 1.9438).toFixed(1);
-        if(p.coords.heading) document.getElementById('course').innerText = Math.round(p.coords.heading) + "°";
         checkHazards(lat, lon);
     }, null, { enableHighAccuracy: true });
 
-    // Initial körning och sedan var 60:e sekund
-    setTimeout(updateAll, 2000);
-    setInterval(updateAll, 60000);
-
+    setInterval(updateAll, 45000);
     function centerMap() { map.panTo(marker.getLatLng()); }
-    function clearRoute() { /* Implementera rutt-rensning om du har polylines */ }
+    function toggleNight() { document.body.classList.toggle('night-mode'); }
 </script>
 </body>
 </html>
