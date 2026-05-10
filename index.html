@@ -22,14 +22,14 @@
         #info-panel { 
             position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); 
             z-index: 1000; background: rgba(0, 21, 36, 0.9); color: #00d4ff; 
-            padding: 15px 25px; border-radius: 30px; border: 1px solid #00d4ff; 
-            display: flex; gap: 20px; backdrop-filter: blur(5px); pointer-events: none;
+            padding: 15px 20px; border-radius: 30px; border: 1px solid #00d4ff; 
+            display: flex; gap: 15px; backdrop-filter: blur(5px); pointer-events: none;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
         
-        .info-item { text-align: center; min-width: 50px; }
-        .info-label { font-size: 9px; text-transform: uppercase; opacity: 0.8; margin-bottom: 2px; }
-        .info-value { font-size: 18px; font-weight: bold; }
+        .info-item { text-align: center; min-width: 45px; }
+        .info-label { font-size: 8px; text-transform: uppercase; opacity: 0.8; margin-bottom: 2px; }
+        .info-value { font-size: 16px; font-weight: bold; }
 
         #hazard-warning { 
             display: none; position: absolute; top: 25%; left: 50%; transform: translateX(-50%); 
@@ -40,7 +40,7 @@
         @keyframes blink { 0% {scale: 1;} 50% {scale: 1.05;} 100% {scale: 1;} }
 
         .controls { position: absolute; z-index: 1000; display: flex; flex-direction: column; gap: 8px; top: 10px; left: 10px; width: 130px; }
-        .btn { background: #00d4ff; border: none; padding: 12px 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 11px; color: #000; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        .btn { background: #00d4ff; border: none; padding: 12px 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 11px; color: #000; text-align: center; }
         
         .top-right-btns { position: absolute; top: 10px; right: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
         #audio-btn { background: #4CAF50; color: white; padding: 12px 15px; }
@@ -57,9 +57,7 @@
             border-bottom: 25px solid #ff3e3e;
             filter: drop-shadow(0 0 3px rgba(0,0,0,0.8));
         }
-
-        .hint { background: rgba(0,0,0,0.6); color: white; padding: 6px; border-radius: 5px; font-size: 9px; text-align: center; }
-        #wind-dir-icon { display: inline-block; transition: transform 0.8s ease-in-out; font-weight: bold; font-size: 14px; }
+        #wind-dir-icon { display: inline-block; transition: transform 0.8s; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -75,23 +73,13 @@
     <button id="center-btn" class="btn" onclick="centerMap()">📍 CENTRERA</button>
     <button class="btn" onclick="toggleNight()">🌙 NATT-LÄGE</button>
     <button id="clear-btn" class="btn" onclick="clearRoute()">🗑️ RENSA RUTT</button>
-    <div class="hint">Klicka på sjökortet för rutt</div>
 </div>
 
 <div id="info-panel">
-    <div class="info-item">
-        <div class="info-label">Knop</div>
-        <div id="speed" class="info-value">0.0</div>
-    </div>
-    <div class="info-item">
-        <div class="info-label">Kurs</div>
-        <div id="course" class="info-value">---°</div>
-    </div>
-    <div class="info-item">
-        <div class="info-label">Vind</div>
-        <div id="wind-speed" class="info-value">--</div>
-        <div style="font-size: 9px; margin-top: -3px;">m/s <span id="wind-dir-icon">↑</span></div>
-    </div>
+    <div class="info-item"><div class="info-label">Knop</div><div id="speed" class="info-value">0.0</div></div>
+    <div class="info-item"><div class="info-label">Kurs</div><div id="course" class="info-value">---°</div></div>
+    <div class="info-item"><div class="info-label">Djup</div><div id="depth" class="info-value">--</div><div style="font-size: 8px;">meter</div></div>
+    <div class="info-item"><div class="info-label">Vind</div><div id="wind-speed" class="info-value">--</div><div style="font-size: 8px;"><span id="wind-dir-icon">↑</span> m/s</div></div>
 </div>
 
 <div id="map"></div>
@@ -99,143 +87,89 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     const WEATHER_API_KEY = 'e48efe6e08a9c83ecbd88fbb817431b9'; 
-
     var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([57.62, 11.93], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
 
-    var boatIcon = L.divIcon({
-        className: 'custom-boat-icon',
-        html: '<div id="boat-dir" class="boat-container"><div class="boat-arrow"></div></div>',
-        iconSize: [30, 30],
-        iconAnchor: [15, 15]
-    });
-    
+    var boatIcon = L.divIcon({ className: 'custom-boat-icon', html: '<div id="boat-dir" class="boat-container"><div class="boat-arrow"></div></div>', iconSize: [30, 30], iconAnchor: [15, 15] });
     var marker = L.marker([0,0], {icon: boatIcon}).addTo(map);
-    var routePoints = [];
-    var routeLine = L.polyline([], {color: '#00d4ff', weight: 5, dashArray: '10, 15'}).addTo(map);
-    var audioCtx = null;
-    var audioEnabled = false;
-    var isMuted = false;
-    var hazards = [];
+    var audioCtx = null, audioEnabled = false, isMuted = false, hazards = [];
 
     function enableAudio() {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         audioEnabled = true;
         document.getElementById('audio-btn').style.display = 'none';
         document.getElementById('mute-btn').style.display = 'block';
-        
-        // Tvinga fram en första uppdatering av väder och hinder
-        let pos = marker.getLatLng();
-        if(pos.lat !== 0) {
-            updateWeather(pos.lat, pos.lng);
-            updateHazards(pos.lat, pos.lng);
-        }
+        updateAll();
         beep(440);
     }
 
-    function toggleMute() {
-        isMuted = !isMuted;
-        document.getElementById('mute-btn').innerText = isMuted ? "🔊 LJUD AV" : "🔇 LJUD PÅ";
-        if (!isMuted) beep(660);
-    }
-
-    function beep(freq = 880) {
-        if (!audioEnabled || !audioCtx || isMuted) return;
-        var osc = audioCtx.createOscillator();
-        var gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.2);
-    }
+    function toggleMute() { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔊 LJUD AV" : "🔇 LJUD PÅ"; }
+    function beep(freq = 880) { if (!audioEnabled || !audioCtx || isMuted) return; var osc = audioCtx.createOscillator(); var gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); osc.frequency.value = freq; gain.gain.setValueAtTime(0.1, audioCtx.currentTime); osc.start(); osc.stop(audioCtx.currentTime + 0.2); }
 
     async function updateWeather(lat, lon) {
         try {
-            console.log("Hämtar vind för:", lat, lon);
-            const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${WEATHER_API_KEY}&units=metric`);
-            const data = await response.json();
+            const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${WEATHER_API_KEY}&units=metric`);
+            const data = await res.json();
             if(data.wind) {
                 document.getElementById('wind-speed').innerText = data.wind.speed.toFixed(1);
-                // Rotera pilen (vi lägger till 180 för att den ska peka DIT det blåser)
                 document.getElementById('wind-dir-icon').style.transform = `rotate(${data.wind.deg + 180}deg)`;
             }
-        } catch (e) { console.log("Väderfel:", e); }
+        } catch (e) { console.log(e); }
     }
 
-    function centerMap() {
-        var currentPos = marker.getLatLng();
-        if (currentPos.lat !== 0) { map.flyTo(currentPos, 15); }
-    }
-
-    function toggleNight() { document.body.classList.toggle('night-mode'); }
-
-    map.on('click', function(e) {
-        routePoints.push(e.latlng);
-        routeLine.setLatLngs(routePoints);
-        L.circleMarker(e.latlng, {radius: 6, color: '#00d4ff', fillColor: '#00d4ff', fillOpacity: 1, interactive: false}).addTo(map);
-    });
-
-    function clearRoute() {
-        routePoints = [];
-        routeLine.setLatLngs([]);
-        map.eachLayer(function(layer) {
-            if (layer instanceof L.CircleMarker && layer !== marker) map.removeLayer(layer);
-        });
-    }
-
-    async function updateHazards(lat, lon) {
-        const query = `[out:json];node["seamark:type"](around:2500,${lat},${lon});out;`;
+    async function updateDepthAndHazards(lat, lon) {
+        // Hämtar både hinder och djupmarkeringar (seamark:type=depth_area eller depth_contour)
+        const query = `[out:json];(node["seamark:type"](around:500,${lat},${lon});node["seamark:depth"](around:500,${lat},${lon}););out;`;
         try {
             const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
             const data = await res.json();
             hazards = data.elements;
-        } catch (e) { console.error(e); }
+            
+            // Hitta närmaste djup-tagg
+            let depthFound = "--";
+            let minD = 999;
+            data.elements.forEach(el => {
+                if(el.tags && el.tags["seamark:depth"]) {
+                    let d = map.distance([lat, lon], [el.lat, el.lon]);
+                    if(d < minD) { minD = d; depthFound = el.tags["seamark:depth"]; }
+                }
+            });
+            document.getElementById('depth').innerText = depthFound;
+        } catch (e) { console.log(e); }
     }
 
     function checkHazards(lat, lon) {
-        let nearestDist = 9999;
+        let nearest = 999;
         hazards.forEach(h => {
-            let d = map.distance([lat, lon], [h.lat, h.lon]);
-            if (d < nearestDist) nearestDist = d;
+            if(h.tags && h.tags["seamark:type"] && h.tags["seamark:type"].includes("hazard")) {
+                let d = map.distance([lat, lon], [h.lat, h.lon]);
+                if (d < nearest) nearest = d;
+            }
         });
-
-        if (nearestDist < 150) { 
+        if (nearest < 150) { 
             document.getElementById('hazard-warning').style.display = 'block';
-            document.getElementById('dist-text').innerText = Math.round(nearestDist) + " m till hinder";
+            document.getElementById('dist-text').innerText = Math.round(nearest) + " m till hinder";
             beep(880);
-        } else {
-            document.getElementById('hazard-warning').style.display = 'none';
-        }
+        } else { document.getElementById('hazard-warning').style.display = 'none'; }
+    }
+
+    function updateAll() {
+        let pos = marker.getLatLng();
+        if(pos.lat !== 0) { updateWeather(pos.lat, pos.lng); updateDepthAndHazards(pos.lat, pos.lng); }
     }
 
     if ("geolocation" in navigator) {
         navigator.geolocation.watchPosition(function(p) {
-            var lat = p.coords.latitude;
-            var lon = p.coords.longitude;
-            marker.setLatLng([lat, lon]);
-            
-            if (p.coords.heading !== null) {
-                var arrow = document.getElementById('boat-dir');
-                if(arrow) arrow.style.transform = `rotate(${p.coords.heading}deg)`;
-                document.getElementById('course').innerHTML = Math.round(p.coords.heading) + "°";
-            }
-            
+            marker.setLatLng([p.coords.latitude, p.coords.longitude]);
+            if (p.coords.heading !== null) { document.getElementById('boat-dir').style.transform = `rotate(${p.coords.heading}deg)`; document.getElementById('course').innerHTML = Math.round(p.coords.heading) + "°"; }
             if(p.coords.speed) document.getElementById('speed').innerHTML = (p.coords.speed * 1.9438).toFixed(1);
-            checkHazards(lat, lon);
+            checkHazards(p.coords.latitude, p.coords.longitude);
         }, null, { enableHighAccuracy: true });
-
-        // Uppdatera vind och hinder var 5:e minut istället för var 10:e
-        setInterval(() => {
-            let pos = marker.getLatLng();
-            if(pos.lat !== 0) {
-                updateWeather(pos.lat, pos.lng);
-                updateHazards(pos.lat, pos.lng);
-            }
-        }, 300000);
+        setInterval(updateAll, 120000);
     }
+    function centerMap() { var p = marker.getLatLng(); if (p.lat !== 0) map.flyTo(p, 15); }
+    function toggleNight() { document.body.classList.toggle('night-mode'); }
 </script>
 </body>
 </html>
