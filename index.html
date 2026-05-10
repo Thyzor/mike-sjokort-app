@@ -3,34 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Mike's Sjönävigering Pro</title>
+    <title>Mike's Sjönävigering Pro+</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: #001524; font-family: sans-serif; }
         #map { height: 100%; width: 100%; transition: filter 0.5s; }
-        
-        /* Nattläge-filter */
         .night-mode #map { filter: invert(100%) hue-rotate(180deg) brightness(0.7) sepia(100%) saturate(500%) hue-rotate(-50deg); }
         
-        #info-panel { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(0, 21, 36, 0.9); color: #00d4ff; padding: 15px 20px; border-radius: 30px; border: 1px solid #00d4ff; display: flex; gap: 15px; backdrop-filter: blur(5px); }
+        #info-panel { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(0, 21, 36, 0.9); color: #00d4ff; padding: 15px 20px; border-radius: 30px; border: 1px solid #00d4ff; display: flex; gap: 15px; backdrop-filter: blur(5px); pointer-events: none; }
         
-        /* Varningsskylt */
         #hazard-warning { 
             display: none; position: absolute; top: 20%; left: 50%; transform: translateX(-50%); 
-            z-index: 2000; background: red; color: white; padding: 20px; border-radius: 10px; 
-            font-weight: bold; animation: blink 1s infinite; border: 4px solid white;
+            z-index: 2000; background: #ff0000; color: white; padding: 25px; border-radius: 15px; 
+            font-weight: bold; font-size: 20px; text-align: center; animation: blink 0.8s infinite; border: 5px solid white; box-shadow: 0 0 30px rgba(255,0,0,0.8);
         }
 
-        @keyframes blink { 0% {opacity: 1;} 50% {opacity: 0.3;} 100% {opacity: 1;} }
+        @keyframes blink { 0% {scale: 1; opacity: 1;} 50% {scale: 1.05; opacity: 0.7;} 100% {scale: 1; opacity: 1;} }
 
-        .btn { position: absolute; z-index: 1000; background: #00d4ff; border: none; padding: 10px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .btn { position: absolute; z-index: 1000; background: #00d4ff; border: none; padding: 12px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
         #night-btn { top: 10px; left: 10px; }
+        #audio-btn { top: 10px; right: 10px; background: #4CAF50; color: white; }
     </style>
 </head>
 <body>
 
-<div id="hazard-warning">⚠️ VARNING: GRUND/HINDER NÄRA</div>
-<button id="night-btn" class="btn" onclick="toggleNight()">Nattläge AV/PÅ</button>
+<div id="hazard-warning">⚠️ VARNING: HINDER NÄRA! <br><small id="dist-text"></small></div>
+<button id="night-btn" class="btn" onclick="toggleNight()">NATT-LÄGE</button>
+<button id="audio-btn" class="btn" onclick="enableAudio()">AKTIVERA LJUD</button>
 
 <div id="info-panel">
     <div><small>KNOP</small><br><span id="speed">0.0</span></div>
@@ -41,26 +40,60 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([57.62, 11.93], 13);
-    
-    // Baskartor
-    var baseMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    var seaMarks = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
+    var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([57.62, 11.93], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
 
-    var boatIcon = L.divIcon({ className: 'boat', html: '<div style="background:red; width:12px; height:12px; border-radius:50%; border:2px solid white;"></div>' });
-    var marker = L.marker([0,0], {icon: boatIcon}).addTo(map);
+    var marker = L.marker([0,0], {icon: L.divIcon({className:'b', html:'<div style="background:#ff3e3e;width:14px;height:14px;border-radius:50%;border:3px solid #fff;"></div>'})}).addTo(map);
+    
+    var hazards = [];
+    var audioCtx = null;
+    var audioEnabled = false;
 
     function toggleNight() { document.body.classList.toggle('night-mode'); }
 
-    // Enkel varnings-logik (Simulerad - kräver egentligen WFS-data för att vara 100% exakt)
+    // Starta ljudsystemet (måste aktiveras av användaren en gång)
+    function enableAudio() {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        audioEnabled = true;
+        document.getElementById('audio-btn').style.display = 'none';
+    }
+
+    function beep() {
+        if (!audioEnabled || !audioCtx) return;
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = "sine";
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.2);
+    }
+
+    // Hämta riktiga sjömärken i närheten från Overpass API
+    async function updateHazards(lat, lon) {
+        const query = `[out:json];node["seamark:type"](around:2000,${lat},${lon});out;`;
+        const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            hazards = data.elements;
+        } catch (e) { console.error("Kunde inte hämta hinder", e); }
+    }
+
     function checkHazards(lat, lon) {
-        // Här kan man i framtiden lägga in en lista på koordinater för kända grynnor i Askim
-        // Just nu visar vi bara hur varningen ser ut om man kommer för nära en testpunkt
-        var dangerPoint = {lat: 57.61, lon: 11.90}; // Exempelpunkt
-        var dist = map.distance([lat, lon], [dangerPoint.lat, dangerPoint.lon]);
-        
-        if(dist < 100) { // Varna om närmare än 100 meter
+        let nearestDist = 9999;
+        hazards.forEach(h => {
+            let d = map.distance([lat, lon], [h.lat, h.lon]);
+            if (d < nearestDist) nearestDist = d;
+        });
+
+        if (nearestDist < 150) { // Varning vid 150 meter
             document.getElementById('hazard-warning').style.display = 'block';
+            document.getElementById('dist-text').innerText = Math.round(nearestDist) + " meter";
+            beep();
         } else {
             document.getElementById('hazard-warning').style.display = 'none';
         }
@@ -78,8 +111,15 @@
             
             checkHazards(lat, lon);
         }, null, { enableHighAccuracy: true });
+
+        // Uppdatera hinderdatabasen var 5:e minut
+        setInterval(() => {
+            let pos = marker.getLatLng();
+            if(pos.lat !== 0) updateHazards(pos.lat, pos.lng);
+        }, 300000);
+        // Första hämtningen
+        setTimeout(() => { let pos = marker.getLatLng(); updateHazards(pos.lat, pos.lng); }, 2000);
     }
 </script>
 </body>
 </html>
-
