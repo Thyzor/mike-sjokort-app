@@ -27,7 +27,7 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
         
-        .info-item { text-align: center; min-width: 45px; }
+        .info-item { text-align: center; min-width: 50px; }
         .info-label { font-size: 9px; text-transform: uppercase; opacity: 0.8; margin-bottom: 2px; }
         .info-value { font-size: 18px; font-weight: bold; }
 
@@ -59,7 +59,7 @@
         }
 
         .hint { background: rgba(0,0,0,0.6); color: white; padding: 6px; border-radius: 5px; font-size: 9px; text-align: center; }
-        #wind-dir-icon { display: inline-block; transition: transform 0.5s; font-weight: bold; }
+        #wind-dir-icon { display: inline-block; transition: transform 0.8s ease-in-out; font-weight: bold; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -124,6 +124,13 @@
         audioEnabled = true;
         document.getElementById('audio-btn').style.display = 'none';
         document.getElementById('mute-btn').style.display = 'block';
+        
+        // Tvinga fram en första uppdatering av väder och hinder
+        let pos = marker.getLatLng();
+        if(pos.lat !== 0) {
+            updateWeather(pos.lat, pos.lng);
+            updateHazards(pos.lat, pos.lng);
+        }
         beep(440);
     }
 
@@ -147,11 +154,12 @@
 
     async function updateWeather(lat, lon) {
         try {
+            console.log("Hämtar vind för:", lat, lon);
             const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${WEATHER_API_KEY}&units=metric`);
             const data = await response.json();
             if(data.wind) {
                 document.getElementById('wind-speed').innerText = data.wind.speed.toFixed(1);
-                // Vrid pilen efter vindriktning (180 grader för att peka DIT det blåser)
+                // Rotera pilen (vi lägger till 180 för att den ska peka DIT det blåser)
                 document.getElementById('wind-dir-icon').style.transform = `rotate(${data.wind.deg + 180}deg)`;
             }
         } catch (e) { console.log("Väderfel:", e); }
@@ -219,23 +227,16 @@
             checkHazards(lat, lon);
         }, null, { enableHighAccuracy: true });
 
-        // Uppdatera vind och hinder varannan minut
+        // Uppdatera vind och hinder var 5:e minut istället för var 10:e
         setInterval(() => {
             let pos = marker.getLatLng();
             if(pos.lat !== 0) {
                 updateWeather(pos.lat, pos.lng);
                 updateHazards(pos.lat, pos.lng);
             }
-        }, 120000);
-        
-        setTimeout(() => { 
-            let pos = marker.getLatLng();
-            if(pos.lat !== 0) {
-                updateWeather(pos.lat, pos.lng);
-                updateHazards(pos.lat, pos.lng);
-            }
-        }, 3000);
+        }, 300000);
     }
 </script>
 </body>
 </html>
+
