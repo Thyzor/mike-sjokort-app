@@ -20,44 +20,43 @@
         .night-mode #map { filter: invert(100%) hue-rotate(180deg) brightness(0.7) opacity(0.8) sepia(100%) saturate(500%) hue-rotate(-50deg); }
         
         #info-panel { 
-            position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); 
-            z-index: 1000; background: rgba(0, 21, 36, 0.9); color: #00d4ff; 
-            padding: 15px 20px; border-radius: 30px; border: 1px solid #00d4ff; 
-            display: flex; gap: 15px; backdrop-filter: blur(5px); pointer-events: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); 
+            z-index: 1000; background: rgba(0, 21, 36, 0.92); color: #00d4ff; 
+            padding: 12px 20px; border-radius: 25px; border: 1px solid #00d4ff; 
+            display: flex; gap: 12px; backdrop-filter: blur(8px); pointer-events: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
         }
         
-        .info-item { text-align: center; min-width: 45px; }
-        .info-label { font-size: 8px; text-transform: uppercase; opacity: 0.8; margin-bottom: 2px; }
-        .info-value { font-size: 16px; font-weight: bold; }
+        .info-item { text-align: center; min-width: 48px; }
+        .info-label { font-size: 8px; text-transform: uppercase; opacity: 0.7; letter-spacing: 0.5px; }
+        .info-value { font-size: 17px; font-weight: 800; }
 
         #hazard-warning { 
-            display: none; position: absolute; top: 25%; left: 50%; transform: translateX(-50%); 
-            z-index: 2000; background: #ff0000; color: white; padding: 25px; border-radius: 15px; 
-            font-weight: bold; font-size: 20px; text-align: center; animation: blink 0.8s infinite; border: 5px solid white;
+            display: none; position: absolute; top: 20%; left: 50%; transform: translateX(-50%); 
+            z-index: 2000; background: #ff1a1a; color: white; padding: 20px; border-radius: 12px; 
+            font-weight: bold; font-size: 18px; text-align: center; animation: blink 0.8s infinite; border: 4px solid white;
         }
 
-        @keyframes blink { 0% {scale: 1;} 50% {scale: 1.05;} 100% {scale: 1;} }
+        @keyframes blink { 0% {transform: translateX(-50%) scale(1);} 50% {transform: translateX(-50%) scale(1.05);} 100% {transform: translateX(-50%) scale(1);} }
 
-        .controls { position: absolute; z-index: 1000; display: flex; flex-direction: column; gap: 8px; top: 10px; left: 10px; width: 130px; }
-        .btn { background: #00d4ff; border: none; padding: 12px 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 11px; color: #000; text-align: center; }
+        .controls { position: absolute; z-index: 1000; display: flex; flex-direction: column; gap: 6px; top: 10px; left: 10px; }
+        .btn { 
+            background: #ffffff; border: none; padding: 10px 14px; border-radius: 8px; 
+            font-weight: 900; cursor: pointer; font-size: 11px; color: #000; 
+            text-align: center; box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+            text-transform: uppercase; display: flex; align-items: center; justify-content: center; gap: 5px;
+        }
+        #center-btn { border: 2px solid #00d4ff; }
+        #night-btn { background: #4ec3f7; }
+        #clear-btn { background: #ff5252; color: white; }
         
-        .top-right-btns { position: absolute; top: 10px; right: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
-        #audio-btn { background: #4CAF50; color: white; padding: 12px 15px; }
-        #mute-btn { background: rgba(255, 255, 255, 0.2); color: white; border: 1px solid white; display: none; }
-        
-        #clear-btn { background: #ff3e3e; color: white; }
-        #center-btn { background: #ffffff; color: #000; border: 2px solid #00d4ff; }
+        .top-right-btns { position: absolute; top: 10px; right: 10px; z-index: 1000; }
+        #audio-btn { background: #4CAF50; color: white; padding: 10px 15px; border-radius: 8px; font-weight: 900; border:none; box-shadow: 0 3px 6px rgba(0,0,0,0.3); }
+        #mute-btn { background: rgba(0,0,0,0.5); color: white; border: 1px solid #00d4ff; display: none; padding: 10px 15px; border-radius: 8px; font-weight: 900; }
         
         .boat-container { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
-        .boat-arrow {
-            width: 0; height: 0; 
-            border-left: 10px solid transparent;
-            border-right: 10px solid transparent;
-            border-bottom: 25px solid #ff3e3e;
-            filter: drop-shadow(0 0 3px rgba(0,0,0,0.8));
-        }
-        #wind-dir-icon { display: inline-block; transition: transform 0.8s; font-weight: bold; }
+        .boat-arrow { width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 25px solid #ff3e3e; filter: drop-shadow(0 0 2px rgba(0,0,0,1)); }
+        #wind-dir-icon { display: inline-block; transition: transform 1s; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -65,21 +64,21 @@
 <div id="hazard-warning">⚠️ GRUND NÄRA!<br><small id="dist-text"></small></div>
 
 <div class="top-right-btns">
-    <button id="audio-btn" class="btn" onclick="enableAudio()">🔊 AKTIVERA SYSTEM</button>
-    <button id="mute-btn" class="btn" onclick="toggleMute()">🔇 LJUD PÅ</button>
+    <button id="audio-btn" onclick="enableAudio()">🛰️ AKTIVERA SYSTEM</button>
+    <button id="mute-btn" onclick="toggleMute()">🔇 LJUD PÅ</button>
 </div>
 
 <div class="controls">
     <button id="center-btn" class="btn" onclick="centerMap()">📍 CENTRERA</button>
-    <button class="btn" onclick="toggleNight()">🌙 NATT-LÄGE</button>
+    <button id="night-btn" class="btn" onclick="toggleNight()">🌙 NATT-LÄGE</button>
     <button id="clear-btn" class="btn" onclick="clearRoute()">🗑️ RENSA RUTT</button>
 </div>
 
 <div id="info-panel">
     <div class="info-item"><div class="info-label">Knop</div><div id="speed" class="info-value">0.0</div></div>
     <div class="info-item"><div class="info-label">Kurs</div><div id="course" class="info-value">---°</div></div>
-    <div class="info-item"><div class="info-label">Djup</div><div id="depth" class="info-value">--</div><div style="font-size: 8px;">meter</div></div>
-    <div class="info-item"><div class="info-label">Vind</div><div id="wind-speed" class="info-value">--</div><div style="font-size: 8px;"><span id="wind-dir-icon">↑</span> m/s</div></div>
+    <div class="info-item"><div class="info-label">Djup</div><div id="depth" class="info-value">--</div><div style="font-size: 7px;">meter</div></div>
+    <div class="info-item"><div class="info-label">Vind</div><div id="wind-speed" class="info-value">--</div><div style="font-size: 7px;"><span id="wind-dir-icon">↑</span> m/s</div></div>
 </div>
 
 <div id="map"></div>
@@ -119,16 +118,13 @@
     }
 
     async function updateDepthAndHazards(lat, lon) {
-        // Hämtar både hinder och djupmarkeringar (seamark:type=depth_area eller depth_contour)
-        const query = `[out:json];(node["seamark:type"](around:500,${lat},${lon});node["seamark:depth"](around:500,${lat},${lon}););out;`;
+        const query = `[out:json];(node["seamark:type"](around:1000,${lat},${lon});node["seamark:depth"](around:1000,${lat},${lon}););out;`;
         try {
-            const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
+            const res = await fetch(`https://overpass-api.interpretation/api/interpreter?data=${encodeURIComponent(query)}`);
             const data = await res.json();
             hazards = data.elements;
-            
-            // Hitta närmaste djup-tagg
             let depthFound = "--";
-            let minD = 999;
+            let minD = 2000;
             data.elements.forEach(el => {
                 if(el.tags && el.tags["seamark:depth"]) {
                     let d = map.distance([lat, lon], [el.lat, el.lon]);
@@ -140,9 +136,9 @@
     }
 
     function checkHazards(lat, lon) {
-        let nearest = 999;
+        let nearest = 1000;
         hazards.forEach(h => {
-            if(h.tags && h.tags["seamark:type"] && h.tags["seamark:type"].includes("hazard")) {
+            if(h.tags && h.tags["seamark:type"] && (h.tags["seamark:type"].includes("hazard") || h.tags["seamark:type"] === "rock")) {
                 let d = map.distance([lat, lon], [h.lat, h.lon]);
                 if (d < nearest) nearest = d;
             }
@@ -168,9 +164,8 @@
         }, null, { enableHighAccuracy: true });
         setInterval(updateAll, 120000);
     }
-    function centerMap() { var p = marker.getLatLng(); if (p.lat !== 0) map.flyTo(p, 15); }
+    function centerMap() { var p = marker.getLatLng(); if (p.lat !== 0) map.flyTo(p, 16); }
     function toggleNight() { document.body.classList.toggle('night-mode'); }
 </script>
 </body>
 </html>
-
