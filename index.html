@@ -383,4 +383,39 @@
 
     function resetTrip() {
         state.totalFuel = 0;
-        localStorage.setItem('to
+        localStorage.setItem('totalFuel', 0);
+        els.fuel.textContent = "0.0";
+        showToast("Trippräknare nollställd");
+        closeModal('settings-modal');
+    }
+
+    function centerMap() { map.panTo(marker.getLatLng()); }
+    function goHome() { map.flyTo([57.621, 11.934], 14); }
+    function toggleNight() { document.body.classList.toggle('night-mode'); }
+    function openModal(id) { document.getElementById(id).style.display = 'block'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    window.onload = () => {
+        els.fuel.textContent = state.totalFuel.toFixed(1);
+        document.getElementById('burn-low').value = localStorage.getItem('burnLow') || CONFIG.burnLow;
+        document.getElementById('burn-high').value = localStorage.getItem('burnHigh') || CONFIG.burnHigh;
+        if (navigator.getBattery) {
+            navigator.getBattery().then(b => {
+                const updateBatt = () => els.batt.textContent = Math.round(b.level * 100) + "%";
+                updateBatt(); b.onlevelchange = updateBatt;
+            });
+        }
+        navigator.geolocation.watchPosition(handlePosition, 
+            () => showToast("GPS-fel"), 
+            { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+        );
+        map.on('click', e => {
+            state.routePoints.push(e.latlng);
+            routeLine.setLatLngs(state.routePoints);
+            L.circleMarker(e.latlng, {radius:6, color:'#f1c40f', fillOpacity:1, className:'route-dot'}).addTo(map);
+            updateETA();
+        });
+    };
+</script>
+</body>
+</html>
