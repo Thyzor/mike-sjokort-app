@@ -369,4 +369,11 @@
 
         map.on('click', e => {
             state.routePoints.push(e.latlng);
-            routeLine.setLatLngs(state.routePoints)
+            routeLine.setLatLngs(state.routePoints);
+            L.circleMarker(e.latlng, {radius:6, color:'#f1c40f', fillOpacity:1, className:'route-dot'}).addTo(map);
+            updateETA();
+        });
+    };
+</script>
+</body>
+</html>
