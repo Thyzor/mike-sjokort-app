@@ -29,7 +29,7 @@
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); 
             z-index: 1000; background: var(--panel-bg); color: var(--main-cyan); 
             padding: 10px 12px; border-radius: 20px; border: 1px solid var(--main-cyan); 
-            display: flex; gap: 8px; backdrop-filter: blur(8px); width: 95%; max-width: 500px;
+            display: flex; gap: 8px; backdrop-filter: blur(8px); width: 98%; max-width: 600px;
             justify-content: space-around; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
         .info-item { text-align: center; min-width: 45px; }
@@ -54,6 +54,7 @@
         .btn-red { background: #ff5252; color: white; }
         .btn-blue { background: var(--main-cyan); color: #001524; }
         .btn-purple { background: #a855f7; color: white; }
+        .btn-orange { background: #ff9800; color: white; }
         .btn-active { background: #ff9800 !important; color: white !important; }
 
         .modal {
@@ -67,13 +68,10 @@
         .legend-row { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; font-size: 11px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
         .symbol-box { width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; background: white; border-radius: 6px; color: #333; font-weight: bold; font-size: 18px; flex-shrink: 0; }
         
-        /* Lateral- & Kardinalstilar */
         .lat-red { background: #ff3b30; color: white; }
         .lat-green { background: #4cd964; color: white; }
         .card-n { background: linear-gradient(to bottom, #333 50%, #ffd700 50%); color: white; text-shadow: 0 0 2px black; }
         .card-s { background: linear-gradient(to bottom, #ffd700 50%, #333 50%); color: white; text-shadow: 0 0 2px black; }
-        .card-e { background: linear-gradient(to bottom, #333 33%, #ffd700 33%, #ffd700 66%, #333 66%); color: white; text-shadow: 0 0 2px black; }
-        .card-w { background: linear-gradient(to bottom, #ffd700 33%, #333 33%, #333 66%, #ffd700 66%); color: white; text-shadow: 0 0 2px black; }
 
         .toast {
             position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
@@ -123,23 +121,13 @@
 
 <div id="legend-modal" class="modal">
     <span class="close-x" onclick="closeModal('legend-modal')">×</span>
-    <h3 style="color:var(--main-cyan); margin-top:0;">❓ Sjökortsnyckel & Navinfo</h3>
-    
-    <p style="font-size:12px; color:var(--main-cyan); border-bottom:1px solid; padding-bottom:5px;">FARLEDENS MARKERINGAR</p>
+    <h3 style="color:var(--main-cyan);">❓ Sjökortsnyckel & Navinfo</h3>
     <div class="legend-row"><div class="symbol-box lat-red">B</div><div><b>Röd prick (Babord):</b> Hålls på babord sida vid färd *med* farledens huvudriktning.</div></div>
     <div class="legend-row"><div class="symbol-box lat-green">S</div><div><b>Grön prick (Styrbord):</b> Hålls på styrbord sida vid färd *med* farledens huvudriktning.</div></div>
-    
-    <p style="font-size:12px; color:var(--main-cyan); border-bottom:1px solid; padding-bottom:5px; margin-top:15px;">VÄDERSTRECKSMÄRKEN (Kardinal)</p>
     <div class="legend-row"><div class="symbol-box card-n">N</div><div><b>Nordmärke:</b> Passera <b>NORR</b> om märket. (Svart/Gul)</div></div>
     <div class="legend-row"><div class="symbol-box card-s">S</div><div><b>Sydmärke:</b> Passera <b>SÖDER</b> om märket. (Gul/Svart)</div></div>
-    <div class="legend-row"><div class="symbol-box card-e">O</div><div><b>Ostmärke:</b> Passera <b>OST</b> om märket. (Svart med gul rand)</div></div>
-    <div class="legend-row"><div class="symbol-box card-w">V</div><div><b>Västmärke:</b> Passera <b>VÄST</b> om märket. (Gul med svart rand)</div></div>
-
-    <p style="font-size:12px; color:var(--main-cyan); border-bottom:1px solid; padding-bottom:5px; margin-top:15px;">FAROR & HINDER</p>
     <div class="legend-row"><div class="symbol-box" style="color:blue;">+</div><div><b>Grynna / Skär:</b> Farligt hinder precis vid eller under vattenytan. Håll avstånd!</div></div>
     <div class="legend-row"><div class="symbol-box" style="color:red;">*</div><div><b>Bränning:</b> Grund som ofta bryter vid sjögång.</div></div>
-    
-    <p style="font-size:12px; color:var(--main-cyan); border-bottom:1px solid; padding-bottom:5px; margin-top:15px;">SERVICE & FUNKTIONER</p>
     <div class="legend-row"><div class="symbol-box" style="background:#ff9800; color:white;">⛽</div><div><b>Sjömack:</b> Tanka bensin/diesel. Se popup för namn.</div></div>
     <div class="legend-row"><div class="symbol-box" style="background:#9c27b0; color:white;">🛒</div><div><b>Butik:</b> Livsmedel och proviant nära hamnen.</div></div>
     <div class="legend-row"><div class="symbol-box" style="background:#0072ff; color:white; font-size:14px;">H</div><div><b>Gästhamn:</b> Skyddad hamn med bryggplats och service.</div></div>
@@ -149,6 +137,7 @@
 <div id="info-panel">
     <div class="info-item"><div class="info-label">Knop</div><div id="speed" class="info-value">0.0</div></div>
     <div class="info-item"><div class="info-label">Liter</div><div id="fuel" class="info-value">0.0</div></div>
+    <div class="info-item"><div class="info-label">Tid kvar</div><div id="rem-time" class="info-value">0m</div></div>
     <div class="info-item"><div class="info-label">ETA</div><div id="eta" class="info-value">--:--</div></div>
     <div class="info-item"><div class="info-label">Batt</div><div id="batt" class="info-value">--%</div></div>
     <div class="info-item"><div class="info-label">Kurs</div><div id="heading" class="info-value">0°</div></div>
@@ -157,7 +146,7 @@
 <div class="controls-left">
     <button class="btn btn-sos" onclick="openSOS()">🆘 NÖD / SOS</button>
     <button class="btn btn-white" onclick="centerMap()">📍 CENTRERA</button>
-    <button class="btn btn-white" onclick="toggleNight()">🌙 NATT</button>
+    <button id="sim-btn" class="btn btn-orange" onclick="toggleSimulation()">🚢 SIMULERA RUTT</button>
     <button class="btn btn-red" onclick="clearRoute()">🗑️ RENSA RUTT</button>
     <button class="btn btn-blue" onclick="goHome()">🏠 HEM</button>
 </div>
@@ -165,6 +154,7 @@
 <div class="controls-right">
     <button class="btn btn-blue" onclick="openModal('legend-modal')">❓ SYMBOLER</button>
     <button class="btn btn-purple" onclick="openModal('settings-modal')">🤖 MOTOR-AI</button>
+    <button class="btn btn-white" onclick="toggleNight()">🌙 NATT</button>
     <button id="anchor-btn" class="btn" style="background:#333; color:white;" onclick="toggleAnchorGuard()">⚓ ANKARVAKT</button>
 </div>
 
@@ -186,21 +176,27 @@
         lastKnt: 0,
         isAnchorActive: false,
         anchorCircle: null,
-        routePoints: []
+        routePoints: [],
+        isSimulating: false,
+        simInterval: null,
+        simIndex: 0,
+        simKnt: 6.0
     };
 
     const els = {
         speed: document.getElementById('speed'),
         fuel: document.getElementById('fuel'),
         eta: document.getElementById('eta'),
+        remTime: document.getElementById('rem-time'),
         batt: document.getElementById('batt'),
         heading: document.getElementById('heading'),
-        boatArrow: null, // Sätts i init
+        boatArrow: null,
         burnLow: document.getElementById('burn-low'),
         burnHigh: document.getElementById('burn-high'),
         sosLat: document.getElementById('sos-lat'),
         sosLon: document.getElementById('sos-lon'),
-        toast: document.getElementById('toast')
+        toast: document.getElementById('toast'),
+        simBtn: document.getElementById('sim-btn')
     };
 
     const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([57.62, 11.93], 13);
@@ -251,18 +247,22 @@
     let lastUpdate = 0;
     function handlePosition(pos) {
         const now = Date.now();
-        if (now - lastUpdate < 800) return;
+        if (!state.isSimulating && (now - lastUpdate < 800)) return;
         lastUpdate = now;
 
-        const cur = L.latLng(pos.coords.latitude, pos.coords.longitude);
+        const lat = pos.coords ? pos.coords.latitude : pos.lat;
+        const lng = pos.coords ? pos.coords.longitude : pos.lng;
+        const cur = L.latLng(lat, lng);
         marker.setLatLng(cur);
 
-        state.lastKnt = (pos.coords.speed || 0) * 1.9438;
+        state.lastKnt = pos.coords ? (pos.coords.speed || 0) * 1.9438 : (pos.speed || 0);
         els.speed.textContent = state.lastKnt.toFixed(1);
-        els.heading.textContent = Math.round(pos.coords.heading || 0) + "°";
+        
+        const heading = pos.coords ? (pos.coords.heading || 0) : (pos.heading || 0);
+        els.heading.textContent = Math.round(heading) + "°";
         
         if (!els.boatArrow) els.boatArrow = document.getElementById('boat-arrow');
-        if (els.boatArrow) els.boatArrow.style.transform = `rotate(${pos.coords.heading || 0}deg)`;
+        if (els.boatArrow) els.boatArrow.style.transform = `rotate(${heading}deg)`;
 
         checkHazards(cur);
 
@@ -286,11 +286,56 @@
         updateETA();
     }
 
+    function toggleSimulation() {
+        if (state.routePoints.length < 2) {
+            showToast("Klicka ut en rutt på kartan först!");
+            return;
+        }
+        if (state.isSimulating) {
+            clearInterval(state.simInterval);
+            state.isSimulating = false;
+            els.simBtn.classList.remove('btn-active');
+            els.simBtn.textContent = "🚢 SIMULERA RUTT";
+            showToast("Simulering stoppad");
+        } else {
+            const inputKnt = prompt("Ange önskad hastighet i knop för simulering:", "6.0");
+            if (inputKnt === null) return; 
+            state.simKnt = parseFloat(inputKnt) || 6.0;
+
+            state.isSimulating = true;
+            state.simIndex = 0;
+            els.simBtn.classList.add('btn-active');
+            els.simBtn.textContent = "⏹ STOPPA SIM";
+            showToast(`Simulerar i ${state.simKnt} knop...`);
+            
+            state.simInterval = setInterval(() => {
+                if (state.simIndex >= state.routePoints.length) { toggleSimulation(); return; }
+                const target = state.routePoints[state.simIndex];
+                handlePosition({ lat: target.lat, lng: target.lng, speed: state.simKnt, heading: 0 });
+                state.simIndex++;
+            }, 1000);
+        }
+    }
+
     function updateETA() {
-        if (state.routePoints.length > 0 && state.lastKnt > 1) {
+        if (state.routePoints.length > 0 && state.lastKnt > 0.1) {
             const d = marker.getLatLng().distanceTo(state.routePoints[state.routePoints.length-1]) / 1852;
-            const etaTime = new Date(Date.now() + (d / state.lastKnt) * 3600000);
+            const hoursLeft = d / state.lastKnt;
+            const minutesLeft = Math.round(hoursLeft * 60);
+            
+            // Uppdatera "Tid kvar"
+            if (minutesLeft >= 60) {
+                els.remTime.textContent = Math.floor(minutesLeft / 60) + "t " + (minutesLeft % 60) + "m";
+            } else {
+                els.remTime.textContent = minutesLeft + "m";
+            }
+
+            // Uppdatera klockslag ETA
+            const etaTime = new Date(Date.now() + hoursLeft * 3600000);
             els.eta.textContent = etaTime.getHours() + ":" + (etaTime.getMinutes() < 10 ? '0' : '') + etaTime.getMinutes();
+        } else {
+            els.remTime.textContent = "0m";
+            els.eta.textContent = "--:--";
         }
     }
 
@@ -311,6 +356,7 @@
         routeLine.setLatLngs([]);
         map.eachLayer(l => { if (l.options && l.options.className === 'route-dot') map.removeLayer(l); });
         els.eta.textContent = "--:--";
+        els.remTime.textContent = "0m";
         showToast("Rutt rensad");
     }
 
@@ -329,51 +375,12 @@
     }
 
     function saveSettings() {
-        localStorage.setItem('burnLow', els.burnLow.value);
-        localStorage.setItem('burnHigh', els.burnHigh.value);
+        localStorage.setItem('burnLow', document.getElementById('burn-low').value);
+        localStorage.setItem('burnHigh', document.getElementById('burn-high').value);
         closeModal('settings-modal');
         showToast("Inställningar sparade");
     }
 
     function resetTrip() {
         state.totalFuel = 0;
-        localStorage.setItem('totalFuel', 0);
-        els.fuel.textContent = "0.0";
-        showToast("Trippräknare nollställd");
-        closeModal('settings-modal');
-    }
-
-    function centerMap() { map.panTo(marker.getLatLng()); }
-    function goHome() { map.flyTo([57.621, 11.934], 14); }
-    function toggleNight() { document.body.classList.toggle('night-mode'); }
-    function openModal(id) { document.getElementById(id).style.display = 'block'; }
-    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-
-    window.onload = () => {
-        els.fuel.textContent = state.totalFuel.toFixed(1);
-        els.burnLow.value = localStorage.getItem('burnLow') || CONFIG.burnLow;
-        els.burnHigh.value = localStorage.getItem('burnHigh') || CONFIG.burnHigh;
-
-        if (navigator.getBattery) {
-            navigator.getBattery().then(b => {
-                const updateBatt = () => els.batt.textContent = Math.round(b.level * 100) + "%";
-                updateBatt();
-                b.onlevelchange = updateBatt;
-            });
-        }
-
-        navigator.geolocation.watchPosition(handlePosition, 
-            () => showToast("GPS-fel – kolla behörighet"), 
-            { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
-        );
-
-        map.on('click', e => {
-            state.routePoints.push(e.latlng);
-            routeLine.setLatLngs(state.routePoints);
-            L.circleMarker(e.latlng, {radius:6, color:'#f1c40f', fillOpacity:1, className:'route-dot'}).addTo(map);
-            updateETA();
-        });
-    };
-</script>
-</body>
-</html>
+        localStorage.setItem('to
