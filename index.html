@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Mike's Navigator - Depth Edition</title>
+    <title>Mike's Navigator - Stable Depth Edition</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
@@ -35,7 +35,7 @@
         .info-item { text-align: center; min-width: 42px; }
         .info-label { font-size: 7px; text-transform: uppercase; opacity: 0.8; margin-bottom: 2px; }
         .info-value { font-size: 13px; font-weight: 800; }
-        .depth-value { color: #ffffff; text-shadow: 0 0 5px var(--main-cyan); }
+        .depth-display { color: #fff; text-shadow: 0 0 5px var(--main-cyan); }
 
         .controls-left, .controls-right {
             position: absolute; top: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 8px;
@@ -72,14 +72,14 @@
             z-index: 4000; box-shadow: 0 4px 15px rgba(0,0,0,0.6); display: none;
             text-align: center; width: 85%;
         }
-        .toast-hazard { background: #ff0000 !important; font-weight: bold; animation: pulse 0.5s infinite; border: 2px solid white; }
+        .toast-hazard { background: #ff0000 !important; font-weight: bold; border: 2px solid white; }
     </style>
 </head>
 <body id="main-body">
 
 <div id="sos-modal" class="modal">
     <span class="close-x" onclick="closeModal('sos-modal')">×</span>
-    <h2 style="color:var(--sos-red); text-align:center;">🆘 NÖDSITUATION</h2>
+    <h2 style="color:var(--sos-red); text-align:center; margin-top:0;">🆘 NÖDSITUATION</h2>
     <div style="background: #1a0000; border: 2px solid var(--sos-red); padding: 15px; border-radius: 10px; text-align: center; margin: 15px 0;">
         <div id="sos-lat" style="font-family: monospace; font-size: 18px; color: #ff5252; font-weight: bold;">Söker...</div>
         <div id="sos-lon" style="font-family: monospace; font-size: 18px; color: #ff5252; font-weight: bold;"></div>
@@ -100,7 +100,7 @@
 </div>
 
 <div id="info-panel">
-    <div class="info-item"><div class="info-label">Djup</div><div id="cur-depth" class="info-value depth-value">>6m</div></div>
+    <div class="info-item"><div class="info-label">Djup</div><div id="cur-depth" class="info-value depth-display">>6m</div></div>
     <div class="info-item"><div class="info-label">Knop</div><div id="speed" class="info-value">0.0</div></div>
     <div class="info-item"><div class="info-label">Liter</div><div id="fuel" class="info-value">0.0</div></div>
     <div class="info-item"><div class="info-label">Tid kvar</div><div id="rem-time" class="info-value">0m</div></div>
@@ -128,32 +128,18 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // Sjökortsdata baserat på dina inskickade bilder
     const HAZARDS = [
         { name: "Hult-grynna", pos: [57.625, 11.900], radius: 60, depth: "0.8m" },
         { name: "Askim-skär", pos: [57.610, 11.915], radius: 70, depth: "1.1m" },
         { name: "Valö-grund", pos: [57.553, 11.794], radius: 80, depth: "0.4m" },
         { name: "Kullavik-bränning", pos: [57.557, 11.928], radius: 60, depth: "1.2m" },
-        { name: "Amundö-grynna", pos: [57.618, 11.905], radius: 60, depth: "0.7m" },
-        { name: "Särö-västerskär", pos: [57.505, 11.910], radius: 75, depth: "0.3m" }
+        { name: "Amundö-grynna", pos: [57.618, 11.905], radius: 60, depth: "0.7m" }
     ];
 
     const CONFIG = { burnLow: 0.2, burnHigh: 0.5, anchorRadius: 30 };
     let state = { totalFuel: parseFloat(localStorage.getItem('totalFuel')) || 0, lastPos: null, lastKnt: 0, isAnchorActive: false, anchorCircle: null, routePoints: [], isSimulating: false, simInterval: null, simIndex: 0, simKnt: 6.0 };
 
-    const els = { 
-        speed: document.getElementById('speed'), 
-        fuel: document.getElementById('fuel'), 
-        eta: document.getElementById('eta'), 
-        remTime: document.getElementById('rem-time'), 
-        batt: document.getElementById('batt'), 
-        heading: document.getElementById('heading'), 
-        depth: document.getElementById('cur-depth'),
-        toast: document.getElementById('toast'), 
-        simBtn: document.getElementById('sim-btn'),
-        sosLat: document.getElementById('sos-lat'),
-        sosLon: document.getElementById('sos-lon')
-    };
+    const els = { speed: document.getElementById('speed'), fuel: document.getElementById('fuel'), eta: document.getElementById('eta'), remTime: document.getElementById('rem-time'), batt: document.getElementById('batt'), heading: document.getElementById('heading'), depth: document.getElementById('cur-depth'), toast: document.getElementById('toast'), simBtn: document.getElementById('sim-btn'), sosLat: document.getElementById('sos-lat'), sosLon: document.getElementById('sos-lon') };
 
     const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([57.62, 11.93], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
@@ -163,51 +149,41 @@
     const marker = L.marker([57.62, 11.93], {icon: boatIcon}).addTo(map);
     const routeLine = L.polyline([], {color:'#f1c40f', weight:4, dashArray:'8,8'}).addTo(map);
 
-    // Rita ut djuphazards som genomskinliga röda cirklar
-    HAZARDS.forEach(h => {
-        L.circle(h.pos, {radius: h.radius, color: 'red', weight: 1, fillOpacity: 0.1}).addTo(map);
-    });
-
     function handlePosition(pos) {
         const lat = pos.coords ? pos.coords.latitude : pos.lat;
         const lng = pos.coords ? pos.coords.longitude : pos.lng;
         const cur = L.latLng(lat, lng);
         marker.setLatLng(cur);
 
-        // Beräkna fart och kurs
+        // Uppdatera fart och kurs
         state.lastKnt = pos.coords ? (pos.coords.speed || 0) * 1.9438 : (pos.speed || 0);
         els.speed.textContent = state.lastKnt.toFixed(1);
         const heading = pos.coords ? (pos.coords.heading || 0) : (pos.heading || 0);
         els.heading.textContent = Math.round(heading) + "°";
         document.getElementById('boat-arrow').style.transform = `rotate(${heading}deg)`;
 
-        // DJUP-LOGIK: Kolla om vi är i en känd riskzon
-        let currentDepthText = ">6m";
+        // DJUP-LOGIK
+        let dText = ">6m";
         HAZARDS.forEach(h => {
             const dist = cur.distanceTo(L.latLng(h.pos));
             if (dist < h.radius) {
-                currentDepthText = h.depth;
-                // Om vi är riktigt nära, visa en röd varningstext
-                if (dist < h.radius * 0.7) {
-                    showToast(`⚠️ GRUNDSTÖTNINGSRISK: ${h.depth}!`, true);
-                }
-            } else if (dist < h.radius * 2) {
-                // Nära en zon, visa ett estimat (mellan 2 och 6 meter)
-                if (currentDepthText === ">6m") currentDepthText = "~3-5m";
+                dText = h.depth;
+                if (dist < h.radius * 0.6) showToast(`⚠️ VARNING: GRUND (${h.depth})`, true);
+            } else if (dist < h.radius * 1.8) {
+                if (dText === ">6m") dText = "~3-4m";
             }
         });
-        els.depth.textContent = currentDepthText;
+        els.depth.textContent = dText;
 
-        // Bränsleberäkning
+        // Bränslelogik
         if (state.lastPos) {
-            const distNm = state.lastPos.distanceTo(cur) / 1852;
+            const dNm = state.lastPos.distanceTo(cur) / 1852;
             const rate = state.lastKnt > 4 ? (parseFloat(localStorage.getItem('burnHigh')) || CONFIG.burnHigh) : (parseFloat(localStorage.getItem('burnLow')) || CONFIG.burnLow);
-            state.totalFuel += distNm * rate;
+            state.totalFuel += dNm * rate;
             els.fuel.textContent = state.totalFuel.toFixed(1);
             localStorage.setItem('totalFuel', state.totalFuel);
         }
 
-        // Ankarvakt
         if (state.isAnchorActive && state.anchorCircle) {
             if (cur.distanceTo(state.anchorCircle.getLatLng()) > CONFIG.anchorRadius) showToast("🚨 ANKARE DRIVER!", true);
         }
@@ -230,19 +206,14 @@
     }
 
     function toggleSimulation() {
-        if (state.routePoints.length < 2) { showToast("Plottra rutt först!"); return; }
+        if (state.routePoints.length < 2) { showToast("Klicka ut en rutt först!"); return; }
         if (state.isSimulating) {
-            clearInterval(state.simInterval);
-            state.isSimulating = false;
-            els.simBtn.classList.remove('btn-active');
-            els.simBtn.textContent = "🚢 SIMULERA RUTT";
+            clearInterval(state.simInterval); state.isSimulating = false;
+            els.simBtn.classList.remove('btn-active'); els.simBtn.textContent = "🚢 SIMULERA RUTT";
         } else {
-            const k = prompt("Hastighet (knop):", "6.0");
-            if (k === null) return;
-            state.simKnt = parseFloat(k) || 6.0;
-            state.isSimulating = true; state.simIndex = 0;
-            els.simBtn.classList.add('btn-active');
-            els.simBtn.textContent = "⏹ STOPPA SIM";
+            const k = prompt("Knop:", "6.0"); if (k === null) return;
+            state.simKnt = parseFloat(k) || 6.0; state.isSimulating = true; state.simIndex = 0;
+            els.simBtn.classList.add('btn-active'); els.simBtn.textContent = "⏹ STOPPA SIM";
             state.simInterval = setInterval(() => {
                 if (state.simIndex >= state.routePoints.length) { toggleSimulation(); return; }
                 handlePosition({ lat: state.routePoints[state.simIndex].lat, lng: state.routePoints[state.simIndex].lng, speed: state.simKnt, heading: 0 });
@@ -252,62 +223,23 @@
     }
 
     function showToast(msg, isHazard = false) {
-        els.toast.innerHTML = msg;
-        els.toast.style.display = 'block';
-        if (isHazard) {
-            els.toast.classList.add('toast-hazard');
-            document.getElementById('main-body').classList.add('hazard-alarm');
-        }
-        setTimeout(() => {
-            els.toast.style.display = 'none';
-            els.toast.classList.remove('toast-hazard');
-            document.getElementById('main-body').classList.remove('hazard-alarm');
-        }, 3000);
+        els.toast.innerHTML = msg; els.toast.style.display = 'block';
+        if (isHazard) { els.toast.classList.add('toast-hazard'); document.getElementById('main-body').classList.add('hazard-alarm'); }
+        setTimeout(() => { els.toast.style.display = 'none'; els.toast.classList.remove('toast-hazard'); document.getElementById('main-body').classList.remove('hazard-alarm'); }, 3000);
     }
 
-    function openSOS() {
-        const p = marker.getLatLng();
-        els.sosLat.textContent = "LAT: " + p.lat.toFixed(5);
-        els.sosLon.textContent = "LON: " + p.lng.toFixed(5);
-        openModal('sos-modal');
-    }
-
-    function copySOSCoords() {
-        navigator.clipboard.writeText(`${els.sosLat.innerText} ${els.sosLon.innerText}`).then(() => showToast("Koordinater kopierade!"));
-    }
-
-    function clearRoute() {
-        state.routePoints = [];
-        routeLine.setLatLngs([]);
-        map.eachLayer(l => { if (l.options && l.options.className === 'route-dot') map.removeLayer(l); });
-        showToast("Rutt rensad");
-    }
-
-    function resetTrip() {
-        state.totalFuel = 0;
-        localStorage.setItem('totalFuel', 0);
-        els.fuel.textContent = "0.0";
-        showToast("Trippmätare nollställd");
-    }
-
-    function saveSettings() {
-        localStorage.setItem('burnLow', document.getElementById('burn-low').value);
-        localStorage.setItem('burnHigh', document.getElementById('burn-high').value);
-        closeModal('settings-modal');
-        showToast("Inställningar sparade");
-    }
-
+    function openSOS() { const p = marker.getLatLng(); els.sosLat.textContent = "LAT: " + p.lat.toFixed(5); els.sosLon.textContent = "LON: " + p.lng.toFixed(5); openModal('sos-modal'); }
+    function copySOSCoords() { navigator.clipboard.writeText(`${els.sosLat.innerText} ${els.sosLon.innerText}`).then(() => showToast("Kopierat!")); }
+    function clearRoute() { state.routePoints = []; routeLine.setLatLngs([]); map.eachLayer(l => { if (l.options && l.options.className === 'route-dot') map.removeLayer(l); }); }
+    function resetTrip() { state.totalFuel = 0; localStorage.setItem('totalFuel', 0); els.fuel.textContent = "0.0"; showToast("Nollställd"); }
+    function saveSettings() { localStorage.setItem('burnLow', document.getElementById('burn-low').value); localStorage.setItem('burnHigh', document.getElementById('burn-high').value); closeModal('settings-modal'); showToast("Sparat"); }
     function toggleAnchorGuard() {
         if (!state.isAnchorActive) {
             state.anchorCircle = L.circle(marker.getLatLng(), { radius: CONFIG.anchorRadius, color: '#00d4ff' }).addTo(map);
-            state.isAnchorActive = true;
-            document.getElementById('anchor-btn').classList.add('btn-active');
-            showToast("⚓ Ankarvakt PÅ");
+            state.isAnchorActive = true; document.getElementById('anchor-btn').classList.add('btn-active');
         } else {
             if (state.anchorCircle) map.removeLayer(state.anchorCircle);
-            state.isAnchorActive = false;
-            document.getElementById('anchor-btn').classList.remove('btn-active');
-            showToast("Ankarvakt AV");
+            state.isAnchorActive = false; document.getElementById('anchor-btn').classList.remove('btn-active');
         }
     }
 
@@ -318,16 +250,15 @@
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
     window.onload = () => {
+        els.fuel.textContent = state.totalFuel.toFixed(1);
         document.getElementById('burn-low').value = localStorage.getItem('burnLow') || CONFIG.burnLow;
         document.getElementById('burn-high').value = localStorage.getItem('burnHigh') || CONFIG.burnHigh;
         if (navigator.getBattery) navigator.getBattery().then(b => {
-            const u = () => els.batt.textContent = Math.round(b.level * 100) + "%";
-            u(); b.onlevelchange = u;
+            const u = () => els.batt.textContent = Math.round(b.level * 100) + "%"; u(); b.onlevelchange = u;
         });
         navigator.geolocation.watchPosition(handlePosition, null, {enableHighAccuracy:true});
         map.on('click', e => {
-            state.routePoints.push(e.latlng);
-            routeLine.setLatLngs(state.routePoints);
+            state.routePoints.push(e.latlng); routeLine.setLatLngs(state.routePoints);
             L.circleMarker(e.latlng, {radius:5, color:'#f1c40f', className:'route-dot'}).addTo(map);
             updateETA();
         });
