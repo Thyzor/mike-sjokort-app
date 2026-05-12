@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Mike's Navigator - Stable Depth Edition</title>
+    <title>Mike's Navigator - Full Stable Edition</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
@@ -66,6 +66,14 @@
         }
         .close-x { position: absolute; top: 15px; right: 15px; font-size: 28px; color: #888; cursor: pointer; }
         
+        .legend-row { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; font-size: 11px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
+        .symbol-box { width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; background: white; border-radius: 6px; color: #333; font-weight: bold; font-size: 18px; flex-shrink: 0; }
+        
+        .lat-red { background: #ff3b30; color: white; }
+        .lat-green { background: #4cd964; color: white; }
+        .card-n { background: linear-gradient(to bottom, #333 50%, #ffd700 50%); color: white; text-shadow: 0 0 2px black; }
+        .card-s { background: linear-gradient(to bottom, #ffd700 50%, #333 50%); color: white; text-shadow: 0 0 2px black; }
+
         .toast {
             position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%);
             background: #222; color: #fff; padding: 12px 20px; border-radius: 12px;
@@ -99,6 +107,17 @@
     <button style="width:100%; padding:12px; background:#ff5252; color:white; border:none; border-radius:8px; font-weight:bold; margin-top:10px;" onclick="resetTrip()">RENSA TRIPPMÄTARE</button>
 </div>
 
+<div id="legend-modal" class="modal">
+    <span class="close-x" onclick="closeModal('legend-modal')">×</span>
+    <h3 style="color:var(--main-cyan);">❓ Sjökortsnyckel</h3>
+    <div class="legend-row"><div class="symbol-box lat-red">B</div><div><b>Babord:</b> Håll rött märke på babord sida vid färd *med* farledsriktning.</div></div>
+    <div class="legend-row"><div class="symbol-box lat-green">S</div><div><b>Styrbord:</b> Håll grönt märke på styrbord sida.</div></div>
+    <div class="legend-row"><div class="symbol-box card-n">N</div><div><b>Nordmärke:</b> Passera NORR om märket.</div></div>
+    <div class="legend-row"><div class="symbol-box card-s">S</div><div><b>Sydmärke:</b> Passera SÖDER om märket.</div></div>
+    <div class="legend-row"><div class="symbol-box" style="background:#ff9800; color:white;">⛽</div><div><b>Sjömack:</b> Tankställe för bensin/diesel.</div></div>
+    <div class="legend-row"><div class="symbol-box" style="background:#9c27b0; color:white;">🛒</div><div><b>Butik:</b> Livsmedel nära hamn.</div></div>
+</div>
+
 <div id="info-panel">
     <div class="info-item"><div class="info-label">Djup</div><div id="cur-depth" class="info-value depth-display">>6m</div></div>
     <div class="info-item"><div class="info-label">Knop</div><div id="speed" class="info-value">0.0</div></div>
@@ -118,6 +137,7 @@
 </div>
 
 <div class="controls-right">
+    <button class="btn btn-blue" onclick="openModal('legend-modal')">❓ SYMBOLER</button>
     <button class="btn btn-purple" onclick="openModal('settings-modal')">🤖 MOTOR-AI</button>
     <button class="btn btn-white" onclick="toggleNight()">🌙 NATT</button>
     <button id="anchor-btn" class="btn" style="background:#333; color:white;" onclick="toggleAnchorGuard()">⚓ ANKARVAKT</button>
@@ -155,27 +175,24 @@
         const cur = L.latLng(lat, lng);
         marker.setLatLng(cur);
 
-        // Uppdatera fart och kurs
         state.lastKnt = pos.coords ? (pos.coords.speed || 0) * 1.9438 : (pos.speed || 0);
         els.speed.textContent = state.lastKnt.toFixed(1);
         const heading = pos.coords ? (pos.coords.heading || 0) : (pos.heading || 0);
         els.heading.textContent = Math.round(heading) + "°";
         document.getElementById('boat-arrow').style.transform = `rotate(${heading}deg)`;
 
-        // DJUP-LOGIK
         let dText = ">6m";
         HAZARDS.forEach(h => {
             const dist = cur.distanceTo(L.latLng(h.pos));
             if (dist < h.radius) {
                 dText = h.depth;
-                if (dist < h.radius * 0.6) showToast(`⚠️ VARNING: GRUND (${h.depth})`, true);
+                if (dist < h.radius * 0.6) showToast(`⚠️ GRUND (${h.depth})`, true);
             } else if (dist < h.radius * 1.8) {
                 if (dText === ">6m") dText = "~3-4m";
             }
         });
         els.depth.textContent = dText;
 
-        // Bränslelogik
         if (state.lastPos) {
             const dNm = state.lastPos.distanceTo(cur) / 1852;
             const rate = state.lastKnt > 4 ? (parseFloat(localStorage.getItem('burnHigh')) || CONFIG.burnHigh) : (parseFloat(localStorage.getItem('burnLow')) || CONFIG.burnLow);
@@ -206,7 +223,7 @@
     }
 
     function toggleSimulation() {
-        if (state.routePoints.length < 2) { showToast("Klicka ut en rutt först!"); return; }
+        if (state.routePoints.length < 2) { showToast("Plottra rutt först!"); return; }
         if (state.isSimulating) {
             clearInterval(state.simInterval); state.isSimulating = false;
             els.simBtn.classList.remove('btn-active'); els.simBtn.textContent = "🚢 SIMULERA RUTT";
