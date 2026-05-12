@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Mike's Navigator - Full Stable Edition</title>
+    <title>Mike's Navigator - Pro Stability Edition</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
@@ -35,7 +35,7 @@
         .info-item { text-align: center; min-width: 42px; }
         .info-label { font-size: 7px; text-transform: uppercase; opacity: 0.8; margin-bottom: 2px; }
         .info-value { font-size: 13px; font-weight: 800; }
-        .depth-display { color: #fff; text-shadow: 0 0 5px var(--main-cyan); }
+        .depth-value { color: #ffffff; text-shadow: 0 0 5px var(--main-cyan); }
 
         .controls-left, .controls-right {
             position: absolute; top: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 8px;
@@ -66,7 +66,7 @@
         }
         .close-x { position: absolute; top: 15px; right: 15px; font-size: 28px; color: #888; cursor: pointer; }
         
-        .legend-row { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; font-size: 11px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
+        .modal-row { display: flex; align-items: center; gap: 15px; margin-bottom: 12px; font-size: 11px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
         .symbol-box { width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; background: white; border-radius: 6px; color: #333; font-weight: bold; font-size: 18px; flex-shrink: 0; }
         
         .lat-red { background: #ff3b30; color: white; }
@@ -88,12 +88,25 @@
 <div id="sos-modal" class="modal">
     <span class="close-x" onclick="closeModal('sos-modal')">×</span>
     <h2 style="color:var(--sos-red); text-align:center; margin-top:0;">🆘 NÖDSITUATION</h2>
-    <div style="background: #1a0000; border: 2px solid var(--sos-red); padding: 15px; border-radius: 10px; text-align: center; margin: 15px 0;">
+    <div style="background: #1a0000; border: 2px solid var(--sos-red); padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 15px;">
         <div id="sos-lat" style="font-family: monospace; font-size: 18px; color: #ff5252; font-weight: bold;">Söker...</div>
         <div id="sos-lon" style="font-family: monospace; font-size: 18px; color: #ff5252; font-weight: bold;"></div>
     </div>
-    <a href="tel:112"><button style="width:100%; padding:18px; background:var(--sos-red); color:white; border:none; border-radius:12px; font-weight:bold; font-size:18px; margin-bottom:12px;">RING 112</button></a>
-    <button onclick="copySOSCoords()" style="width:100%; padding:12px; background:#333; color:white; border:none; border-radius:8px;">📋 KOPIERA KOORDINATER</button>
+    <div class="modal-row"><div class="symbol-box" style="background:var(--sos-red); color:white;">📞</div><div><a href="tel:112" style="color:white; text-decoration:none; font-weight:bold; font-size:14px;">RING 112 (Sjöfart)</a></div></div>
+    <div class="modal-row"><div class="symbol-box" style="background:#ff9800; color:white;">⚓</div><div><a href="tel:0200290090" style="color:white; text-decoration:none; font-weight:bold; font-size:14px;">RING SJÖASSISTANS</a></div></div>
+    <button onclick="copySOSCoords()" style="width:100%; padding:12px; background:#333; color:white; border:none; border-radius:8px; margin-top:10px;">📋 KOPIERA KOORDINATER</button>
+</div>
+
+<div id="legend-modal" class="modal">
+    <span class="close-x" onclick="closeModal('legend-modal')">×</span>
+    <h3 style="color:var(--main-cyan);">❓ Sjökortsnyckel</h3>
+    <div class="modal-row"><div class="symbol-box lat-red">B</div><div><b>Babord:</b> Håll rött märke på babord sida vid färd med farledens huvudriktning.</div></div>
+    <div class="modal-row"><div class="symbol-box lat-green">S</div><div><b>Styrbord:</b> Håll grönt märke på styrbord sida.</div></div>
+    <div class="modal-row"><div class="symbol-box card-n">N</div><div><b>Nordmärke:</b> Passera NORR om märket. (Svart uppe)</div></div>
+    <div class="modal-row"><div class="symbol-box card-s">S</div><div><b>Sydmärke:</b> Passera SÖDER om märket. (Svart nere)</div></div>
+    <div class="modal-row"><div class="symbol-box" style="color:blue;">+</div><div><b>Grynna/Skär:</b> Farligt hinder precis vid eller under vattenytan.</div></div>
+    <div class="modal-row"><div class="symbol-box" style="background:#333; color:white;">⚓</div><div><b>Ankarvakt:</b> Bevakar 30m radie. Larmar om du driver utanför.</div></div>
+    <div class="modal-row"><div class="symbol-box" style="background:#ff9800; color:white;">⛽</div><div><b>Sjömack:</b> Tankställe för bensin/diesel.</div></div>
 </div>
 
 <div id="settings-modal" class="modal">
@@ -107,19 +120,8 @@
     <button style="width:100%; padding:12px; background:#ff5252; color:white; border:none; border-radius:8px; font-weight:bold; margin-top:10px;" onclick="resetTrip()">RENSA TRIPPMÄTARE</button>
 </div>
 
-<div id="legend-modal" class="modal">
-    <span class="close-x" onclick="closeModal('legend-modal')">×</span>
-    <h3 style="color:var(--main-cyan);">❓ Sjökortsnyckel</h3>
-    <div class="legend-row"><div class="symbol-box lat-red">B</div><div><b>Babord:</b> Håll rött märke på babord sida vid färd *med* farledsriktning.</div></div>
-    <div class="legend-row"><div class="symbol-box lat-green">S</div><div><b>Styrbord:</b> Håll grönt märke på styrbord sida.</div></div>
-    <div class="legend-row"><div class="symbol-box card-n">N</div><div><b>Nordmärke:</b> Passera NORR om märket.</div></div>
-    <div class="legend-row"><div class="symbol-box card-s">S</div><div><b>Sydmärke:</b> Passera SÖDER om märket.</div></div>
-    <div class="legend-row"><div class="symbol-box" style="background:#ff9800; color:white;">⛽</div><div><b>Sjömack:</b> Tankställe för bensin/diesel.</div></div>
-    <div class="legend-row"><div class="symbol-box" style="background:#9c27b0; color:white;">🛒</div><div><b>Butik:</b> Livsmedel nära hamn.</div></div>
-</div>
-
 <div id="info-panel">
-    <div class="info-item"><div class="info-label">Djup</div><div id="cur-depth" class="info-value depth-display">>6m</div></div>
+    <div class="info-item"><div class="info-label">Djup</div><div id="cur-depth" class="info-value depth-value">>6m</div></div>
     <div class="info-item"><div class="info-label">Knop</div><div id="speed" class="info-value">0.0</div></div>
     <div class="info-item"><div class="info-label">Liter</div><div id="fuel" class="info-value">0.0</div></div>
     <div class="info-item"><div class="info-label">Tid kvar</div><div id="rem-time" class="info-value">0m</div></div>
