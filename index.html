@@ -51,7 +51,6 @@
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
         
         .btn-white { background: #ffffff; }
-        .btn-red { background: #ff5252; color: white; }
         .btn-blue { background: var(--main-cyan); color: #001524; }
         .btn-purple { background: #a855f7; color: white; }
         .btn-orange { background: #ff9800; color: white; }
@@ -77,8 +76,9 @@
             position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
             background: #222; color: #fff; padding: 12px 20px; border-radius: 12px;
             z-index: 4000; box-shadow: 0 4px 15px rgba(0,0,0,0.6); display: none;
+            text-align: center; width: 80%;
         }
-        .toast-hazard { background: #ff0000 !important; font-weight: bold; animation: pulse 0.5s infinite; }
+        .toast-hazard { background: #ff0000 !important; font-weight: bold; animation: pulse 0.5s infinite; border: 2px solid white; }
     </style>
 </head>
 <body id="main-body">
@@ -126,12 +126,8 @@
     <div class="legend-row"><div class="symbol-box lat-green">S</div><div><b>Grön prick (Styrbord):</b> Hålls på styrbord sida vid färd *med* farledens huvudriktning.</div></div>
     <div class="legend-row"><div class="symbol-box card-n">N</div><div><b>Nordmärke:</b> Passera <b>NORR</b> om märket. (Svart/Gul)</div></div>
     <div class="legend-row"><div class="symbol-box card-s">S</div><div><b>Sydmärke:</b> Passera <b>SÖDER</b> om märket. (Gul/Svart)</div></div>
-    <div class="legend-row"><div class="symbol-box" style="color:blue;">+</div><div><b>Grynna / Skär:</b> Farligt hinder precis vid eller under vattenytan. Håll avstånd!</div></div>
-    <div class="legend-row"><div class="symbol-box" style="color:red;">*</div><div><b>Bränning:</b> Grund som ofta bryter vid sjögång.</div></div>
-    <div class="legend-row"><div class="symbol-box" style="background:#ff9800; color:white;">⛽</div><div><b>Sjömack:</b> Tanka bensin/diesel. Se popup för namn.</div></div>
-    <div class="legend-row"><div class="symbol-box" style="background:#9c27b0; color:white;">🛒</div><div><b>Butik:</b> Livsmedel och proviant nära hamnen.</div></div>
-    <div class="legend-row"><div class="symbol-box" style="background:#0072ff; color:white; font-size:14px;">H</div><div><b>Gästhamn:</b> Skyddad hamn med bryggplats och service.</div></div>
-    <div class="legend-row"><div style="font-size:30px; width:35px; text-align:center;">⚓</div><div><b>Ankarvakt:</b> Bevakar 30m radie runt din position. Larmar om du driver utanför zonen.</div></div>
+    <div class="legend-row"><div class="symbol-box" style="color:blue;">+</div><div><b>Grynna / Skär:</b> Farligt hinder precis vid eller under vattenytan.</div></div>
+    <div class="legend-row"><div style="font-size:30px; width:35px; text-align:center;">⚓</div><div><b>Ankarvakt:</b> Bevakar 30m radie. Larmar om du driver utanför zonen.</div></div>
 </div>
 
 <div id="info-panel">
@@ -163,9 +159,13 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+    // Uppdaterade Hazards med DJUPDATA från dina sjökortsbilder
     const HAZARDS = [
-        { name: "Hult-grynna", pos: [57.625, 11.900], radius: 45 },
-        { name: "Askim-skär", pos: [57.610, 11.915], radius: 50 }
+        { name: "Hult-grynna", pos: [57.625, 11.900], radius: 45, depth: "0.8m" },
+        { name: "Askim-skär", pos: [57.610, 11.915], radius: 50, depth: "1.1m" },
+        { name: "Valö-grund", pos: [57.553, 11.794], radius: 60, depth: "0.4m" },
+        { name: "Kullavik-bränning", pos: [57.557, 11.928], radius: 45, depth: "1.2m" },
+        { name: "Amundö-grynna", pos: [57.618, 11.905], radius: 40, depth: "0.7m" }
     ];
 
     const CONFIG = { burnLow: 0.2, burnHigh: 0.5, anchorRadius: 30 };
@@ -210,20 +210,26 @@
     const marker = L.marker([57.62, 11.93], {icon: boatIcon}).addTo(map);
     const routeLine = L.polyline([], {color:'#f1c40f', weight:4, dashArray:'8,8'}).addTo(map);
 
+    // Lägg till POI (Sjömackar m.m.)
     const poi = [
         { name: "Donsö Sjömack", pos: [57.598, 11.798], type: "fuel" },
         { name: "Tempo Vrångö", pos: [57.575, 11.783], type: "shop" },
-        { name: "Långedrag Mack", pos: [57.669, 11.861], type: "fuel" }
+        { name: "Långedrag Mack", pos: [57.669, 11.861], type: "fuel" },
+        { name: "Kullavik Hamn", pos: [57.558, 11.933], type: "fuel" }
     ];
     poi.forEach(p => {
         const iconHtml = p.type === "fuel" ? "⛽" : "🛒";
-        const cls = p.type === "fuel" ? "fuel-icon" : "shop-icon";
-        L.marker(p.pos, {icon: L.divIcon({className: cls, html: iconHtml, iconSize: [24,24]})})
+        L.marker(p.pos, {icon: L.divIcon({className: 'poi-icon', html: iconHtml, iconSize: [24,24]})})
          .addTo(map).bindPopup(`<b>${p.name}</b>`);
     });
 
+    // Rita ut Hazards visuellt
+    HAZARDS.forEach(h => {
+        L.circle(h.pos, {radius: h.radius, color: 'red', weight: 1, fillOpacity: 0.1}).addTo(map);
+    });
+
     function showToast(msg, isHazard = false) {
-        els.toast.textContent = msg;
+        els.toast.innerHTML = msg;
         els.toast.style.display = 'block';
         if (isHazard) {
             els.toast.classList.add('toast-hazard');
@@ -233,13 +239,13 @@
             els.toast.style.display = 'none';
             els.toast.classList.remove('toast-hazard');
             document.getElementById('main-body').classList.remove('hazard-alarm');
-        }, 2800);
+        }, 3000);
     }
 
     function checkHazards(curPos) {
         HAZARDS.forEach(h => {
             if (curPos.distanceTo(L.latLng(h.pos)) < h.radius) {
-                showToast(`⚠️ GRYNNA: ${h.name.toUpperCase()}`, true);
+                showToast(`⚠️ VARNING: ${h.name.toUpperCase()}<br>DJUP: ${h.depth}`, true);
             }
         });
     }
@@ -296,22 +302,19 @@
             state.isSimulating = false;
             els.simBtn.classList.remove('btn-active');
             els.simBtn.textContent = "🚢 SIMULERA RUTT";
-            showToast("Simulering stoppad");
         } else {
-            const inputKnt = prompt("Ange önskad hastighet i knop för simulering:", "6.0");
-            if (inputKnt === null) return; 
-            state.simKnt = parseFloat(inputKnt) || 6.0;
-
+            const k = prompt("Ange knop för simulering:", "6.0");
+            if (k === null) return; 
+            state.simKnt = parseFloat(k) || 6.0;
             state.isSimulating = true;
             state.simIndex = 0;
             els.simBtn.classList.add('btn-active');
             els.simBtn.textContent = "⏹ STOPPA SIM";
-            showToast(`Simulerar i ${state.simKnt} knop...`);
             
             state.simInterval = setInterval(() => {
                 if (state.simIndex >= state.routePoints.length) { toggleSimulation(); return; }
-                const target = state.routePoints[state.simIndex];
-                handlePosition({ lat: target.lat, lng: target.lng, speed: state.simKnt, heading: 0 });
+                const t = state.routePoints[state.simIndex];
+                handlePosition({ lat: t.lat, lng: t.lng, speed: state.simKnt, heading: 0 });
                 state.simIndex++;
             }, 1000);
         }
@@ -320,34 +323,39 @@
     function updateETA() {
         if (state.routePoints.length > 0 && state.lastKnt > 0.1) {
             const d = marker.getLatLng().distanceTo(state.routePoints[state.routePoints.length-1]) / 1852;
-            const hoursLeft = d / state.lastKnt;
-            const minutesLeft = Math.round(hoursLeft * 60);
-            
-            // Uppdatera "Tid kvar"
-            if (minutesLeft >= 60) {
-                els.remTime.textContent = Math.floor(minutesLeft / 60) + "t " + (minutesLeft % 60) + "m";
-            } else {
-                els.remTime.textContent = minutesLeft + "m";
-            }
-
-            // Uppdatera klockslag ETA
-            const etaTime = new Date(Date.now() + hoursLeft * 3600000);
-            els.eta.textContent = etaTime.getHours() + ":" + (etaTime.getMinutes() < 10 ? '0' : '') + etaTime.getMinutes();
+            const h = d / state.lastKnt;
+            const m = Math.round(h * 60);
+            els.remTime.textContent = m >= 60 ? Math.floor(m/60)+"t "+(m%60)+"m" : m+"m";
+            const eta = new Date(Date.now() + h * 3600000);
+            els.eta.textContent = eta.getHours() + ":" + (eta.getMinutes() < 10 ? '0' : '') + eta.getMinutes();
         } else {
             els.remTime.textContent = "0m";
             els.eta.textContent = "--:--";
         }
     }
 
+    function resetTrip() {
+        state.totalFuel = 0;
+        localStorage.setItem('totalFuel', 0);
+        els.fuel.textContent = "0.0";
+        showToast("Trippmätare nollställd");
+    }
+
+    function saveSettings() {
+        localStorage.setItem('burnLow', document.getElementById('burn-low').value);
+        localStorage.setItem('burnHigh', document.getElementById('burn-high').value);
+        closeModal('settings-modal');
+        showToast("AI-data uppdaterad");
+    }
+
     function copySOSCoords() {
-        const text = `${els.sosLat.innerText}\n${els.sosLon.innerText}`;
-        navigator.clipboard.writeText(text).then(() => showToast("✅ Koordinater kopierade!"));
+        navigator.clipboard.writeText(`${els.sosLat.innerText} ${els.sosLon.innerText}`).then(() => showToast("Kopierat!"));
     }
 
     function openSOS() {
-        const pos = marker.getLatLng();
-        els.sosLat.textContent = "LAT: " + pos.lat.toFixed(5);
-        els.sosLon.textContent = "LON: " + pos.lng.toFixed(5);
+        const p = marker.getLatLng();
+        els.sosLat.textContent = "LAT: " + p.lat.toFixed(5);
+        els.sosLon.textContent = "LON: " + p.lng.toFixed(5);
         openModal('sos-modal');
     }
 
@@ -357,7 +365,6 @@
         map.eachLayer(l => { if (l.options && l.options.className === 'route-dot') map.removeLayer(l); });
         els.eta.textContent = "--:--";
         els.remTime.textContent = "0m";
-        showToast("Rutt rensad");
     }
 
     function toggleAnchorGuard() {
@@ -365,28 +372,13 @@
             state.anchorCircle = L.circle(marker.getLatLng(), { radius: CONFIG.anchorRadius, color: '#00d4ff' }).addTo(map);
             state.isAnchorActive = true;
             document.getElementById('anchor-btn').classList.add('btn-active');
-            showToast("⚓ Ankarvakt på");
+            showToast("⚓ Ankarvakt PÅ");
         } else {
             if (state.anchorCircle) map.removeLayer(state.anchorCircle);
             state.isAnchorActive = false;
             document.getElementById('anchor-btn').classList.remove('btn-active');
-            showToast("Ankarvakt av");
+            showToast("Ankarvakt AV");
         }
-    }
-
-    function saveSettings() {
-        localStorage.setItem('burnLow', document.getElementById('burn-low').value);
-        localStorage.setItem('burnHigh', document.getElementById('burn-high').value);
-        closeModal('settings-modal');
-        showToast("Inställningar sparade");
-    }
-
-    function resetTrip() {
-        state.totalFuel = 0;
-        localStorage.setItem('totalFuel', 0);
-        els.fuel.textContent = "0.0";
-        showToast("Trippräknare nollställd");
-        closeModal('settings-modal');
     }
 
     function centerMap() { map.panTo(marker.getLatLng()); }
@@ -401,18 +393,15 @@
         document.getElementById('burn-high').value = localStorage.getItem('burnHigh') || CONFIG.burnHigh;
         if (navigator.getBattery) {
             navigator.getBattery().then(b => {
-                const updateBatt = () => els.batt.textContent = Math.round(b.level * 100) + "%";
-                updateBatt(); b.onlevelchange = updateBatt;
+                const u = () => els.batt.textContent = Math.round(b.level * 100) + "%";
+                u(); b.onlevelchange = u;
             });
         }
-        navigator.geolocation.watchPosition(handlePosition, 
-            () => showToast("GPS-fel"), 
-            { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
-        );
+        navigator.geolocation.watchPosition(handlePosition, null, {enableHighAccuracy:true});
         map.on('click', e => {
             state.routePoints.push(e.latlng);
             routeLine.setLatLngs(state.routePoints);
-            L.circleMarker(e.latlng, {radius:6, color:'#f1c40f', fillOpacity:1, className:'route-dot'}).addTo(map);
+            L.circleMarker(e.latlng, {radius:5, color:'#f1c40f', className:'route-dot'}).addTo(map);
             updateETA();
         });
     };
