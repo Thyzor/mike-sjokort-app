@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Mike's Navigator - Pro Stability Edition</title>
+    <title>Mike's Navigator - Detailed Depth Edition</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
@@ -19,6 +19,21 @@
             transition: background 0.4s;
         }
         #map { height: 100%; width: 100%; }
+
+        .depth-label {
+            background: none !important;
+            border: none !important;
+            color: rgba(0, 0, 0, 0.75);
+            font-weight: 900;
+            font-size: 10px;
+            text-shadow: 1px 1px 0px rgba(255,255,255,0.9), -1px -1px 0px rgba(255,255,255,0.9);
+            pointer-events: none;
+            text-align: center;
+        }
+        .night-mode .depth-label {
+            color: rgba(255, 255, 255, 0.6);
+            text-shadow: 1px 1px 0px rgba(0,0,0,0.9);
+        }
 
         .hazard-alarm { animation: flash-red 0.6s infinite; }
         @keyframes flash-red { 0% { background: var(--bg-dark); } 50% { background: #600; } 100% { background: var(--bg-dark); } }
@@ -105,8 +120,6 @@
     <div class="modal-row"><div class="symbol-box card-n">N</div><div><b>Nordmärke:</b> Passera NORR om märket. (Svart uppe)</div></div>
     <div class="modal-row"><div class="symbol-box card-s">S</div><div><b>Sydmärke:</b> Passera SÖDER om märket. (Svart nere)</div></div>
     <div class="modal-row"><div class="symbol-box" style="color:blue;">+</div><div><b>Grynna/Skär:</b> Farligt hinder precis vid eller under vattenytan.</div></div>
-    <div class="modal-row"><div class="symbol-box" style="background:#333; color:white;">⚓</div><div><b>Ankarvakt:</b> Bevakar 30m radie. Larmar om du driver utanför.</div></div>
-    <div class="modal-row"><div class="symbol-box" style="background:#ff9800; color:white;">⛽</div><div><b>Sjömack:</b> Tankställe för bensin/diesel.</div></div>
 </div>
 
 <div id="settings-modal" class="modal">
@@ -150,12 +163,40 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+    // UTÖKAD DJUPDATA FRÅN SENASTE 5 BILDERNA
+    const MAP_DEPTHS = [
+        // Smörstacken & omnejd
+        { pos: [57.5925, 11.8485], val: "1.6" }, { pos: [57.5910, 11.8465], val: "2.4" },
+        { pos: [57.5895, 11.8455], val: "1.4" }, { pos: [57.5885, 11.8485], val: "2.3" },
+        { pos: [57.5870, 11.8540], val: "1.2" }, { pos: [57.5885, 11.8590], val: "1.7" },
+        { pos: [57.5920, 11.8585], val: "4.5" }, { pos: [57.5840, 11.8610], val: "3.3" },
+        { pos: [57.5815, 11.8580], val: "2.8" }, { pos: [57.5795, 11.8545], val: "2.9" },
+        // Byrknalten & Lågbåden
+        { pos: [57.5680, 11.8460], val: "5.7" }, { pos: [57.5670, 11.8490], val: "3.5" },
+        { pos: [57.5585, 11.8525], val: "1.7" }, { pos: [57.5550, 11.8545], val: "3.3" },
+        // Fjordholmen & Vrångö
+        { pos: [57.5835, 11.8155], val: "2.1" }, { pos: [57.5760, 11.8080], val: "4.7" },
+        { pos: [57.5730, 11.8150], val: "3.4" }, { pos: [57.5740, 11.8210], val: "1.8" },
+        { pos: [57.5960, 11.7820], val: "1.7" }, { pos: [57.5700, 11.7925], val: "1.3" },
+        // Kungsö & omnejd
+        { pos: [57.6180, 11.7640], val: "2.9" }, { pos: [57.6110, 11.7700], val: "4.4" },
+        { pos: [57.6035, 11.7775], val: "2.1" }, { pos: [57.5940, 11.7710], val: "8.9" },
+        { pos: [57.5865, 11.7750], val: "6.8" }
+    ];
+
     const HAZARDS = [
+        // Tidigare hinder
         { name: "Hult-grynna", pos: [57.625, 11.900], radius: 60, depth: "0.8m" },
         { name: "Askim-skär", pos: [57.610, 11.915], radius: 70, depth: "1.1m" },
         { name: "Valö-grund", pos: [57.553, 11.794], radius: 80, depth: "0.4m" },
-        { name: "Kullavik-bränning", pos: [57.557, 11.928], radius: 60, depth: "1.2m" },
-        { name: "Amundö-grynna", pos: [57.618, 11.905], radius: 60, depth: "0.7m" }
+        // NYA HINDER FRÅN BILDERNA
+        { name: "Knalteskär-grund", pos: [57.5975, 11.8565], radius: 65, depth: "0.9m" },
+        { name: "Byrknalten-grynna", pos: [57.5705, 11.8445], radius: 55, depth: "1.2m" },
+        { name: "V. Fjordholmsskär", pos: [57.5755, 11.8020], radius: 70, depth: "0.8m" },
+        { name: "Kattholmen-sten", pos: [57.6205, 11.7830], radius: 50, depth: "0.5m" },
+        { name: "S. Utterskär", pos: [57.6155, 11.7675], radius: 60, depth: "1.1m" },
+        { name: "Hugebådar", pos: [57.5995, 11.7855], radius: 65, depth: "0.7m" },
+        { name: "Skarholmen-grynna", pos: [57.5875, 11.7925], radius: 50, depth: "0.9m" }
     ];
 
     const CONFIG = { burnLow: 0.2, burnHigh: 0.5, anchorRadius: 30 };
@@ -163,12 +204,16 @@
 
     const els = { speed: document.getElementById('speed'), fuel: document.getElementById('fuel'), eta: document.getElementById('eta'), remTime: document.getElementById('rem-time'), batt: document.getElementById('batt'), heading: document.getElementById('heading'), depth: document.getElementById('cur-depth'), toast: document.getElementById('toast'), simBtn: document.getElementById('sim-btn'), sosLat: document.getElementById('sos-lat'), sosLon: document.getElementById('sos-lon') };
 
-    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([57.62, 11.93], 13);
+    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([57.58, 11.83], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png').addTo(map);
 
+    MAP_DEPTHS.forEach(d => {
+        L.marker(d.pos, { icon: L.divIcon({ className: 'depth-label', html: d.val, iconSize: [30, 15], iconAnchor: [15, 7] }) }).addTo(map);
+    });
+
     const boatIcon = L.divIcon({ html: '<div id="boat-arrow" style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:22px solid #ff3e3e;transition:transform 0.4s linear;"></div>', iconSize: [16, 22], iconAnchor: [8, 11] });
-    const marker = L.marker([57.62, 11.93], {icon: boatIcon}).addTo(map);
+    const marker = L.marker([57.58, 11.83], {icon: boatIcon}).addTo(map);
     const routeLine = L.polyline([], {color:'#f1c40f', weight:4, dashArray:'8,8'}).addTo(map);
 
     function handlePosition(pos) {
@@ -186,12 +231,7 @@
         let dText = ">6m";
         HAZARDS.forEach(h => {
             const dist = cur.distanceTo(L.latLng(h.pos));
-            if (dist < h.radius) {
-                dText = h.depth;
-                if (dist < h.radius * 0.6) showToast(`⚠️ GRUND (${h.depth})`, true);
-            } else if (dist < h.radius * 1.8) {
-                if (dText === ">6m") dText = "~3-4m";
-            }
+            if (dist < h.radius) { dText = h.depth; if (dist < h.radius * 0.6) showToast(`⚠️ GRUND (${h.depth})`, true); }
         });
         els.depth.textContent = dText;
 
@@ -203,10 +243,7 @@
             localStorage.setItem('totalFuel', state.totalFuel);
         }
 
-        if (state.isAnchorActive && state.anchorCircle) {
-            if (cur.distanceTo(state.anchorCircle.getLatLng()) > CONFIG.anchorRadius) showToast("🚨 ANKARE DRIVER!", true);
-        }
-
+        if (state.isAnchorActive && state.anchorCircle && cur.distanceTo(state.anchorCircle.getLatLng()) > CONFIG.anchorRadius) showToast("🚨 ANKARE DRIVER!", true);
         state.lastPos = cur;
         updateETA();
     }
@@ -219,17 +256,20 @@
             els.remTime.textContent = m >= 60 ? Math.floor(m/60)+"t "+(m%60)+"m" : m+"m";
             const eta = new Date(Date.now() + h * 3600000);
             els.eta.textContent = eta.getHours() + ":" + (eta.getMinutes() < 10 ? '0' : '') + eta.getMinutes();
-        } else {
-            els.remTime.textContent = "0m"; els.eta.textContent = "--:--";
-        }
+        } else { els.remTime.textContent = "0m"; els.eta.textContent = "--:--"; }
     }
+
+    map.on('click', (e) => {
+        state.routePoints.push(e.latlng);
+        routeLine.setLatLngs(state.routePoints);
+        L.circleMarker(e.latlng, { radius: 5, color: '#f1c40f', className: 'route-dot' }).addTo(map);
+        updateETA();
+    });
 
     function toggleSimulation() {
         if (state.routePoints.length < 2) { showToast("Plottra rutt först!"); return; }
-        if (state.isSimulating) {
-            clearInterval(state.simInterval); state.isSimulating = false;
-            els.simBtn.classList.remove('btn-active'); els.simBtn.textContent = "🚢 SIMULERA RUTT";
-        } else {
+        if (state.isSimulating) { clearInterval(state.simInterval); state.isSimulating = false; els.simBtn.classList.remove('btn-active'); els.simBtn.textContent = "🚢 SIMULERA RUTT"; }
+        else {
             const k = prompt("Knop:", "6.0"); if (k === null) return;
             state.simKnt = parseFloat(k) || 6.0; state.isSimulating = true; state.simIndex = 0;
             els.simBtn.classList.add('btn-active'); els.simBtn.textContent = "⏹ STOPPA SIM";
@@ -253,13 +293,8 @@
     function resetTrip() { state.totalFuel = 0; localStorage.setItem('totalFuel', 0); els.fuel.textContent = "0.0"; showToast("Nollställd"); }
     function saveSettings() { localStorage.setItem('burnLow', document.getElementById('burn-low').value); localStorage.setItem('burnHigh', document.getElementById('burn-high').value); closeModal('settings-modal'); showToast("Sparat"); }
     function toggleAnchorGuard() {
-        if (!state.isAnchorActive) {
-            state.anchorCircle = L.circle(marker.getLatLng(), { radius: CONFIG.anchorRadius, color: '#00d4ff' }).addTo(map);
-            state.isAnchorActive = true; document.getElementById('anchor-btn').classList.add('btn-active');
-        } else {
-            if (state.anchorCircle) map.removeLayer(state.anchorCircle);
-            state.isAnchorActive = false; document.getElementById('anchor-btn').classList.remove('btn-active');
-        }
+        if (!state.isAnchorActive) { state.anchorCircle = L.circle(marker.getLatLng(), { radius: CONFIG.anchorRadius, color: '#00d4ff' }).addTo(map); state.isAnchorActive = true; document.getElementById('anchor-btn').classList.add('btn-active'); }
+        else { if (state.anchorCircle) map.removeLayer(state.anchorCircle); state.isAnchorActive = false; document.getElementById('anchor-btn').classList.remove('btn-active'); }
     }
 
     function centerMap() { map.panTo(marker.getLatLng()); }
@@ -268,20 +303,7 @@
     function openModal(id) { document.getElementById(id).style.display = 'block'; }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-    window.onload = () => {
-        els.fuel.textContent = state.totalFuel.toFixed(1);
-        document.getElementById('burn-low').value = localStorage.getItem('burnLow') || CONFIG.burnLow;
-        document.getElementById('burn-high').value = localStorage.getItem('burnHigh') || CONFIG.burnHigh;
-        if (navigator.getBattery) navigator.getBattery().then(b => {
-            const u = () => els.batt.textContent = Math.round(b.level * 100) + "%"; u(); b.onlevelchange = u;
-        });
-        navigator.geolocation.watchPosition(handlePosition, null, {enableHighAccuracy:true});
-        map.on('click', e => {
-            state.routePoints.push(e.latlng); routeLine.setLatLngs(state.routePoints);
-            L.circleMarker(e.latlng, {radius:5, color:'#f1c40f', className:'route-dot'}).addTo(map);
-            updateETA();
-        });
-    };
+    navigator.geolocation.watchPosition(handlePosition, null, { enableHighAccuracy: true });
 </script>
 </body>
 </html>
