@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Mike's Navigator - Detailed Depth Edition</title>
+    <title>Mike's Navigator - Askim to Flatskär Edition</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
@@ -20,19 +20,24 @@
         }
         #map { height: 100%; width: 100%; }
 
+        /* UPPDATERAD STIL: HELT SVART, STÖRRE OCH TYDLIGARE */
         .depth-label {
             background: none !important;
             border: none !important;
-            color: rgba(0, 0, 0, 0.75);
-            font-weight: 900;
-            font-size: 10px;
-            text-shadow: 1px 1px 0px rgba(255,255,255,0.9), -1px -1px 0px rgba(255,255,255,0.9);
+            color: #000000 !important; 
+            font-weight: 900 !important;
+            font-size: 16px !important;
+            text-shadow: 
+                2px 2px 0px #fff, 
+               -2px -2px 0px #fff,  
+                2px -2px 0px #fff, 
+               -2px 2px 0px #fff;
             pointer-events: none;
             text-align: center;
         }
         .night-mode .depth-label {
-            color: rgba(255, 255, 255, 0.6);
-            text-shadow: 1px 1px 0px rgba(0,0,0,0.9);
+            color: #00ffff !important;
+            text-shadow: 1px 1px 2px #000;
         }
 
         .hazard-alarm { animation: flash-red 0.6s infinite; }
@@ -163,9 +168,14 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // UTÖKAD DJUPDATA FRÅN SENASTE 5 BILDERNA
+    // DJUPDATA INKLUSIVE STRÄCKAN ASKIMVIKEN -> FLATSKÄR
     const MAP_DEPTHS = [
-        // Smörstacken & omnejd
+        // Askimsviken (inre och mellersta)
+        { pos: [57.6235, 11.9280], val: "1.2" }, { pos: [57.6200, 11.9150], val: "2.1" },
+        { pos: [57.6150, 11.9250], val: "1.8" }, { pos: [57.6100, 11.9000], val: "3.5" },
+        { pos: [57.6050, 11.8850], val: "4.2" }, { pos: [57.6015, 11.8720], val: "5.8" },
+        // Kring Flatskär & Smörstacken
+        { pos: [57.5980, 11.8600], val: "2.4" }, { pos: [57.5950, 11.8500], val: "1.6" },
         { pos: [57.5925, 11.8485], val: "1.6" }, { pos: [57.5910, 11.8465], val: "2.4" },
         { pos: [57.5895, 11.8455], val: "1.4" }, { pos: [57.5885, 11.8485], val: "2.3" },
         { pos: [57.5870, 11.8540], val: "1.2" }, { pos: [57.5885, 11.8590], val: "1.7" },
@@ -185,11 +195,9 @@
     ];
 
     const HAZARDS = [
-        // Tidigare hinder
         { name: "Hult-grynna", pos: [57.625, 11.900], radius: 60, depth: "0.8m" },
         { name: "Askim-skär", pos: [57.610, 11.915], radius: 70, depth: "1.1m" },
         { name: "Valö-grund", pos: [57.553, 11.794], radius: 80, depth: "0.4m" },
-        // NYA HINDER FRÅN BILDERNA
         { name: "Knalteskär-grund", pos: [57.5975, 11.8565], radius: 65, depth: "0.9m" },
         { name: "Byrknalten-grynna", pos: [57.5705, 11.8445], radius: 55, depth: "1.2m" },
         { name: "V. Fjordholmsskär", pos: [57.5755, 11.8020], radius: 70, depth: "0.8m" },
@@ -204,16 +212,16 @@
 
     const els = { speed: document.getElementById('speed'), fuel: document.getElementById('fuel'), eta: document.getElementById('eta'), remTime: document.getElementById('rem-time'), batt: document.getElementById('batt'), heading: document.getElementById('heading'), depth: document.getElementById('cur-depth'), toast: document.getElementById('toast'), simBtn: document.getElementById('sim-btn'), sosLat: document.getElementById('sos-lat'), sosLon: document.getElementById('sos-lon') };
 
-    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([57.58, 11.83], 13);
+    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([57.60, 11.88], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png').addTo(map);
 
     MAP_DEPTHS.forEach(d => {
-        L.marker(d.pos, { icon: L.divIcon({ className: 'depth-label', html: d.val, iconSize: [30, 15], iconAnchor: [15, 7] }) }).addTo(map);
+        L.marker(d.pos, { icon: L.divIcon({ className: 'depth-label', html: d.val, iconSize: [40, 20], iconAnchor: [20, 10] }) }).addTo(map);
     });
 
     const boatIcon = L.divIcon({ html: '<div id="boat-arrow" style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:22px solid #ff3e3e;transition:transform 0.4s linear;"></div>', iconSize: [16, 22], iconAnchor: [8, 11] });
-    const marker = L.marker([57.58, 11.83], {icon: boatIcon}).addTo(map);
+    const marker = L.marker([57.621, 11.934], {icon: boatIcon}).addTo(map);
     const routeLine = L.polyline([], {color:'#f1c40f', weight:4, dashArray:'8,8'}).addTo(map);
 
     function handlePosition(pos) {
