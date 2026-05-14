@@ -20,25 +20,21 @@
         }
         #map { height: 100%; width: 100%; }
 
-        /* UPPDATERAD STIL: HELT SVART, STÖRRE OCH TYDLIGARE */
         .depth-label {
             background: none !important;
             border: none !important;
-            color: #000000 !important; 
             font-weight: 900 !important;
             font-size: 16px !important;
-            text-shadow: 
-                2px 2px 0px #fff, 
-               -2px -2px 0px #fff,  
-                2px -2px 0px #fff, 
-               -2px 2px 0px #fff;
+            text-shadow: 2px 2px 0px #fff, -2px -2px 0px #fff, 2px -2px 0px #fff, -2px 2px 0px #fff;
             pointer-events: none;
             text-align: center;
         }
-        .night-mode .depth-label {
-            color: #00ffff !important;
-            text-shadow: 1px 1px 2px #000;
-        }
+        
+        .depth-shallow { color: #ff0000 !important; }
+        .depth-medium { color: #ff9800 !important; }
+        .depth-safe { color: #2e7d32 !important; }
+
+        .night-mode .depth-label { text-shadow: 1px 1px 2px #000; }
 
         .hazard-alarm { animation: flash-red 0.6s infinite; }
         @keyframes flash-red { 0% { background: var(--bg-dark); } 50% { background: #600; } 100% { background: var(--bg-dark); } }
@@ -56,6 +52,12 @@
         .info-label { font-size: 7px; text-transform: uppercase; opacity: 0.8; margin-bottom: 2px; }
         .info-value { font-size: 13px; font-weight: 800; }
         .depth-value { color: #ffffff; text-shadow: 0 0 5px var(--main-cyan); }
+        
+        #wind-arrow { display: inline-block; transition: transform 1s ease-in-out; color: #ff9800; }
+
+        .fuel-warning { color: #ff9800 !important; text-shadow: 0 0 5px #ff9800; }
+        .fuel-critical { color: #ff5252 !important; text-shadow: 0 0 8px #ff5252; animation: fuel-pulse 1s infinite; }
+        @keyframes fuel-pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
         .controls-left, .controls-right {
             position: absolute; top: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 8px;
@@ -78,6 +80,50 @@
         .btn-red { background: #ff5252; color: white; }
         .btn-active { background: #ff9800 !important; color: white !important; }
 
+        /* MAXIMALT TRANSPARENT KOMPASS - För att se sjökortet under */
+        #compass-container {
+            position: absolute; bottom: 85px; left: 20px; z-index: 1001;
+            width: 80px; height: 80px; 
+            background: rgba(0, 21, 36, 0.15); 
+            backdrop-filter: blur(3px);
+            -webkit-backdrop-filter: blur(3px);
+            border-radius: 50%; 
+            border: 1.5px solid var(--main-cyan); 
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.2);
+            pointer-events: none;
+        }
+        #compass-rose {
+            width: 100%; height: 100%; position: relative;
+            transition: transform 0.1s linear;
+        }
+        .comp-mark { 
+            position: absolute; font-size: 11px; font-weight: 900; color: white; 
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+        }
+        .n { top: 2px; left: 50%; transform: translateX(-50%); color: #ff3e3e; }
+        .s { bottom: 2px; left: 50%; transform: translateX(-50%); }
+        .e { right: 2px; top: 50%; transform: translateY(-50%); }
+        .w { left: 2px; top: 50%; transform: translateY(-50%); }
+        
+        #compass-needle {
+            position: absolute; top: 50%; left: 50%;
+            width: 3px; height: 44px; 
+            background: linear-gradient(to bottom, #ff3e3e 50%, rgba(255,255,255,0.8) 50%);
+            margin-top: -22px; margin-left: -1.5px; 
+            border-radius: 2px;
+            box-shadow: 0 0 3px rgba(0,0,0,0.5);
+            z-index: 2;
+        }
+
+        .leaflet-control-scale { margin-bottom: 175px !important; margin-left: 20px !important; border: none !important; }
+        .leaflet-control-scale-line { 
+            background: rgba(0, 21, 36, 0.5) !important; color: white !important; 
+            border: 2px solid var(--main-cyan) !important; border-top: none !important;
+            font-weight: bold !important; font-size: 10px !important; text-shadow: 1px 1px 2px black;
+            backdrop-filter: blur(4px);
+        }
+
         .modal {
             display: none; position: fixed; z-index: 3000; left: 50%; top: 50%; transform: translate(-50%, -50%);
             background: #0d2131; color: white; padding: 25px; border-radius: 18px;
@@ -85,25 +131,32 @@
             max-height: 85vh; overflow-y: auto;
         }
         .close-x { position: absolute; top: 15px; right: 15px; font-size: 28px; color: #888; cursor: pointer; }
-        
         .modal-row { display: flex; align-items: center; gap: 15px; margin-bottom: 12px; font-size: 11px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
         .symbol-box { width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; background: white; border-radius: 6px; color: #333; font-weight: bold; font-size: 18px; flex-shrink: 0; }
-        
         .lat-red { background: #ff3b30; color: white; }
         .lat-green { background: #4cd964; color: white; }
         .card-n { background: linear-gradient(to bottom, #333 50%, #ffd700 50%); color: white; text-shadow: 0 0 2px black; }
         .card-s { background: linear-gradient(to bottom, #ffd700 50%, #333 50%); color: white; text-shadow: 0 0 2px black; }
-
-        .toast {
-            position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%);
-            background: #222; color: #fff; padding: 12px 20px; border-radius: 12px;
-            z-index: 4000; box-shadow: 0 4px 15px rgba(0,0,0,0.6); display: none;
-            text-align: center; width: 85%;
-        }
+        .card-e { background: linear-gradient(to right, #333 33%, #ffd700 33%, #ffd700 66%, #333 66%); color: white; text-shadow: 0 0 2px black; }
+        .card-w { background: linear-gradient(to right, #ffd700 33%, #333 33%, #333 66%, #ffd700 66%); color: white; text-shadow: 0 0 2px black; }
+        .log-entry { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid var(--main-cyan); }
+        .log-date { font-weight: bold; color: var(--main-cyan); font-size: 11px; margin-bottom: 2px; }
+        .log-stats { font-size: 10px; opacity: 0.9; }
+        .toast { position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%); background: #222; color: #fff; padding: 12px 20px; border-radius: 12px; z-index: 4000; box-shadow: 0 4px 15px rgba(0,0,0,0.6); display: none; text-align: center; width: 85%; }
         .toast-hazard { background: #ff0000 !important; font-weight: bold; border: 2px solid white; }
     </style>
 </head>
 <body id="main-body">
+
+<div id="compass-container">
+    <div id="compass-rose">
+        <span class="comp-mark n">N</span>
+        <span class="comp-mark e">Ö</span>
+        <span class="comp-mark s">S</span>
+        <span class="comp-mark w">V</span>
+        <div id="compass-needle"></div>
+    </div>
+</div>
 
 <div id="sos-modal" class="modal">
     <span class="close-x" onclick="closeModal('sos-modal')">×</span>
@@ -119,12 +172,17 @@
 
 <div id="legend-modal" class="modal">
     <span class="close-x" onclick="closeModal('legend-modal')">×</span>
-    <h3 style="color:var(--main-cyan);">❓ Sjökortsnyckel</h3>
-    <div class="modal-row"><div class="symbol-box lat-red">B</div><div><b>Babord:</b> Håll rött märke på babord sida vid färd med farledens huvudriktning.</div></div>
-    <div class="modal-row"><div class="symbol-box lat-green">S</div><div><b>Styrbord:</b> Håll grönt märke på styrbord sida.</div></div>
-    <div class="modal-row"><div class="symbol-box card-n">N</div><div><b>Nordmärke:</b> Passera NORR om märket. (Svart uppe)</div></div>
-    <div class="modal-row"><div class="symbol-box card-s">S</div><div><b>Sydmärke:</b> Passera SÖDER om märket. (Svart nere)</div></div>
-    <div class="modal-row"><div class="symbol-box" style="color:blue;">+</div><div><b>Grynna/Skär:</b> Farligt hinder precis vid eller under vattenytan.</div></div>
+    <h3 style="color:var(--main-cyan);">❓ Sjökortsnyckel & Sjömärken</h3>
+    <div class="modal-row"><div class="symbol-box lat-red">B</div><div><b>Babordmärke (Rött):</b> Lämna på babord (vänster) sida in mot hamn.</div></div>
+    <div class="modal-row"><div class="symbol-box lat-green">S</div><div><b>Styrbordmärke (Grönt):</b> Lämna på styrbord (höger) sida in mot hamn.</div></div>
+    <hr style="opacity:0.2">
+    <div class="modal-row"><div class="symbol-box card-n">N</div><div><b>Nordmärke:</b> Passera NORR om detta.</div></div>
+    <div class="modal-row"><div class="symbol-box card-s">S</div><div><b>Sydmärke:</b> Passera SÖDER om detta.</div></div>
+    <div class="modal-row"><div class="symbol-box card-e">O</div><div><b>Ostmärke:</b> Passera OST om detta.</div></div>
+    <div class="modal-row"><div class="symbol-box card-w">V</div><div><b>Västmärke:</b> Passera VÄST om detta.</div></div>
+    <hr style="opacity:0.2">
+    <div class="modal-row"><div class="symbol-box" style="color:blue;">+</div><div><b>Grynna / Sten:</b> Faror vid eller under ytan.</div></div>
+    <div class="modal-row"><div class="symbol-box" style="background:#ffff00; color:#000;">!</div><div><b>Specialmärke:</b> Gul färge. Markerar t.ex. badområden.</div></div>
 </div>
 
 <div id="settings-modal" class="modal">
@@ -133,15 +191,26 @@
     <label style="font-size:11px;">Lågfart (l/nm):</label>
     <input type="number" id="burn-low" step="0.05" style="width:100%; padding:10px; margin-bottom:10px; background:#222; color:white; border:1px solid #444;">
     <label style="font-size:11px;">Marschfart (l/nm):</label>
-    <input type="number" id="burn-high" step="0.05" style="width:100%; padding:10px; margin-bottom:20px; background:#222; color:white; border:1px solid #444;">
-    <button style="width:100%; padding:15px; background:#76b852; color:white; border:none; border-radius:8px; font-weight:bold;" onclick="saveSettings()">SPARA</button>
+    <input type="number" id="burn-high" step="0.05" style="width:100%; padding:10px; margin-bottom:10px; background:#222; color:white; border:1px solid #444;">
+    <label style="font-size:11px;">Full Tankvolym (Liter):</label>
+    <input type="number" id="fuel-limit" step="1" value="12" style="width:100%; padding:10px; margin-bottom:20px; background:#222; color:white; border:1px solid #444;">
+    <button style="width:100%; padding:15px; background:#76b852; color:white; border:none; border-radius:8px; font-weight:bold;" onclick="saveSettings()">SPARA & TANKA FULLT</button>
+    <button style="width:100%; padding:12px; background:var(--main-cyan); color:#001524; border:none; border-radius:8px; font-weight:bold; margin-top:10px;" onclick="openLog()">📖 ÖPPNA LOGGBOK</button>
     <button style="width:100%; padding:12px; background:#ff5252; color:white; border:none; border-radius:8px; font-weight:bold; margin-top:10px;" onclick="resetTrip()">RENSA TRIPPMÄTARE</button>
+</div>
+
+<div id="log-modal" class="modal">
+    <span class="close-x" onclick="closeModal('log-modal')">×</span>
+    <h3 style="color:var(--main-cyan);">📖 Loggbok - Historik</h3>
+    <div id="log-container" style="max-height: 50vh; overflow-y: auto;">Inga sparade turer än.</div>
+    <button style="width:100%; padding:10px; background:#333; color:white; border:none; border-radius:8px; margin-top:15px; font-size:10px;" onclick="clearLogHistory()">RENSA ALLA LOGGAR</button>
 </div>
 
 <div id="info-panel">
     <div class="info-item"><div class="info-label">Djup</div><div id="cur-depth" class="info-value depth-value">>6m</div></div>
     <div class="info-item"><div class="info-label">Knop</div><div id="speed" class="info-value">0.0</div></div>
-    <div class="info-item"><div class="info-label">Liter</div><div id="fuel" class="info-value">0.0</div></div>
+    <div class="info-item"><div class="info-label">Vind m/s</div><div id="wind-speed" class="info-value" style="color:#ff9800">-- <span id="wind-arrow">↑</span></div></div>
+    <div class="info-item"><div class="info-label">Kvar (L)</div><div id="fuel" class="info-value">--</div></div>
     <div class="info-item"><div class="info-label">Tid kvar</div><div id="rem-time" class="info-value">0m</div></div>
     <div class="info-item"><div class="info-label">ETA</div><div id="eta" class="info-value">--:--</div></div>
     <div class="info-item"><div class="info-label">Batt</div><div id="batt" class="info-value">--%</div></div>
@@ -154,10 +223,12 @@
     <button id="sim-btn" class="btn btn-orange" onclick="toggleSimulation()">🚢 SIMULERA RUTT</button>
     <button class="btn btn-red" onclick="clearRoute()">🗑️ RENSA RUTT</button>
     <button class="btn btn-blue" onclick="goHome()">🏠 HEM</button>
+    <button class="btn btn-purple" style="margin-top:5px; background:#00d4ff; color:#000;" onclick="requestCompassPermission()">🧭 AKTIVERA KOMPASS</button>
 </div>
 
 <div class="controls-right">
     <button class="btn btn-blue" onclick="openModal('legend-modal')">❓ SYMBOLER</button>
+    <button class="btn btn-orange" onclick="updateWeather()">🌤️ VÄDER</button>
     <button class="btn btn-purple" onclick="openModal('settings-modal')">🤖 MOTOR-AI</button>
     <button class="btn btn-white" onclick="toggleNight()">🌙 NATT</button>
     <button id="anchor-btn" class="btn" style="background:#333; color:white;" onclick="toggleAnchorGuard()">⚓ ANKARVAKT</button>
@@ -168,27 +239,21 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // DJUPDATA INKLUSIVE STRÄCKAN ASKIMVIKEN -> FLATSKÄR
     const MAP_DEPTHS = [
-        // Askimsviken (inre och mellersta)
         { pos: [57.6235, 11.9280], val: "1.2" }, { pos: [57.6200, 11.9150], val: "2.1" },
         { pos: [57.6150, 11.9250], val: "1.8" }, { pos: [57.6100, 11.9000], val: "3.5" },
         { pos: [57.6050, 11.8850], val: "4.2" }, { pos: [57.6015, 11.8720], val: "5.8" },
-        // Kring Flatskär & Smörstacken
         { pos: [57.5980, 11.8600], val: "2.4" }, { pos: [57.5950, 11.8500], val: "1.6" },
         { pos: [57.5925, 11.8485], val: "1.6" }, { pos: [57.5910, 11.8465], val: "2.4" },
         { pos: [57.5895, 11.8455], val: "1.4" }, { pos: [57.5885, 11.8485], val: "2.3" },
         { pos: [57.5870, 11.8540], val: "1.2" }, { pos: [57.5885, 11.8590], val: "1.7" },
         { pos: [57.5920, 11.8585], val: "4.5" }, { pos: [57.5840, 11.8610], val: "3.3" },
         { pos: [57.5815, 11.8580], val: "2.8" }, { pos: [57.5795, 11.8545], val: "2.9" },
-        // Byrknalten & Lågbåden
         { pos: [57.5680, 11.8460], val: "5.7" }, { pos: [57.5670, 11.8490], val: "3.5" },
         { pos: [57.5585, 11.8525], val: "1.7" }, { pos: [57.5550, 11.8545], val: "3.3" },
-        // Fjordholmen & Vrångö
         { pos: [57.5835, 11.8155], val: "2.1" }, { pos: [57.5760, 11.8080], val: "4.7" },
         { pos: [57.5730, 11.8150], val: "3.4" }, { pos: [57.5740, 11.8210], val: "1.8" },
         { pos: [57.5960, 11.7820], val: "1.7" }, { pos: [57.5700, 11.7925], val: "1.3" },
-        // Kungsö & omnejd
         { pos: [57.6180, 11.7640], val: "2.9" }, { pos: [57.6110, 11.7700], val: "4.4" },
         { pos: [57.6035, 11.7775], val: "2.1" }, { pos: [57.5940, 11.7710], val: "8.9" },
         { pos: [57.5865, 11.7750], val: "6.8" }
@@ -208,7 +273,21 @@
     ];
 
     const CONFIG = { burnLow: 0.2, burnHigh: 0.5, anchorRadius: 30 };
-    let state = { totalFuel: parseFloat(localStorage.getItem('totalFuel')) || 0, lastPos: null, lastKnt: 0, isAnchorActive: false, anchorCircle: null, routePoints: [], isSimulating: false, simInterval: null, simIndex: 0, simKnt: 6.0 };
+    
+    const savedRoute = JSON.parse(localStorage.getItem('mike_route')) || [];
+    let state = { 
+        consumedFuel: parseFloat(localStorage.getItem('consumedFuel')) || 0,
+        tripDist: parseFloat(localStorage.getItem('tripDist')) || 0,
+        lastPos: null, 
+        lastKnt: 0, 
+        isAnchorActive: false, 
+        anchorCircle: null, 
+        routePoints: savedRoute, 
+        isSimulating: false, 
+        simInterval: null, 
+        simIndex: 0, 
+        simKnt: 6.0 
+    };
 
     const els = { speed: document.getElementById('speed'), fuel: document.getElementById('fuel'), eta: document.getElementById('eta'), remTime: document.getElementById('rem-time'), batt: document.getElementById('batt'), heading: document.getElementById('heading'), depth: document.getElementById('cur-depth'), toast: document.getElementById('toast'), simBtn: document.getElementById('sim-btn'), sosLat: document.getElementById('sos-lat'), sosLon: document.getElementById('sos-lon') };
 
@@ -216,13 +295,36 @@
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png').addTo(map);
 
+    L.control.scale({ imperial: false, maxWidth: 150 }).addTo(map);
+
     MAP_DEPTHS.forEach(d => {
-        L.marker(d.pos, { icon: L.divIcon({ className: 'depth-label', html: d.val, iconSize: [40, 20], iconAnchor: [20, 10] }) }).addTo(map);
+        const depthVal = parseFloat(d.val);
+        let colorClass = depthVal <= 1.5 ? "depth-shallow" : (depthVal <= 3.0 ? "depth-medium" : "depth-safe");
+        L.marker(d.pos, { icon: L.divIcon({ className: `depth-label ${colorClass}`, html: d.val, iconSize: [40, 20], iconAnchor: [20, 10] }) }).addTo(map);
     });
 
     const boatIcon = L.divIcon({ html: '<div id="boat-arrow" style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:22px solid #ff3e3e;transition:transform 0.4s linear;"></div>', iconSize: [16, 22], iconAnchor: [8, 11] });
     const marker = L.marker([57.621, 11.934], {icon: boatIcon}).addTo(map);
-    const routeLine = L.polyline([], {color:'#f1c40f', weight:4, dashArray:'8,8'}).addTo(map);
+    
+    const routeLine = L.polyline(state.routePoints, {color:'#f1c40f', weight:4, dashArray:'8,8'}).addTo(map);
+    state.routePoints.forEach(p => { L.circleMarker(p, { radius: 5, color: '#f1c40f', className: 'route-dot' }).addTo(map); });
+
+    function handleOrientation(event) {
+        let heading = event.webkitCompassHeading || (360 - event.alpha);
+        if (heading) {
+            document.getElementById('compass-rose').style.transform = `rotate(${-heading}deg)`;
+        }
+    }
+
+    function requestCompassPermission() {
+        if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+            DeviceOrientationEvent.requestPermission()
+                .then(response => { if (response == 'granted') window.addEventListener('deviceorientation', handleOrientation, true); })
+                .catch(console.error);
+        } else {
+            window.addEventListener('deviceorientation', handleOrientation, true);
+        }
+    }
 
     function handlePosition(pos) {
         const lat = pos.coords ? pos.coords.latitude : pos.lat;
@@ -232,9 +334,13 @@
 
         state.lastKnt = pos.coords ? (pos.coords.speed || 0) * 1.9438 : (pos.speed || 0);
         els.speed.textContent = state.lastKnt.toFixed(1);
-        const heading = pos.coords ? (pos.coords.heading || 0) : (pos.heading || 0);
-        els.heading.textContent = Math.round(heading) + "°";
-        document.getElementById('boat-arrow').style.transform = `rotate(${heading}deg)`;
+        const gpsHeading = pos.coords ? (pos.coords.heading || 0) : (pos.heading || 0);
+        els.heading.textContent = Math.round(gpsHeading) + "°";
+        
+        document.getElementById('boat-arrow').style.transform = `rotate(${gpsHeading}deg)`;
+        if (!window.DeviceOrientationEvent) {
+            document.getElementById('compass-rose').style.transform = `rotate(${-gpsHeading}deg)`;
+        }
 
         let dText = ">6m";
         HAZARDS.forEach(h => {
@@ -246,24 +352,33 @@
         if (state.lastPos) {
             const dNm = state.lastPos.distanceTo(cur) / 1852;
             const rate = state.lastKnt > 4 ? (parseFloat(localStorage.getItem('burnHigh')) || CONFIG.burnHigh) : (parseFloat(localStorage.getItem('burnLow')) || CONFIG.burnLow);
-            state.totalFuel += dNm * rate;
-            els.fuel.textContent = state.totalFuel.toFixed(1);
-            localStorage.setItem('totalFuel', state.totalFuel);
+            state.consumedFuel += dNm * rate;
+            state.tripDist += dNm; 
+            localStorage.setItem('consumedFuel', state.consumedFuel);
+            localStorage.setItem('tripDist', state.tripDist);
+            const tankSize = parseFloat(localStorage.getItem('fuelLimit')) || 12;
+            const fuelLeft = Math.max(0, tankSize - state.consumedFuel);
+            els.fuel.textContent = fuelLeft.toFixed(1);
         }
 
-        if (state.isAnchorActive && state.anchorCircle && cur.distanceTo(state.anchorCircle.getLatLng()) > CONFIG.anchorRadius) showToast("🚨 ANKARE DRIVER!", true);
         state.lastPos = cur;
         updateETA();
     }
 
     function updateETA() {
         if (state.routePoints.length > 0 && state.lastKnt > 0.1) {
-            const d = marker.getLatLng().distanceTo(state.routePoints[state.routePoints.length-1]) / 1852;
-            const h = d / state.lastKnt;
-            const m = Math.round(h * 60);
-            els.remTime.textContent = m >= 60 ? Math.floor(m/60)+"t "+(m%60)+"m" : m+"m";
-            const eta = new Date(Date.now() + h * 3600000);
-            els.eta.textContent = eta.getHours() + ":" + (eta.getMinutes() < 10 ? '0' : '') + eta.getMinutes();
+            let totalDistMeters = 0;
+            let currentBoatPos = marker.getLatLng();
+            totalDistMeters += currentBoatPos.distanceTo(state.routePoints[0]);
+            for (let i = 0; i < state.routePoints.length - 1; i++) {
+                totalDistMeters += L.latLng(state.routePoints[i]).distanceTo(state.routePoints[i+1]);
+            }
+            const totalNm = totalDistMeters / 1852;
+            const hours = totalNm / state.lastKnt;
+            const minutes = Math.round(hours * 60);
+            els.remTime.textContent = minutes >= 60 ? Math.floor(minutes/60)+"t "+(minutes%60)+"m" : minutes+"m";
+            const etaDate = new Date(Date.now() + hours * 3600000);
+            els.eta.textContent = etaDate.getHours() + ":" + (etaDate.getMinutes() < 10 ? '0' : '') + etaDate.getMinutes();
         } else { els.remTime.textContent = "0m"; els.eta.textContent = "--:--"; }
     }
 
@@ -271,6 +386,7 @@
         state.routePoints.push(e.latlng);
         routeLine.setLatLngs(state.routePoints);
         L.circleMarker(e.latlng, { radius: 5, color: '#f1c40f', className: 'route-dot' }).addTo(map);
+        localStorage.setItem('mike_route', JSON.stringify(state.routePoints));
         updateETA();
     });
 
@@ -297,20 +413,31 @@
 
     function openSOS() { const p = marker.getLatLng(); els.sosLat.textContent = "LAT: " + p.lat.toFixed(5); els.sosLon.textContent = "LON: " + p.lng.toFixed(5); openModal('sos-modal'); }
     function copySOSCoords() { navigator.clipboard.writeText(`${els.sosLat.innerText} ${els.sosLon.innerText}`).then(() => showToast("Kopierat!")); }
-    function clearRoute() { state.routePoints = []; routeLine.setLatLngs([]); map.eachLayer(l => { if (l.options && l.options.className === 'route-dot') map.removeLayer(l); }); }
-    function resetTrip() { state.totalFuel = 0; localStorage.setItem('totalFuel', 0); els.fuel.textContent = "0.0"; showToast("Nollställd"); }
-    function saveSettings() { localStorage.setItem('burnLow', document.getElementById('burn-low').value); localStorage.setItem('burnHigh', document.getElementById('burn-high').value); closeModal('settings-modal'); showToast("Sparat"); }
-    function toggleAnchorGuard() {
-        if (!state.isAnchorActive) { state.anchorCircle = L.circle(marker.getLatLng(), { radius: CONFIG.anchorRadius, color: '#00d4ff' }).addTo(map); state.isAnchorActive = true; document.getElementById('anchor-btn').classList.add('btn-active'); }
-        else { if (state.anchorCircle) map.removeLayer(state.anchorCircle); state.isAnchorActive = false; document.getElementById('anchor-btn').classList.remove('btn-active'); }
+    function resetTrip() { state.consumedFuel = 0; state.tripDist = 0; localStorage.setItem('consumedFuel', 0); localStorage.setItem('tripDist', 0); showToast("Tripp nollställd!"); }
+    function saveSettings() { 
+        localStorage.setItem('burnLow', document.getElementById('burn-low').value); 
+        localStorage.setItem('burnHigh', document.getElementById('burn-high').value); 
+        localStorage.setItem('fuelLimit', document.getElementById('fuel-limit').value);
+        closeModal('settings-modal'); showToast("Inställningar sparade!"); 
     }
-
+    function toggleAnchorGuard() { if (!state.isAnchorActive) { state.anchorCircle = L.circle(marker.getLatLng(), { radius: CONFIG.anchorRadius, color: '#00d4ff' }).addTo(map); state.isAnchorActive = true; document.getElementById('anchor-btn').classList.add('btn-active'); } else { if (state.anchorCircle) map.removeLayer(state.anchorCircle); state.isAnchorActive = false; document.getElementById('anchor-btn').classList.remove('btn-active'); } }
     function centerMap() { map.panTo(marker.getLatLng()); }
     function goHome() { map.flyTo([57.621, 11.934], 14); }
     function toggleNight() { document.body.classList.toggle('night-mode'); }
     function openModal(id) { document.getElementById(id).style.display = 'block'; }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    function clearRoute() { state.routePoints = []; routeLine.setLatLngs([]); localStorage.removeItem('mike_route'); map.eachLayer(l => { if (l.options && l.options.className === 'route-dot') map.removeLayer(l); }); updateETA(); }
 
+    async function updateWeather() {
+        try {
+            const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=57.62&longitude=11.93&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms`);
+            const data = await response.json();
+            document.getElementById('wind-speed').innerHTML = `${data.current.wind_speed_10m.toFixed(1)} <span id="wind-arrow">↑</span>`;
+            document.getElementById('wind-arrow').style.transform = `rotate(${data.current.wind_direction_10m}deg)`;
+        } catch (e) { console.error("Weather error", e); }
+    }
+
+    updateWeather();
     navigator.geolocation.watchPosition(handlePosition, null, { enableHighAccuracy: true });
 </script>
 </body>
