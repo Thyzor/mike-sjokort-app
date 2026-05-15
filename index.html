@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Mikes Navigator - Hybrid Core V16</title>
+  <title>Mikes Navigator - GitHub Pages Live V18</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -83,10 +83,10 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ GEMINI HYBRID SYSTEM V16</span>
-      <span style="cursor:pointer; text-decoration: underline;" onclick="promptApiKey()">⚙️ API-Inställning</span>
+      <span>☁️ GEMINI REALTIME LIVE V18</span>
+      <span style="cursor:pointer; text-decoration: underline;" onclick="promptApiKey()">⚙️ Ställ in API-nyckel</span>
     </div>
-    <div class="ai-status" id="ai-status">Kombinerat Moln- & Offlinesystem aktivt.</div>
+    <div class="ai-status" id="ai-status">Säkert GitHub-moln aktivt. Ange din API-nyckel!</div>
   </div>
 
   <div class="compass-container">
@@ -114,15 +114,15 @@
 
   <div id="ai-chat-modal" class="modal ai-modal">
     <span class="close-x" onclick="closeModal('ai-chat-modal')">×</span>
-    <h3 style="color:var(--ai-purple); margin-top:0; margin-bottom:10px;">Mike Marine Hybrid Copilot</h3>
+    <h3 style="color:var(--ai-purple); margin-top:0; margin-bottom:10px;">Mike Marine Live Copilot</h3>
     
     <div class="chat-box" id="ai-chat-box">
-      <div class="chat-msg msg-ai"><b>AI:</b> Hej! Jag fungerar nu både online och offline. Om din lokala miljö blockerar internet ansluter min inbyggda felsökningsmodul automatiskt!</div>
+      <div class="chat-msg msg-ai"><b>AI:</b> Hej Kapten! Nu körs jag via HTTPS på GitHub Pages. Klicka på 'Ställ in API-nyckel' på den nedre panelen, sen är det bara att prata eller skriva till mig!</div>
     </div>
 
     <div class="chat-input-row">
       <button class="btn-mic" id="ai-mic-btn" onclick="toggleVoiceRecognition()">🎙️</button>
-      <input type="text" id="ai-user-input" class="chat-input" placeholder="Fråga om motorer, väder eller testa 'hej'..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
+      <input type="text" id="ai-user-input" class="chat-input" placeholder="Skriv din fråga eller tryck på micken..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
       <button class="btn" style="min-width:60px; height:38px; padding:0; text-align:center; border-color:var(--ai-purple);" onclick="sendCustomAIMsg()">Sänd</button>
     </div>
   </div>
@@ -139,21 +139,12 @@
     let recognition = null;
     let isListening = false;
 
-    // Inbyggd lokal kunskapsdatabas (Offline-svar)
-    const offlineDatabase = {
-      "hej": "Hej Kapten! Jag är redo. Hur mår motorn idag? Har du några tekniska frågor eller vill du kolla status?",
-      "båtmotor": "För optimal funktion: Kontrollera kylvattenstrålen (skvallerstrålen), se till att tändstiften är rena och att bränslet inte innehåller vatten eller kondens.",
-      "utombordare": "Vanliga fel på utombordare är igensatta förgasarmunstycken, trasigt tändstift eller vatten i bränslet. Kolla även dödmansgreppet!",
-      "väder": "Väderrapport: Vind 3 m/s, lugna förhållanden i närområdet. Perfekt för en tur!",
-      "varm": "Om motorn blir för varm: Kontrollera omedelbart att kylvattenstrålen flyter fritt. Rensa vattenintaget vid riggen från tång eller skräp.",
-      "startar inte": "Om motorn inte startar: 1. Kontrollera dödmansgreppet. 2. Kontrollera att bränsleventilen är öppen. 3. Kolla att luftskruven på tanken är öppen."
-    };
-
     function promptApiKey() {
-      const key = prompt("Klistra in din Google API-nyckel:");
+      const key = prompt("Klistra in din Google Gemini API-nyckel:");
       if (key) {
         localStorage.setItem("gemini_api_key", key.trim());
-        alert("API-nyckel sparad!");
+        alert("API-nyckel aktiverad på din GitHub-domän!");
+        document.getElementById("ai-status").textContent = "API redo på GitHub Pages.";
       }
     }
 
@@ -177,62 +168,82 @@
       callGeminiLiveAPI(text);
     }
 
-    // HYBRID-HANTERING: TESTAR ONLINE, SLÅR AUTOMATISKT OM TILL OFFLINE VID BLOCKERING
+    // RENODLAD DRIFTSÄKER MOLN-ANSLUTNING
     async function callGeminiLiveAPI(promptText) {
       let apiKey = localStorage.getItem("gemini_api_key");
-      document.getElementById("ai-status").textContent = "🔮 Bearbetar...";
-
-      // Om vi har en nyckel, testa att köra live via Google Cloud
-      if (apiKey) {
-        try {
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: `Svara kort och marintekniskt på svenska: ${promptText}` }] }]
-            })
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            if (data.candidates && data.candidates[0].content.parts[0].text) {
-              let aiResponse = data.candidates[0].content.parts[0].text;
-              appendChatMsg("AI", aiResponse);
-              document.getElementById("ai-status").textContent = "🔮 Svar via Google Cloud.";
-              return;
-            }
-          }
-        } catch (error) {
-          console.log("Online-anrop blockerat av lokal miljö, aktiverar offline-backup.");
-        }
+      if (!apiKey) {
+        appendChatMsg("AI", "❌ API-nyckel saknas. Klicka på 'Ställ in API-nyckel' på den lila raden i bakgrunden.");
+        return;
       }
 
-      // --- AUTOMATISK OFFLINE-FALLBACK (Körs direkt om webbläsaren blockerar eller om internet saknas) ---
-      setTimeout(() => {
-        let cleanPrompt = promptText.toLowerCase();
-        let foundResponse = "Jag hör vad du säger! Eftersom din telefon kör appen i en skyddad lokal fil-miljö är internet-anropet spärrat av webbläsaren. Prova att fråga om 'utombordare', 'väder' eller 'varm' för att testa min interna offline-expert!";
+      document.getElementById("ai-status").textContent = "🔮 Tänker...";
 
-        for (let key in offlineDatabase) {
-          if (cleanPrompt.includes(key)) {
-            foundResponse = offlineDatabase[key];
-            break;
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `Du är 'Mike', en expert på båtmotorer. Svara extremt kort, koncist och pedagogiskt på svenska: ${promptText}` }] }]
+          })
+        });
+
+        if (!response.ok) {
+          appendChatMsg("AI", `⚠️ Servern svarade med felkod ${response.status}. Dubbelkolla din API-nyckel.`);
+          document.getElementById("ai-status").textContent = "API-fel.";
+          return;
+        }
+
+        const data = await response.json();
+        if (data.candidates && data.candidates[0].content.parts[0].text) {
+          let aiResponse = data.candidates[0].content.parts[0].text;
+          appendChatMsg("AI", aiResponse);
+          document.getElementById("ai-status").textContent = "🔮 Svar klart.";
+
+          // Röstutmatning via webbläsarens inbyggda röst
+          if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(aiResponse);
+            u.lang = 'sv-SE';
+            window.speechSynthesis.speak(u);
           }
         }
-
-        appendChatMsg("AI", foundResponse);
-        document.getElementById("ai-status").textContent = "📡 Svar via inbyggd Core (Offline).";
-        
-        if ('speechSynthesis' in window) {
-          window.speechSynthesis.cancel();
-          const u = new SpeechSynthesisUtterance(foundResponse);
-          u.lang = 'sv-SE';
-          window.speechSynthesis.speak(u);
-        }
-      }, 300);
+      } catch (error) {
+        appendChatMsg("AI", "⚠️ Kunde inte nå molnet. Kontrollera din internetanslutning.");
+        document.getElementById("ai-status").textContent = "Anslutningsfel.";
+      }
     }
 
+    // UPPLÅST RÖSTIGENKÄNNING FÖR GITHUB HTTPS
     function toggleVoiceRecognition() {
-      alert("Eftersom appen körs från en lokal fil ('localhost/storage') blockerar din telefon mikrofonen av säkerhetsskäl. Använd textinmatningen för att skriva säkert offline!");
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("Röstigenkänning stöds inte i denna webbläsare.");
+        return;
+      }
+
+      if (!recognition) {
+        recognition = new SpeechRecognition();
+        recognition.lang = "sv-SE";
+        recognition.continuous = false;
+
+        recognition.onstart = () => { isListening = true; document.getElementById("ai-mic-btn").classList.add("listening"); };
+        recognition.onend = () => { isListening = false; document.getElementById("ai-mic-btn").classList.remove("listening"); };
+        
+        recognition.onresult = (e) => {
+          document.getElementById("ai-user-input").value = e.results[0][0].transcript;
+          sendCustomAIMsg();
+        };
+
+        recognition.onerror = (err) => {
+          if (err.error === 'not-allowed') {
+            alert("Webbläsaren nekas åtkomst till mikrofonen. Klicka på lås-ikonen bredvid adressfältet (thyzor.github.io) och ändra Mikrofon till 'Tillåt'!");
+          } else {
+            console.error("Mickfel:", err.error);
+          }
+        };
+      }
+
+      if (isListening) recognition.stop(); else recognition.start();
     }
 
     function toggleNight() { state.isNightMode = !state.isNightMode; document.body.classList.toggle("night-mode", state.isNightMode); }
