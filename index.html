@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Mikes Navigator - Production V23</title>
+  <title>Mikes Navigator - Final V24</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -83,7 +83,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ GEMINI STABLE V23</span>
+      <span>☁️ MIKE NAVIGATOR V24</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -153,11 +153,11 @@
 
       if (savedKey && savedKey.trim().length > 10) {
         let masked = savedKey.trim().substring(0, 6) + "..." + savedKey.trim().substring(savedKey.trim().length - 4);
-        statusEl.textContent = `🟢 Redo (${masked})`;
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>AI:</b> Uppdaterad till stabila <b>gemini-1.5-flash-latest</b>! Skriv 'Hej' för att testa anslutningen. 🚤</div>`;
+        statusEl.textContent = `🟢 Matchad (${masked})`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>AI:</b> Nu kör vi på din exakta curl-sökväg: <u>gemini-flash-latest</u>! Testa att skriva 'Hej'. 🚤</div>`;
       } else {
         statusEl.textContent = "🔴 Ingen nyckel sparad.";
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>AI:</b> Tryck på <b>⚙️ Nyckel</b> för att spara din API-nyckel lokalt på enheten.</div>`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>AI:</b> Tryck på <b>⚙️ Nyckel</b> och klistra in din nyckel.</div>`;
       }
     }
 
@@ -196,7 +196,7 @@
       callGeminiLiveAPI(text);
     }
 
-    // ÄNDRAD TILL GEMINI-1.5-FLASH-LATEST SAMT FALLBACK-SYSTEM
+    // EXAKT EXKREVERING AV DIN CURL-SÖKVÄG (GEMINI-FLASH-LATEST)
     async function callGeminiLiveAPI(promptText) {
       let apiKey = localStorage.getItem("gemini_api_key");
       if (!apiKey) {
@@ -205,31 +205,19 @@
       }
 
       apiKey = apiKey.trim();
-      document.getElementById("ai-status").textContent = "🔮 Anropar Google...";
+      document.getElementById("ai-status").textContent = "🔮 Anropar Google Studio...";
 
-      // Vi testar först den officiella produktions-URL:en med korrekta modellnamnet
-      let url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+      // Ändrad från gemini-1.5-flash-latest till enbart gemini-flash-latest för att spegla din curl helt identiskt!
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
       
       try {
-        let response = await fetch(url, {
+        const response = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: [{ parts: [{ text: `Du är Mike, en pedagogisk båtmotorexpert. Svara mycket kort och koncist på svenska: ${promptText}` }] }]
           })
         });
-
-        // Om v1beta misslyckas, kör en automatisk fallback till v1 för maximal säkerhet
-        if (!response.ok) {
-          url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
-          response = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: `Du är Mike, en pedagogisk båtmotorexpert. Svara mycket kort och koncist på svenska: ${promptText}` }] }]
-            })
-          });
-        }
 
         if (!response.ok) {
           let errorText = "";
