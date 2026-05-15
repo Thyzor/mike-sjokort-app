@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Mikes Navigator - Production V20</title>
+  <title>Mikes Navigator - Troubleshooter V21</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -83,10 +83,13 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ GEMINI STABLE V20</span>
-      <span style="cursor:pointer; text-decoration: underline;" onclick="promptApiKey()">⚙️ Ändra nyckel</span>
+      <span>☁️ GEMINI DIAGNOSTICS V21</span>
+      <div>
+        <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
+        <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
+      </div>
     </div>
-    <div class="ai-status" id="ai-status">Kontrollerar sparat minne...</div>
+    <div class="ai-status" id="ai-status">Läser enhetens minne...</div>
   </div>
 
   <div class="compass-container">
@@ -114,15 +117,15 @@
 
   <div id="ai-chat-modal" class="modal ai-modal">
     <span class="close-x" onclick="closeModal('ai-chat-modal')">×</span>
-    <h3 style="color:var(--ai-purple); margin-top:0; margin-bottom:10px;">Mike Marine Copilot</h3>
+    <h3 style="color:var(--ai-purple); margin-top:0; margin-bottom:10px;">Mike Diagnostic Terminal</h3>
     
     <div class="chat-box" id="ai-chat-box">
-      <div class="chat-msg msg-ai" id="welcome-msg"><b>AI:</b> Startar systemet...</div>
+      <div class="chat-msg msg-ai" id="welcome-msg">Initierar moduler...</div>
     </div>
 
     <div class="chat-input-row">
       <button class="btn-mic" id="ai-mic-btn" onclick="toggleVoiceRecognition()">🎙️</button>
-      <input type="text" id="ai-user-input" class="chat-input" placeholder="Skriv din fråga eller prata..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
+      <input text="text" id="ai-user-input" class="chat-input" placeholder="Skriv ett testmeddelande här..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
       <button class="btn" style="min-width:60px; height:38px; padding:0; text-align:center; border-color:var(--ai-purple);" onclick="sendCustomAIMsg()">Sänd</button>
     </div>
   </div>
@@ -140,27 +143,38 @@
     let isListening = false;
 
     window.addEventListener('DOMContentLoaded', () => {
+      checkKeyStatus();
+    });
+
+    function checkKeyStatus() {
       let savedKey = localStorage.getItem("gemini_api_key");
       const statusEl = document.getElementById("ai-status");
       const welcomeEl = document.getElementById("ai-chat-box");
 
-      if (savedKey) {
-        statusEl.textContent = "🟢 API-nyckel inläst.";
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>AI:</b> Välkommen tillbaka Kapten! Nyckeln är laddad. Testa att ställa en fråga eller klicka på micken!</div>`;
+      if (savedKey && savedKey.trim().length > 10) {
+        let masked = savedKey.trim().substring(0, 6) + "..." + savedKey.trim().substring(savedKey.trim().length - 4);
+        statusEl.textContent = `🟢 Nyckel laddad (${masked})`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>AI:</b> Systemet är redo! Jag har en sparad nyckel i minnet. Skriv eller säg 'Hej' för att testa anslutningen.</div>`;
       } else {
-        statusEl.textContent = "🔴 API-nyckel saknas.";
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>AI:</b> Hej! Klicka på <b>⚙️ Ändra nyckel</b> längst upp i den lila rutan för att lägga till din Gemini API-nyckel.</div>`;
+        statusEl.textContent = "🔴 Ingen giltig nyckel sparad.";
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>AI:</b> Ingen API-nyckel hittades. Tryck på <b>⚙️ Nyckel</b> i panelen och klistra in din nyckel från Google AI Studio (börjar oftast med AIzaSy...).</div>`;
       }
-    });
+    }
 
     function promptApiKey() {
-      const key = prompt("Klistra in din Google Gemini API-nyckel:");
+      const key = prompt("Klistra in din Google Gemini API-nyckel här (börjar oftast på AIzaSy...):");
       if (key) {
-        localStorage.setItem("gemini_api_key", key.trim());
-        alert("Nyckeln sparad lokalt!");
-        document.getElementById("ai-status").textContent = "🟢 API-nyckel inläst.";
-        document.getElementById("ai-chat-box").innerHTML += `<div class="chat-msg msg-ai"><b>System:</b> Nyckeln uppdaterad i enhetens minne.</div>`;
+        const cleanKey = key.trim();
+        localStorage.setItem("gemini_api_key", cleanKey);
+        alert("Nyckeln har sparats!");
+        checkKeyStatus();
       }
+    }
+
+    function clearSavedKey() {
+      localStorage.removeItem("gemini_api_key");
+      alert("Enhetens minne är helt nollställt!");
+      checkKeyStatus();
     }
 
     const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([57.62846, 11.94218], 15);
@@ -183,31 +197,37 @@
       callGeminiLiveAPI(text);
     }
 
-    // UPPDATERAD EXAKT VERKSTÄLLANDE SÖKVÄG TILL GEMINI 1.5 FLASH
     async function callGeminiLiveAPI(promptText) {
       let apiKey = localStorage.getItem("gemini_api_key");
       if (!apiKey) {
-        appendChatMsg("AI", "❌ API-nyckel saknas. Klicka på 'Ändra nyckel' först.");
+        appendChatMsg("AI", "❌ Systemfel: Ingen nyckel finns sparad. Tryck på 'Nyckel' först.");
         return;
       }
 
-      // Säkerställ att inga dolda tecken skickas med i nyckeln
       apiKey = apiKey.trim();
-      document.getElementById("ai-status").textContent = "🔮 Tänker...";
+      document.getElementById("ai-status").textContent = "🔮 Ansluter till Google...";
 
       try {
-        // Vi använder den absolut säkraste fullständiga API-sökvägen till stabila v1-versionen
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: `Du är 'Mike', en expert på båtmotorer. Svara jättekort och koncist på svenska: ${promptText}` }] }]
+            contents: [{ parts: [{ text: `Svara superkort på svenska: ${promptText}` }] }]
           })
         });
 
         if (!response.ok) {
-          appendChatMsg("AI", `⚠️ Serverfel (${response.status}). Detta beror oftast på att API-nyckeln är ogiltig eller felaktigt kopierad från Google AI Studio. Klicka på 'Ändra nyckel' och klistra in den igen.`);
-          document.getElementById("ai-status").textContent = "API-fel.";
+          // Om servern svarar med felkod, läs ut rå-felet från Google
+          let errorText = "";
+          try {
+            const errData = await response.json();
+            errorText = errData.error ? errData.error.message : JSON.stringify(errData);
+          } catch(e) {
+            errorText = `Statuskod ${response.status}`;
+          }
+
+          appendChatMsg("AI", `⚠️ <b>Google vägrade svara (${response.status}):</b> ${errorText}<br><br><i>Tips: Om det står API_KEY_INVALID, gå till Google AI Studio, generera en helt ny gratisnyckel och klistra in den via 'Nyckel'-knappen.</i>`);
+          document.getElementById("ai-status").textContent = "❌ Felaktig nyckel.";
           return;
         }
 
@@ -215,7 +235,7 @@
         if (data.candidates && data.candidates[0].content.parts[0].text) {
           let aiResponse = data.candidates[0].content.parts[0].text;
           appendChatMsg("AI", aiResponse);
-          document.getElementById("ai-status").textContent = "🟢 Redo.";
+          document.getElementById("ai-status").textContent = "🟢 Svar mottaget.";
 
           if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
@@ -225,7 +245,7 @@
           }
         }
       } catch (error) {
-        appendChatMsg("AI", "⚠️ Kunde inte nå molnet. Kontrollera nätverket.");
+        appendChatMsg("AI", `⚠️ <b>Nätverksfel:</b> Kunde inte skicka begäran. (${error.message})`);
         document.getElementById("ai-status").textContent = "Anslutningsfel.";
       }
     }
@@ -248,12 +268,6 @@
         recognition.onresult = (e) => {
           document.getElementById("ai-user-input").value = e.results[0][0].transcript;
           sendCustomAIMsg();
-        };
-
-        recognition.onerror = (err) => {
-          if (err.error === 'not-allowed') {
-            alert("Klicka på lås-ikonen uppe vid adressfältet och välj 'Tillåt' för mikrofonen!");
-          }
         };
       }
 
