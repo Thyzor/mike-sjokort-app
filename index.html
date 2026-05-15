@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Mikes Navigator - GitHub Pages Live V18</title>
+  <title>Mikes Navigator - Permanent Memory V19</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -83,10 +83,10 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ GEMINI REALTIME LIVE V18</span>
-      <span style="cursor:pointer; text-decoration: underline;" onclick="promptApiKey()">⚙️ Ställ in API-nyckel</span>
+      <span>☁️ GEMINI AUTO-MEMORY V19</span>
+      <span style="cursor:pointer; text-decoration: underline;" onclick="promptApiKey()">⚙️ Ändra nyckel</span>
     </div>
-    <div class="ai-status" id="ai-status">Säkert GitHub-moln aktivt. Ange din API-nyckel!</div>
+    <div class="ai-status" id="ai-status">Kontrollerar sparat minne...</div>
   </div>
 
   <div class="compass-container">
@@ -114,15 +114,15 @@
 
   <div id="ai-chat-modal" class="modal ai-modal">
     <span class="close-x" onclick="closeModal('ai-chat-modal')">×</span>
-    <h3 style="color:var(--ai-purple); margin-top:0; margin-bottom:10px;">Mike Marine Live Copilot</h3>
+    <h3 style="color:var(--ai-purple); margin-top:0; margin-bottom:10px;">Mike Auto-Save Assistant</h3>
     
     <div class="chat-box" id="ai-chat-box">
-      <div class="chat-msg msg-ai"><b>AI:</b> Hej Kapten! Nu körs jag via HTTPS på GitHub Pages. Klicka på 'Ställ in API-nyckel' på den nedre panelen, sen är det bara att prata eller skriva till mig!</div>
+      <div class="chat-msg msg-ai" id="welcome-msg"><b>AI:</b> Laddar systemet...</div>
     </div>
 
     <div class="chat-input-row">
       <button class="btn-mic" id="ai-mic-btn" onclick="toggleVoiceRecognition()">🎙️</button>
-      <input type="text" id="ai-user-input" class="chat-input" placeholder="Skriv din fråga eller tryck på micken..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
+      <input type="text" id="ai-user-input" class="chat-input" placeholder="Skriv din fråga eller prata..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
       <button class="btn" style="min-width:60px; height:38px; padding:0; text-align:center; border-color:var(--ai-purple);" onclick="sendCustomAIMsg()">Sänd</button>
     </div>
   </div>
@@ -139,12 +139,28 @@
     let recognition = null;
     let isListening = false;
 
+    // KONTROLLERA MINNE DIREKT VID START
+    window.addEventListener('DOMContentLoaded', () => {
+      let savedKey = localStorage.getItem("gemini_api_key");
+      const statusEl = document.getElementById("ai-status");
+      const welcomeEl = document.getElementById("ai-chat-box");
+
+      if (savedKey) {
+        statusEl.textContent = "🟢 API-nyckel inläst från minnet. Klar!";
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>AI:</b> Välkommen tillbaka Kapten! Jag minns din API-nyckel. Det är bara att ställa en fråga eller använda mikrofonen direkt! 🚤</div>`;
+      } else {
+        statusEl.textContent = "🔴 API-nyckel saknas i minnet.";
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>AI:</b> Hej! Jag ser att det är första gången du kör den här versionen. Klicka på <b>⚙️ Ändra nyckel</b> längst upp i den lila rutan för att spara din nyckel säkert i telefonen en gång för alla!</div>`;
+      }
+    });
+
     function promptApiKey() {
-      const key = prompt("Klistra in din Google Gemini API-nyckel:");
+      const key = prompt("Klistra in din Google Gemini API-nyckel (Den sparas säkert och lokalt på din enhet):");
       if (key) {
         localStorage.setItem("gemini_api_key", key.trim());
-        alert("API-nyckel aktiverad på din GitHub-domän!");
-        document.getElementById("ai-status").textContent = "API redo på GitHub Pages.";
+        alert("Klart! Nyckeln är sparad lokalt. Du slipper skriva in den igen!");
+        document.getElementById("ai-status").textContent = "🟢 API-nyckel inläst från minnet. Klar!";
+        document.getElementById("ai-chat-box").innerHTML += `<div class="chat-msg msg-ai"><b>System:</b> API-nyckeln sparades framgångsrikt i enhetens minne!</div>`;
       }
     }
 
@@ -168,11 +184,10 @@
       callGeminiLiveAPI(text);
     }
 
-    // RENODLAD DRIFTSÄKER MOLN-ANSLUTNING
     async function callGeminiLiveAPI(promptText) {
       let apiKey = localStorage.getItem("gemini_api_key");
       if (!apiKey) {
-        appendChatMsg("AI", "❌ API-nyckel saknas. Klicka på 'Ställ in API-nyckel' på den lila raden i bakgrunden.");
+        appendChatMsg("AI", "❌ API-nyckel saknas. Klicka på 'Ändra nyckel' på den lila raden först.");
         return;
       }
 
@@ -188,7 +203,7 @@
         });
 
         if (!response.ok) {
-          appendChatMsg("AI", `⚠️ Servern svarade med felkod ${response.status}. Dubbelkolla din API-nyckel.`);
+          appendChatMsg("AI", `⚠️ Serverfel (${response.status}). Kontrollera din sparade API-nyckel.`);
           document.getElementById("ai-status").textContent = "API-fel.";
           return;
         }
@@ -197,9 +212,8 @@
         if (data.candidates && data.candidates[0].content.parts[0].text) {
           let aiResponse = data.candidates[0].content.parts[0].text;
           appendChatMsg("AI", aiResponse);
-          document.getElementById("ai-status").textContent = "🔮 Svar klart.";
+          document.getElementById("ai-status").textContent = "🟢 Redo.";
 
-          // Röstutmatning via webbläsarens inbyggda röst
           if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(aiResponse);
@@ -208,12 +222,11 @@
           }
         }
       } catch (error) {
-        appendChatMsg("AI", "⚠️ Kunde inte nå molnet. Kontrollera din internetanslutning.");
+        appendChatMsg("AI", "⚠️ Kunde inte nå molnet. Kontrollera nätverket.");
         document.getElementById("ai-status").textContent = "Anslutningsfel.";
       }
     }
 
-    // UPPLÅST RÖSTIGENKÄNNING FÖR GITHUB HTTPS
     function toggleVoiceRecognition() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
@@ -236,9 +249,7 @@
 
         recognition.onerror = (err) => {
           if (err.error === 'not-allowed') {
-            alert("Webbläsaren nekas åtkomst till mikrofonen. Klicka på lås-ikonen bredvid adressfältet (thyzor.github.io) och ändra Mikrofon till 'Tillåt'!");
-          } else {
-            console.error("Mickfel:", err.error);
+            alert("Klicka på lås-ikonen uppe vid adressfältet och välj 'Tillåt' för mikrofonen!");
           }
         };
       }
