@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Weather & Logbook V48</title>
+  <title>Sagas Navigator - Neon Coastline V50</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -18,7 +18,20 @@
     }
     body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: var(--bg-dark); font-family: sans-serif; color: white; }
     #map { height: 100%; width: 100%; z-index: 1; background: #0a1e32; }
-    .night-mode #map { filter: invert(100%) hue-rotate(180deg) brightness(0.5) contrast(1.4); }
+
+    /* UPPDATERAT NATT-FILTER: Kraftfullare kantigenkänning som illuminerar både skär OCH hela fastlandskustlinjen */
+    .night-mode #map { 
+      filter: invert(100%) hue-rotate(180deg) brightness(0.65) contrast(1.6) drop-shadow(0 0 3px var(--main-cyan));
+    }
+    /* Ger en pulserande, flytande glöd i nattläget så att strandlinjerna nära land blir lätta att urskilja */
+    .night-mode .leaflet-tile-container {
+      animation: neon-coast-glow 5s infinite ease-in-out;
+    }
+    @keyframes neon-coast-glow {
+      0% { filter: contrast(1.4) saturate(1.1) brightness(1); }
+      50% { filter: contrast(1.6) saturate(1.4) brightness(1.1); }
+      100% { filter: contrast(1.4) saturate(1.1) brightness(1); }
+    }
 
     .heading-display {
       position: absolute; top: 15px; left: 50%; transform: translateX(-50%); z-index: 2000;
@@ -102,7 +115,6 @@
     .btn-mute { background: #0f172a; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; cursor: pointer; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
     .btn-mute.muted { background: rgba(255, 0, 0, 0.2); border-color: var(--sos-red); color: var(--sos-red); }
 
-    /* Loggboks-specifik design */
     .log-modal { border-color: var(--log-gold); max-width: 450px; }
     .log-list { background: rgba(0,0,0,0.4); border: 1px solid #451a03; border-radius: 10px; padding: 10px; height: 260px; overflow-y: auto; font-size: 11px; }
     .log-item { background: rgba(251, 191, 36, 0.05); border-left: 3px solid var(--log-gold); padding: 8px; margin-bottom: 8px; border-radius: 0 6px 6px 0; }
@@ -136,7 +148,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ SAGAS NAVIGATOR V48 [SMART LOGBOOK]</span>
+      <span>☁️ SAGAS NAVIGATOR V50 [TOTAL SHORELINE GLOW]</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -432,7 +444,6 @@
       calculateLiveWeather(currentBoatLatLng);
     }
 
-    // SPARA OCH HÄMTA LOGGBOK FRÅN LOCALSTORAGE
     function saveLogEntry(name, distance, avgSpeed) {
       let logs = JSON.parse(localStorage.getItem("sagas_logbook")) || [];
       let dateStr = new Date().toLocaleDateString('sv-SE', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
@@ -513,7 +524,7 @@
     function checkKeyStatus() {
       let savedKey = localStorage.getItem("gemini_api_key"); const welcomeEl = document.getElementById("ai-chat-box");
       if (savedKey && savedKey.trim().length > 10) {
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! Nu kör vi Version 48! Jag håller pennan redo och skriver automatiskt in alla dina resor och sjömil i loggboken! ⚓📜✏️</div>`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! Version 50 är redo. Nu lyser hela fastlandskusten och alla djupa vikar upp i ett läckert neon-sken så du tryggt kan navigera nära land! 🌙🌊✨</div>`;
       } else { welcomeEl.innerHTML = `<div class="chat-msg msg-ai">Spara din API-nyckel så sätter vi igång.</div>`; }
     }
 
@@ -537,7 +548,7 @@
     async function callGeminiLiveAPI(promptText) {
       let apiKey = localStorage.getItem("gemini_api_key"); if (!apiKey) { appendChatMsg("Saga", "❌ Lägg till en nyckel via inställningarna."); return; }
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`;
-      let fullPrompt = `Du är Saga, en göteborgsk skipperska i en plotterapp. Svara kort (2-3 meningar) med go marin stämning. Kalla användaren 'Kapten'. Berätta gärna att du för loggbok över resorna nu!`;
+      let fullPrompt = `Du är Saga, en göteborgsk skipperska i en plotterapp. Svara kort (2-3 meningar) med go marin stämning. Kalla användaren 'Kapten'. Påpeka gärna att hela fastlandskusten lyser upp med neon nu!`;
       try {
         const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt + "\nFråga: " + promptText }] }] }) });
         if (!response.ok) return; const data = await response.json();
