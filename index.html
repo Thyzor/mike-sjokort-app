@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Mute Control V33</title>
+  <title>Sagas Navigator - Advanced Brain V34</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -94,7 +94,6 @@
     .btn-mic { background: #1e1b4b; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; cursor: pointer; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
     .btn-mic.listening { background: var(--sos-red); border-color: white; }
     
-    /* NYTT: Styling för Mute-knappen */
     .btn-mute { background: #0f172a; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; cursor: pointer; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: all 0.2s; }
     .btn-mute.muted { background: rgba(255, 0, 0, 0.2); border-color: var(--sos-red); color: var(--sos-red); }
   </style>
@@ -110,7 +109,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ SAGAS NAVIGATOR V33</span>
+      <span>☁️ SAGAS NAVIGATOR V34</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -155,9 +154,8 @@
 
     <div class="chat-input-row">
       <button class="btn-mute" id="ai-mute-btn" onclick="toggleMute()" title="Slå på/av röstsvar">🔊</button>
-      
       <button class="btn-mic" id="ai-mic-btn" onclick="toggleVoiceRecognition()">🎙️</button>
-      <input type="text" id="ai-user-input" class="chat-input" placeholder="Skriv eller prata med Saga..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
+      <input type="text" id="ai-user-input" class="chat-input" placeholder="Prata med Saga på västkustska..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
       <button class="btn" style="min-width:50px; height:38px; padding:0; text-align:center; border-color:var(--ai-purple);" onclick="sendCustomAIMsg()">Sänd</button>
     </div>
   </div>
@@ -204,19 +202,14 @@
       document.getElementById("cardinal-top").textContent = cardinal;
     }
 
-    // NYTT: Funktion för att tysta/aktivera ljudet
     function toggleMute() {
       state.isMuted = !state.isMuted;
       const muteBtn = document.getElementById("ai-mute-btn");
-      
       if (state.isMuted) {
-        state.isMuted = true;
         muteBtn.textContent = "🔇";
         muteBtn.classList.add("muted");
-        // Tysta pågående tal direkt
         if ('speechSynthesis' in window) window.speechSynthesis.cancel();
       } else {
-        state.isMuted = false;
         muteBtn.textContent = "🔊";
         muteBtn.classList.remove("muted");
       }
@@ -257,12 +250,12 @@
         clearRoute();
         
         const vrangoRoute = [
-          [57.6186, 11.9320],
-          [57.6175, 11.9050],
-          [57.6010, 11.8650],
-          [57.5950, 11.8100],
-          [57.5810, 11.7920],
-          [57.5750, 11.7820],
+          [57.6186, 11.9320], // GFAS Askim
+          [57.6175, 11.9050], // Ut ur Askimsviken
+          [57.6010, 11.8650], // Väster om Amundön
+          [57.5950, 11.8100], // Anslutning till huvudfarleden
+          [57.5810, 11.7920], // Söderut mot Donsö
+          [57.5750, 11.7820], // Vrångö Gästhamn
         ];
 
         vrangoRoute.forEach(pt => addWaypoint(pt[0], pt[1]));
@@ -270,7 +263,7 @@
         const group = new L.featureGroup(plottedWaypoints.map(wp => wp.marker));
         map.fitBounds(group.getBounds().pad(0.1));
         
-        return "Självklart Kapten! Jag har simulerat den optimala rutten till Vrångö på kartan nu, och ställt in kursen i din nya navigationspil! Allt är utritat med en cyan linje.";
+        return "Gött mos, Kapten! Den optimala rutten ner till Vrångö ligger live på plottern nu! Vi backar ut från GFAS i Askim, rundar Amundön på ett säkert avstånd och glider raka vägen ner i farleden. Håll koll på skärmen, nu åker vi!";
       }
       return null;
     }
@@ -314,7 +307,7 @@
 
       if (savedKey && savedKey.trim().length > 10) {
         statusEl.textContent = `🟢 Saga Online`;
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> V33 är redo med en snabb mute-knapp i chatten om du behöver tystnad ombord! Vart styr vi idag? ⚓🧭</div>`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! V34 är säkrad. Hjärnan är kalibrerad för Göteborgs skärgård och båtlivet. Vart styr vi skutan idag? ⚓🌊</div>`;
       } else {
         statusEl.textContent = "🔴 Ingen nyckel sparad.";
         welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Välkommen ombord! Spara din API-nyckel så sätter vi igång.</div>`;
@@ -361,7 +354,14 @@
       document.getElementById("ai-status").textContent = "🔮 Saga tänker...";
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey.trim()}`;
       
-      let fullPrompt = `Du är Saga, en svensk kvinnlig båt- och navigationsexpert. Svara mycket kort och kärnfullt på svenska. Om användaren vill plotta eller simulera rutter, påminn bara vänligt om att skriva t.ex. 'Simulera rutt till Vrångö'.`;
+      // TRÄNINGSPROMPT: Sagas nya avancerade marina hjärna och personlighet!
+      let fullPrompt = `Du är Saga, en erfaren kvinnlig skipperska, båtexpert och lokalnavigator från Göteborgs skärgård. 
+      Du är installerad i användarens digitala plotterapp. 
+      Dina drag:
+      1. Du har total koll på Göteborgs södra och norra skärgård (öar som Vrångö, Donsö, grynnorna i Askimsviken, etc.).
+      2. Du pratar med en sjösäker, göteborgsk, peppande och varm ton. Du kallar användaren för "Kapten".
+      3. Svara alltid mycket kort, kärnfullt och direkt på svenska (max 2-3 meningar) så att det är lätt att läsa eller lyssna på i hög sjö.
+      4. Om användaren vill plotta/simulera en rutt, påminn bara glatt om att skriva t.ex 'Simulera rutt till Vrångö'.`;
 
       try {
         const response = await fetch(url, {
@@ -372,7 +372,7 @@
 
         if (!response.ok) {
           document.getElementById("ai-status").textContent = "❌ Serverfel.";
-          appendChatMsg("Saga", "⚠️ <b>Hoppsan!</b> API-fel. Kontrollera din sparade API-nyckel.");
+          appendChatMsg("Saga", "⚠️ API-fel. Kontrollera din sparade API-nyckel.");
           return;
         }
 
@@ -389,9 +389,8 @@
       }
     }
 
-    // Modifierad för att respektera mute-läget live
     function speakCleanText(rawText) {
-      if (state.isMuted) return; // Prata inte om appen är tystad
+      if (state.isMuted) return;
       if (!('speechSynthesis' in window)) return;
       
       window.speechSynthesis.cancel();
