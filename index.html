@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - V28</title>
+  <title>Sagas Navigator - Sea-Plotter V29</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -91,7 +91,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ SAGAS NAVIGATOR V28</span>
+      <span>☁️ SAGAS NAVIGATOR V29</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -169,6 +169,87 @@
     let attachedFileMime = null;
     let attachedFileTextContent = null;
 
+    // Rutt- och Plotter-variabler
+    let plottedWaypoints = [];
+    let plotterPolyline = null;
+
+    // Startkoordinater (Göteborgs skärgård)
+    const initialLat = 57.62846;
+    const initialLng = 11.94218;
+
+    // 1. Initiera kartan
+    const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([initialLat, initialLng], 13);
+    
+    // Baskarta (Standardvägar/land)
+    const baseLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+    
+    // NYTT: Marina markeringar (OpenSeaMap sjökortslager som ritas ovanpå baskartan)
+    const seaMapLayer = L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", {
+      maxZoom: 18
+    }).addTo(map);
+
+    // Egen båtmarkör
+    const boatMarker = L.marker([initialLat, initialLng]).addTo(map);
+
+    // 2. Klick-event för Plottern (Skapa rutt)
+    map.on('click', function(e) {
+      const lat = e.latlng.lat;
+      const lng = e.latlng.lng;
+      
+      // Skapa en liten cirkelmarkör för varje waypoint
+      const wpMarker = L.circleMarker([lat, lng], {
+        radius: 6,
+        color: '#00d4ff',
+        fillColor: '#001524',
+        fillOpacity: 1,
+        weight: 2
+      }).addTo(map);
+
+      plottedWaypoints.push({ marker: wpMarker, latlng: e.latlng });
+      
+      // Rita eller uppdatera ruttlinjen
+      updatePlotterLine();
+    });
+
+    function updatePlotterLine() {
+      const coordinates = plottedWaypoints.map(wp => wp.latlng);
+      
+      if (plotterPolyline) {
+        plotterPolyline.setLatLngs(coordinates);
+      } else {
+        plotterPolyline = L.polyline(coordinates, {
+          color: '#00d4ff',
+          weight: 4,
+          dashArray: '5, 10',
+          opacity: 0.8
+        }).addTo(map);
+      }
+    }
+
+    // 3. Rensa plottrad rutt
+    function clearRoute() {
+      // Ta bort alla cirkelmarkörer från kartan
+      plottedWaypoints.forEach(wp => map.removeLayer(wp.marker));
+      plottedWaypoints = [];
+      
+      // Ta bort linjen
+      if (plotterPolyline) {
+        map.removeLayer(plotterPolyline);
+        plotterPolyline = null;
+      }
+      document.getElementById("eta").textContent = "--:--";
+    }
+
+    // Centrera kartan på båten eller rutten
+    function centerMap() {
+      if (plottedWaypoints.length > 0) {
+        const group = new L.featureGroup(plottedWaypoints.map(wp => wp.marker));
+        map.fitBounds(group.getBounds());
+      } else {
+        map.setView(boatMarker.getLatLng(), 14);
+      }
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
       checkKeyStatus();
     });
@@ -181,10 +262,10 @@
       if (savedKey && savedKey.trim().length > 10) {
         let masked = savedKey.trim().substring(0, 6) + "..." + savedKey.trim().substring(savedKey.trim().length - 4);
         statusEl.textContent = `🟢 Saga Online (${masked})`;
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Hej! Jag är din nya marina copilot. Jag är expert på navigation, båtmotorer och elsystem. Vad har du på hjärtat idag? 🌊</div>`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Sjökortet är laddat med bojar och grynnor! Klicka var som helst på kartan för att plotta din rutt direkt. Hur kan jag hjälpa dig navigera? 🧭</div>`;
       } else {
         statusEl.textContent = "🔴 Ingen nyckel sparad.";
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Hej! Spara din API-nyckel under inställningar så kliver jag ombord direkt.</div>`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Välkommen ombord! Spara din API-nyckel så sätter vi igång.</div>`;
       }
     }
 
@@ -237,10 +318,6 @@
 
     function clearSavedKey() { localStorage.removeItem("gemini_api_key"); alert("Minnet nollställt!"); checkKeyStatus(); }
 
-    const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([57.62846, 11.94218], 15);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-    const marker = L.marker([57.62846, 11.94218]).addTo(map);
-
     function appendChatMsg(sender, text) {
       const box = document.getElementById("ai-chat-box");
       const cls = sender === "Du" ? "msg-user" : "msg-ai";
@@ -273,8 +350,6 @@
       document.getElementById("ai-status").textContent = "🔮 Saga tänker...";
 
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
-      
-      // HÄR HAR VI DEFINIERAT SAGAS NYA IDENTITET:
       let fullPrompt = `Du är Saga, en kunnig, professionell och pedagogisk kvinnlig båt- och motorexpert. Svara mycket kort, rappt och koncist på svenska. `;
       
       if (attachedFileTextContent) { fullPrompt += `\n\n[Innehåll från bifogad fil]:\n${attachedFileTextContent}\n\n`; }
@@ -318,8 +393,6 @@
       if (!('speechSynthesis' in window)) return;
       
       window.speechSynthesis.cancel();
-
-      // Rensar bort Markdown så att rösten pratar helt rent
       let cleanText = rawText.replace(/[\*\#\_`]/g, " ");
       
       const utterance = new SpeechSynthesisUtterance(cleanText);
@@ -354,8 +427,6 @@
     }
 
     function toggleNight() { state.isNightMode = !state.isNightMode; document.body.classList.toggle("night-mode", state.isNightMode); }
-    function centerMap() { map.setView(marker.getLatLng(), 15); }
-    function clearRoute() { }
     function openSOS() { const c = map.getCenter(); document.getElementById("sos-coords").textContent = `${c.lat.toFixed(4)}N, ${c.lng.toFixed(4)}O`; openModal("sos-modal"); }
     function openModal(id) { document.getElementById(id).style.display = "block"; }
     
