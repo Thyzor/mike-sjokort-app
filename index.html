@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Eco-Protector V51</title>
+  <title>Sagas Navigator - Harbor Radar V52</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -16,11 +16,12 @@
       --wind-blue: #38bdf8;
       --log-gold: #fbbf24;
       --eco-green: #10b981;
+      --harbor-blue: #3b82f6;
     }
     body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: var(--bg-dark); font-family: sans-serif; color: white; }
     #map { height: 100%; width: 100%; z-index: 1; background: #0a1e32; }
 
-    /* NATT-FILTER: Illuminerar fastland, öar och ger naturskyddszoner en utomjordisk glöd */
+    /* NATT-FILTER: Ger naturskyddszoner och hamnar en utomjordisk glöd */
     .night-mode #map { 
       filter: invert(100%) hue-rotate(180deg) brightness(0.65) contrast(1.6) drop-shadow(0 0 3px var(--main-cyan));
     }
@@ -49,6 +50,15 @@
     }
     .ai-header { font-weight: bold; color: var(--ai-purple); display: flex; align-items: center; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
     .ai-status { color: #e9d5ff; font-style: italic; }
+
+    /* GÄSTHAMNS-RADAR POPUP PÅ SKÄRMEN */
+    .harbor-radar-panel {
+      position: absolute; top: 15px; right: 15px; z-index: 2000;
+      background: rgba(0, 31, 63, 0.95); border: 2px solid var(--harbor-blue); padding: 10px; border-radius: 12px;
+      display: none; flex-direction: column; width: 180px; box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+      animation: harbor-pulse 2s infinite ease-in-out;
+    }
+    @keyframes harbor-pulse { 0%, 100% { border-color: var(--harbor-blue); } 50% { border-color: #93c5fd; } }
 
     .compass-container {
       position: absolute; bottom: 150px; left: 20px; z-index: 1001; width: 85px; height: 85px;
@@ -79,7 +89,7 @@
     .route-select { background: #001524; color: var(--main-cyan); border: 1px solid var(--main-cyan); padding: 8px; border-radius: 8px; font-size: 10px; font-weight: bold; width: 135px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
 
     .save-route-panel {
-      position: absolute; top: 15px; right: 15px; z-index: 2000;
+      position: absolute; top: 140px; right: 15px; z-index: 2000;
       background: var(--panel-bg); border: 1px solid var(--main-cyan); padding: 10px; border-radius: 12px;
       display: none; flex-direction: column; gap: 6px; width: 160px; box-shadow: 0 4px 15px rgba(0,0,0,0.6);
     }
@@ -122,13 +132,17 @@
     @keyframes ais-blink { 0% { border-color: var(--ais-orange); box-shadow: 0 0 12px var(--ais-orange); } 50% { border-color: #000; box-shadow: none; } 100% { border-color: var(--ais-orange); box-shadow: 0 0 12px var(--ais-orange); } }
     .ais-warning-active { animation: ais-blink 0.6s infinite; background: rgba(249, 115, 22, 0.25) !important; color: var(--ais-orange) !important; border-color: var(--ais-orange) !important; }
 
-    /* EKOLOGISK VARNINGSFÄRG */
     @keyframes eco-blink { 0% { border-color: var(--eco-green); box-shadow: 0 0 12px var(--eco-green); } 50% { border-color: #000; box-shadow: none; } 100% { border-color: var(--eco-green); box-shadow: 0 0 12px var(--eco-green); } }
     .eco-warning-active { animation: eco-blink 1s infinite; background: rgba(16, 185, 129, 0.25) !important; color: #a7f3d0 !important; border-color: var(--eco-green) !important; }
 
     .wind-arrow-icon { font-size: 16px; color: rgba(56, 189, 248, 0.6); text-shadow: 0 0 4px rgba(0,0,0,0.8); }
     .ais-vessel-tooltip { background: #1e293b; border: 1px solid var(--ais-orange); color: #f8fafc; font-weight: bold; font-size: 9px; padding: 2px 5px; border-radius: 4px; }
     .eco-zone-tooltip { background: #064e3b; border: 1px solid var(--eco-green); color: #a7f3d0; font-size: 10px; font-weight: bold; }
+    
+    /* DESIGN FÖR HAMNIKONEN */
+    .harbor-icon { font-size: 20px; text-shadow: 0 0 6px rgba(0,0,0,1); cursor: pointer; }
+    .harbor-popup-style .leaflet-popup-content-wrapper { background: #001f3f; color: white; border: 1px solid var(--harbor-blue); border-radius: 12px; font-size: 11px; }
+    .harbor-popup-style .leaflet-popup-tip { background: #001f3f; border: 1px solid var(--harbor-blue); }
   </style>
 </head>
 <body>
@@ -140,6 +154,12 @@
     <span id="cardinal-top" class="heading-cardinal">N</span>
   </div>
 
+  <div class="harbor-radar-panel" id="harbor-radar-panel">
+    <span style="font-size:10px; font-weight:bold; color:var(--harbor-blue);">⚓ HAMN I NÄRHETEN</span>
+    <span id="radar-harbor-name" style="font-size:13px; font-weight:bold; display:block; margin:3px 0;">--</span>
+    <span id="radar-harbor-dist" style="font-size:11px; color:#93c5fd;">Avstånd: -- m</span>
+  </div>
+
   <div class="save-route-panel" id="save-route-panel">
     <span style="font-size:10px; font-weight:bold; color:var(--main-cyan);">SPARA AKTUELL RUTT</span>
     <input type="text" id="route-name-input" class="save-input" placeholder="Ruttens namn...">
@@ -148,7 +168,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ SAGAS NAVIGATOR V51 [ECO-PROTECTOR]</span>
+      <span>☁️ SAGAS NAVIGATOR V52 [HARBOR RADAR]</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -229,7 +249,7 @@
 
     let simulationInterval = null; let isSimulating = false;
     let simWaypointIndex = 0; let lastRealLocation = null;
-    let lastWarningTime = 0; let lastAisWarningTime = 0; let lastWeatherWarningTime = 0; let lastEcoWarningTime = 0;
+    let lastWarningTime = 0; let lastAisWarningTime = 0; let lastWeatherWarningTime = 0; let lastEcoWarningTime = 0; let lastHarborAnnounceTime = 0;
     
     let currentRouteName = "Ospecificerad rutt";
     let maxWindDuringTrip = 0;
@@ -246,22 +266,28 @@
       { id: 2, name: "M/S Vindskär", lat: 57.6100, lng: 11.8900, heading: 290, speed: 22, marker: null, direction: -1 }
     ];
 
-    // DEFINIERA SÄL- OCH NATURSKYDDZONER (Geometriska områden)
     const ecoZones = [
+      { name: "Vinga Sälskyddsområde", coords: [[57.633, 11.600], [57.625, 11.595], [57.620, 11.610], [57.630, 11.620]], polygon: null },
+      { name: "Öckerö Fågelskyddszon", coords: [[57.715, 11.620], [57.705, 11.615], [57.700, 11.635], [57.712, 11.640]], polygon: null },
+      { name: "Tistlarna Naturreservat", coords: [[57.515, 11.720], [57.495, 11.710], [57.490, 11.740], [57.510, 11.750]], polygon: null }
+    ];
+
+    // DATABAS FÖR GÄSTHAMNAR OCH SAGAS UNIKA RECENSIONER
+    const harborDatabase = [
       {
-        name: "Vinga Sälskyddsområde",
-        coords: [[57.633, 11.600], [57.625, 11.595], [57.620, 11.610], [57.630, 11.620]],
-        polygon: null
+        name: "Långedrags Gästhamn", lat: 57.6695, lng: 11.8615,
+        spots: "Approximativt 40 platser", facilities: "🚿 Dusch, 🔌 El, 🚽 WC, ☕ Kafé, 🛠️ Varv",
+        sagaReview: "Klassisk mark, Kapten! Här ligger du fint och tittar på kappseglingar, men se upp för hård västlig vind som kan ge lite guppig nattvila."
       },
       {
-        name: "Öckerö Fågelskyddszon",
-        coords: [[57.715, 11.620], [57.705, 11.615], [57.700, 11.635], [57.712, 11.640]],
-        polygon: null
+        name: "Hjuviks Båthamn", lat: 57.6845, lng: 11.7015,
+        spots: "Ca 15 gästplatser", facilities: "🔌 El, 🚰 Färskvatten, 🚌 Buss till stan",
+        sagaReview: "Perfekt strategiskt stopp innan du drar ut över Danafjorden! Väldigt skyddat och skönt, men ingen jättestor gästhamn."
       },
       {
-        name: "Tistlarna Naturreservat",
-        coords: [[57.515, 11.720], [57.495, 11.710], [57.490, 11.740], [57.510, 11.750]],
-        polygon: null
+        name: "Rörö Gästhamn", lat: 57.7712, lng: 11.6160,
+        spots: "Över 100 platser", facilities: "🪵 Bastu, 🛒 ICA-butik,  Grillplatser, 🔌 El, 🚿 Dusch",
+        sagaReview: "Ett absolut måste i norra skärgården! Fantastiska naturstigar på utsidan av ön och grym stämning på bryggorna på kvällen."
       }
     ];
 
@@ -316,7 +342,6 @@
       let westFactor = Math.max(0, (11.95 - latlng.lng) * 4);
       let liveWind = 4.2 + (westFactor * 3.5);
       let liveWaves = 0.2 + (westFactor * 0.55);
-
       if (liveWind > maxWindDuringTrip) maxWindDuringTrip = liveWind;
 
       document.getElementById("wind").textContent = liveWind.toFixed(1) + " m/s";
@@ -355,17 +380,33 @@
       }, 1000);
     }
 
-    // RITA UT ECO-ZONERNA PÅ KARTAN
     function initEcoZones() {
       ecoZones.forEach(zone => {
-        zone.polygon = L.polygon(zone.coords, {
-          color: '#10b981',
-          fillColor: '#047857',
-          fillOpacity: 0.25,
-          weight: 2,
-          dashArray: '4, 6'
-        }).addTo(map);
+        zone.polygon = L.polygon(zone.coords, { color: '#10b981', fillColor: '#047857', fillOpacity: 0.25, weight: 2, dashArray: '4, 6' }).addTo(map);
         zone.polygon.bindTooltip(`🦭 ${zone.name}`, { sticky: true, className: 'eco-zone-tooltip' });
+      });
+    }
+
+    // INITIERA GÄSTHAMNAR PÅ KARTAN
+    function initHarbors() {
+      harborDatabase.forEach(h => {
+        let harborIcon = L.divIcon({
+          className: 'harbor-marker-container',
+          html: `<div class="harbor-icon" title="${h.name}">⚓</div>`,
+          iconSize: [24, 24]
+        });
+        let m = L.marker([h.lat, h.lng], { icon: harborIcon }).addTo(map);
+        
+        let popupContent = `
+          <div style="min-width:180px;">
+            <h4 style="margin:0 0 5px 0; color:var(--main-cyan); font-size:13px;">⚓ ${h.name}</h4>
+            <p style="margin:2px 0;"><b>Kapacitet:</b> ${h.spots}</p>
+            <p style="margin:2px 0;"><b>Service:</b> ${h.facilities}</p>
+            <hr style="border-color:#1e3a8a; margin:6px 0;">
+            <p style="margin:0; font-style:italic; color:#cbd5e1;"><b>Saga:</b> "${h.sagaReview}"</p>
+          </div>
+        `;
+        m.bindPopup(popupContent, { className: 'harbor-popup-style' });
       });
     }
 
@@ -388,22 +429,43 @@
       }
     }
 
-    // UTÖKAD DETEKTERING: KOLLA OM BÅTEN RIDER IN I SÄLSKYDDET
-    function checkDepthAndEcoHazards(latlng) {
+    // UTÖKAD DETEKTERING: KOLLA GRUND, MILJÖZONER OCH NU ÄVEN HAMNRADAR
+    function checkAllTrackers(latlng) {
       let hazardDetected = false; let detectedName = "";
       for (let hazard of shallowHazards) {
         let dist = latlng.distanceTo(L.latLng(hazard.lat, hazard.lng));
         if (dist <= hazard.radius) { hazardDetected = true; detectedName = hazard.name; break; }
       }
 
-      // Kolla om punkten ligger inuti en Eco-polygon (Ray-casting algoritm)
       let insideEcoZone = null;
       for (let zone of ecoZones) {
         if (isPointInPolygon(latlng, zone.coords)) { insideEcoZone = zone; break; }
       }
 
-      const sosBtn = document.getElementById("sos-main-btn");
+      // GÄSTHAMNS-RADAR LOGIK
+      let closestHarbor = null; let minHarborDist = 999999;
+      harborDatabase.forEach(h => {
+        let dist = latlng.distanceTo(L.latLng(h.lat, h.lng));
+        if (dist < minHarborDist) { minHarborDist = dist; closestHarbor = h; }
+      });
 
+      const radarPanel = document.getElementById("harbor-radar-panel");
+      if (minHarborDist <= 800 && closestHarbor) {
+        document.getElementById("radar-harbor-name").textContent = closestHarbor.name;
+        document.getElementById("radar-harbor-dist").textContent = `Avstånd: ${Math.round(minHarborDist)} m`;
+        radarPanel.style.display = "flex";
+
+        let now = Date.now();
+        if (now - lastHarborAnnounceTime > 35000) {
+          let harborText = `Kapten, min gästhamnsradar ger utslag! Vi närmar oss ${closestHarbor.name}. Det är bara ${Math.round(minHarborDist)} meter kvar dit om vi vill rulla in och unna oss nåt gott! ☕⚓`;
+          appendChatMsg("Saga ⚓", harborText); speakCleanText(harborText);
+          lastHarborAnnounceTime = now;
+        }
+      } else {
+        radarPanel.style.display = "none";
+      }
+
+      const sosBtn = document.getElementById("sos-main-btn");
       if (hazardDetected) {
         resetEcoButtonState();
         sosBtn.classList.add("shallow-warning-active"); sosBtn.textContent = `⚠️ GRUND: ${detectedName.toUpperCase()}`;
@@ -434,7 +496,6 @@
       }
     }
 
-    // Matematisk hjälpfunktion för att beräkna om båten är inuti polygonen
     function isPointInPolygon(point, vs) {
       let x = point.lat, y = point.lng; let inside = false;
       for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
@@ -450,7 +511,7 @@
         const realLoc = L.latLng(pos.coords.latitude, pos.coords.longitude); lastRealLocation = realLoc;
         if (!isSimulating) {
           currentBoatLatLng = realLoc; boatMarker.setLatLng(currentBoatLatLng);
-          checkDepthAndEcoHazards(currentBoatLatLng); calculateLiveWeather(currentBoatLatLng);
+          checkAllTrackers(currentBoatLatLng); calculateLiveWeather(currentBoatLatLng);
           if (!state.hasCenteredOnStart) { map.setView(currentBoatLatLng, 13); state.hasCenteredOnStart = true; document.getElementById("ai-status").textContent = "🟢 GPS Position Låst"; }
           if (pos.coords.speed) document.getElementById("speed").textContent = (pos.coords.speed * 1.94384).toFixed(1);
           if (pos.coords.heading && plottedWaypoints.length === 0) updateHeading(pos.coords.heading);
@@ -494,7 +555,7 @@
           currentBoatLatLng.lat + (currentTarget.lat - currentBoatLatLng.lat) * 0.015,
           currentBoatLatLng.lng + (currentTarget.lng - currentBoatLatLng.lng) * 0.015
         );
-        boatMarker.setLatLng(currentBoatLatLng); checkDepthAndEcoHazards(currentBoatLatLng); calculateLiveWeather(currentBoatLatLng);
+        boatMarker.setLatLng(currentBoatLatLng); checkAllTrackers(currentBoatLatLng); calculateLiveWeather(currentBoatLatLng);
       }, 250);
 
       return "Klart vi ska! Startar resan och aktiverar Sagas loggbok, Kapten! ⚓📜";
@@ -503,7 +564,7 @@
     function stopSimulation() {
       if (simulationInterval) { clearInterval(simulationInterval); simulationInterval = null; }
       isSimulating = false; document.getElementById("sos-main-btn").classList.remove("shallow-warning-active", "ais-warning-active", "eco-warning-active");
-      document.getElementById("sos-main-btn").textContent = "🆘 NÖD SOS";
+      document.getElementById("sos-main-btn").textContent = "🆘 NÖD SOS"; document.getElementById("harbor-radar-panel").style.display = "none";
       if (lastRealLocation) { currentBoatLatLng = lastRealLocation; boatMarker.setLatLng(currentBoatLatLng); document.getElementById("ai-status").textContent = "🟢 GPS Position Låst"; }
       calculateLiveWeather(currentBoatLatLng);
     }
@@ -580,12 +641,12 @@
 
     function centerMap() { stopSimulation(); if (plottedWaypoints.length > 0) { const group = new L.featureGroup(plottedWaypoints.map(wp => wp.marker)); map.fitBounds(group.getBounds()); } else { map.setView(boatMarker.getLatLng(), 13); } }
 
-    window.addEventListener('DOMContentLoaded', () => { checkKeyStatus(); updateDropdownMenu(); updateHeading(0); initAndAnimateAIS(); initWeatherArrows(); initEcoZones(); calculateLiveWeather(currentBoatLatLng); });
+    window.addEventListener('DOMContentLoaded', () => { checkKeyStatus(); updateDropdownMenu(); updateHeading(0); initAndAnimateAIS(); initWeatherArrows(); initEcoZones(); initHarbors(); calculateLiveWeather(currentBoatLatLng); });
 
     function checkKeyStatus() {
       let savedKey = localStorage.getItem("gemini_api_key"); const welcomeEl = document.getElementById("ai-chat-box");
       if (savedKey && savedKey.trim().length > 10) {
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! Version 51 är igång! Nu har jag lagt till säl- och fågelskyddsområden på kartan. Jag håller utkik så att vi inte råkar störa djurlivet om vi kommer nära land! 🦭🌿🦅</div>`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! Version 52 är laddad! Nu är gästhamns-radarn igång och vi har full koll på både service, bastuanläggningar och mitt eget omdöme längs kusten! Klicka på nån av ankarsymbolerna för att läsa mina hemliga tips! ⚓☕🧼</div>`;
       } else { welcomeEl.innerHTML = `<div class="chat-msg msg-ai">Spara din API-nyckel så sätter vi igång.</div>`; }
     }
 
@@ -609,7 +670,7 @@
     async function callGeminiLiveAPI(promptText) {
       let apiKey = localStorage.getItem("gemini_api_key"); if (!apiKey) { appendChatMsg("Saga", "❌ Lägg till en nyckel via inställningarna."); return; }
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`;
-      let fullPrompt = `Du är Saga, en göteborgsk skipperska i en plotterapp. Svara kort (2-3 meningar) med go marin stämning. Kalla användaren 'Kapten'. Påpeka gärna att vi har sälskyddsområden inlagda nu!`;
+      let fullPrompt = `Du är Saga, en göteborgsk skipperska i en plotterapp. Svara kort (2-3 meningar) med go marin stämning. Kalla användaren 'Kapten'. Påpeka gärna att vi har en grym gästhamns-radar aktiv i Version 52 nu!`;
       try {
         const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt + "\nFråga: " + promptText }] }] }) });
         if (!response.ok) return; const data = await response.json();
