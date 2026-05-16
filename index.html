@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Advanced Brain V34</title>
+  <title>Sagas Navigator - Flash Stable V35</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -109,7 +109,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ SAGAS NAVIGATOR V34</span>
+      <span>☁️ SAGAS NAVIGATOR V35</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -246,24 +246,25 @@
     function triggerAutoRoute(text) {
       const inputLower = text.toLowerCase();
       
-      if (inputLower.includes("vrångö") || inputLower.includes("simulera") || inputLower.includes("rutan") || inputLower.includes("rutt")) {
+      if (inputLower.includes("vrångö") || inputLower.includes("simulera") || inputLower.includes("rutan") || inputLower.includes("rutt") || inputLower.includes("donsö")) {
         clearRoute();
         
-        const vrangoRoute = [
-          [57.6186, 11.9320], // GFAS Askim
-          [57.6175, 11.9050], // Ut ur Askimsviken
-          [57.6010, 11.8650], // Väster om Amundön
-          [57.5950, 11.8100], // Anslutning till huvudfarleden
-          [57.5810, 11.7920], // Söderut mot Donsö
-          [57.5750, 11.7820], // Vrångö Gästhamn
+        // Genererar en rutt ner mot Donsö/Vrångö-området
+        const targetRoute = [
+          [57.6186, 11.9320],
+          [57.6175, 11.9050],
+          [57.6010, 11.8650],
+          [57.5950, 11.8100],
+          [57.5810, 11.7920],
+          [57.5750, 11.7820],
         ];
 
-        vrangoRoute.forEach(pt => addWaypoint(pt[0], pt[1]));
+        targetRoute.forEach(pt => addWaypoint(pt[0], pt[1]));
         
         const group = new L.featureGroup(plottedWaypoints.map(wp => wp.marker));
         map.fitBounds(group.getBounds().pad(0.1));
         
-        return "Gött mos, Kapten! Den optimala rutten ner till Vrångö ligger live på plottern nu! Vi backar ut från GFAS i Askim, rundar Amundön på ett säkert avstånd och glider raka vägen ner i farleden. Håll koll på skärmen, nu åker vi!";
+        return "Gött mos, Kapten! Den optimala rutten ut mot öarna ligger live på din ruttplotter nu! Vi startar i Askimsviken, rundar Amundön på behörigt avstånd och tar farleden söderut. Pilen pekar ut kursen, bara att hänga med!";
       }
       return null;
     }
@@ -307,7 +308,7 @@
 
       if (savedKey && savedKey.trim().length > 10) {
         statusEl.textContent = `🟢 Saga Online`;
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! V34 är säkrad. Hjärnan är kalibrerad för Göteborgs skärgård och båtlivet. Vart styr vi skutan idag? ⚓🌊</div>`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! V35 är säkrad och nätverkskopplingen till de nya stabila Flash-servrarna är uppdaterad. Vart styr vi skutan idag? ⚓🌊</div>`;
       } else {
         statusEl.textContent = "🔴 Ingen nyckel sparad.";
         welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Välkommen ombord! Spara din API-nyckel så sätter vi igång.</div>`;
@@ -352,9 +353,10 @@
       if (!apiKey) { appendChatMsg("Saga", "❌ Lägg till en nyckel via inställningarna."); return; }
 
       document.getElementById("ai-status").textContent = "🔮 Saga tänker...";
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey.trim()}`;
       
-      // TRÄNINGSPROMPT: Sagas nya avancerade marina hjärna och personlighet!
+      // UPPDATERAD SLUTPUNKT: Använder stabila gemini-2.5-flash produktionsmodellen
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`;
+      
       let fullPrompt = `Du är Saga, en erfaren kvinnlig skipperska, båtexpert och lokalnavigator från Göteborgs skärgård. 
       Du är installerad i användarens digitala plotterapp. 
       Dina drag:
@@ -372,7 +374,7 @@
 
         if (!response.ok) {
           document.getElementById("ai-status").textContent = "❌ Serverfel.";
-          appendChatMsg("Saga", "⚠️ API-fel. Kontrollera din sparade API-nyckel.");
+          appendChatMsg("Saga", "⚠️ <b>API-fel.</b> Google nekade anslutningen. Kontrollera att din sparade API-nyckel stämmer.");
           return;
         }
 
