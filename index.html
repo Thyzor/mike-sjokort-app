@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Mikes Navigator - Final V24</title>
+  <title>Mikes Navigator - Vision V25</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -66,10 +66,16 @@
     .msg-user { color: var(--main-cyan); font-weight: bold; }
     .msg-ai { color: #e9d5ff; }
     
+    /* NYTT FÖR BILD-PREVIEW */
+    .preview-container { display: none; padding: 6px; background: rgba(168, 85, 247, 0.1); border: 1px dashed var(--ai-purple); border-radius: 6px; margin-bottom: 10px; align-items: center; justify-content: space-between; font-size: 11px; }
+    .preview-img { height: 35px; border-radius: 4px; border: 1px solid var(--ai-purple); }
+    .preview-remove { color: var(--sos-red); cursor: pointer; font-weight: bold; font-size: 14px; margin-right: 5px; }
+
     .chat-input-row { display: flex; gap: 6px; align-items: center; }
     .chat-input { flex: 1; background: #0f172a; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; padding: 10px; font-size: 12px; box-sizing: border-box; height: 38px; }
     .btn-mic { background: #1e1b4b; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; cursor: pointer; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
     .btn-mic.listening { background: var(--sos-red); border-color: white; }
+    .btn-file-trigger { background: #0f172a; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; cursor: pointer; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
   </style>
 </head>
 <body>
@@ -83,7 +89,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ MIKE NAVIGATOR V24</span>
+      <span>☁️ MIKE NAVIGATOR V25 (VISION)</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -123,10 +129,21 @@
       <div class="chat-msg msg-ai" id="welcome-msg">Ansluter system...</div>
     </div>
 
+    <div class="preview-container" id="file-preview-container">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <img src="" id="file-preview-img" class="preview-img" />
+        <span id="file-preview-name">bild.jpg</span>
+      </div>
+      <span class="preview-remove" onclick="clearSelectedFile()">×</span>
+    </div>
+
     <div class="chat-input-row">
+      <input type="file" id="ai-file-input" accept="image/*" style="display:none;" onchange="handleFileSelect(this)">
+      <button class="btn-file-trigger" onclick="document.getElementById('ai-file-input').click()">📎</button>
+      
       <button class="btn-mic" id="ai-mic-btn" onclick="toggleVoiceRecognition()">🎙️</button>
-      <input type="text" id="ai-user-input" class="chat-input" placeholder="Skriv din fråga här..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
-      <button class="btn" style="min-width:60px; height:38px; padding:0; text-align:center; border-color:var(--ai-purple);" onclick="sendCustomAIMsg()">Sänd</button>
+      <input type="text" id="ai-user-input" class="chat-input" placeholder="Skriv fråga eller bifoga bild..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
+      <button class="btn" style="min-width:50px; height:38px; padding:0; text-align:center; border-color:var(--ai-purple);" onclick="sendCustomAIMsg()">Sänd</button>
     </div>
   </div>
 
@@ -141,6 +158,10 @@
     let state = { isNightMode: false };
     let recognition = null;
     let isListening = false;
+    
+    // VARIABLER FÖR ATT HÅLLA BILD-DATA
+    let attachedFileData = null; 
+    let attachedFileMime = null;
 
     window.addEventListener('DOMContentLoaded', () => {
       checkKeyStatus();
@@ -153,12 +174,39 @@
 
       if (savedKey && savedKey.trim().length > 10) {
         let masked = savedKey.trim().substring(0, 6) + "..." + savedKey.trim().substring(savedKey.trim().length - 4);
-        statusEl.textContent = `🟢 Matchad (${masked})`;
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>AI:</b> Nu kör vi på din exakta curl-sökväg: <u>gemini-flash-latest</u>! Testa att skriva 'Hej'. 🚤</div>`;
+        statusEl.textContent = `🟢 Vision-Läge (${masked})`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>AI:</b> Systemet är uppgraderat! Nu kan du klicka på gem-ikonen (📎) för att fota eller bifoga en bild på t.ex. motorn eller instrumentpanelen. Tryck sedan på sänd!</div>`;
       } else {
         statusEl.textContent = "🔴 Ingen nyckel sparad.";
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>AI:</b> Tryck på <b>⚙️ Nyckel</b> och klistra in din nyckel.</div>`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>AI:</b> Tryck på <b>⚙️ Nyckel</b> för att spara din nyckel lokalt.</div>`;
       }
+    }
+
+    // HANTERA NÄR ANVÄNDAREN VÄLJER EN BILD
+    function handleFileSelect(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      attachedFileMime = file.type;
+      const reader = new FileReader();
+      
+      reader.onload = function(e) {
+        // Splitta bort "data:image/jpeg;base64," för att bara få rå-datan som Google vill ha
+        attachedFileData = e.target.result.split(',')[1];
+        
+        // Visa förhandsgranskningen i chatten
+        document.getElementById("file-preview-img").src = e.target.result;
+        document.getElementById("file-preview-name").textContent = file.name.length > 20 ? file.name.substring(0,18) + "..." : file.name;
+        document.getElementById("file-preview-container").style.display = "flex";
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function clearSelectedFile() {
+      attachedFileData = null;
+      attachedFileMime = null;
+      document.getElementById("ai-file-input").value = "";
+      document.getElementById("file-preview-container").style.display = "none";
     }
 
     function promptApiKey() {
@@ -189,15 +237,29 @@
 
     function sendCustomAIMsg() {
       const input = document.getElementById("ai-user-input");
-      const text = input.value.trim();
-      if (!text) return;
-      appendChatMsg("Du", text);
+      let text = input.value.trim();
+      
+      if (!text && !attachedFileData) return;
+      
+      let displayLabel = text;
+      if (attachedFileData && !text) {
+        displayLabel = "<i>Skickade en bild...</i>";
+      } else if (attachedFileData) {
+        displayLabel = `🖼️ [Bild bifogad] ${text}`;
+      }
+
+      appendChatMsg("Du", displayLabel);
       input.value = "";
-      callGeminiLiveAPI(text);
+      
+      // Skicka med texten samt bild-datan om den finns
+      callGeminiLiveAPI(text || "Analysera denna bild från båten.", attachedFileData, attachedFileMime);
+      
+      // Rensa förhandsgranskningen direkt efter sändning
+      clearSelectedFile();
     }
 
-    // EXAKT EXKREVERING AV DIN CURL-SÖKVÄG (GEMINI-FLASH-LATEST)
-    async function callGeminiLiveAPI(promptText) {
+    // MULTIMODAL MOTOR (STÖDER BÅDE TEXT OCH RAW BASE64-BILDER)
+    async function callGeminiLiveAPI(promptText, fileBase64 = null, fileMime = null) {
       let apiKey = localStorage.getItem("gemini_api_key");
       if (!apiKey) {
         appendChatMsg("AI", "❌ Lägg till en nyckel via inställningarna först.");
@@ -205,17 +267,28 @@
       }
 
       apiKey = apiKey.trim();
-      document.getElementById("ai-status").textContent = "🔮 Anropar Google Studio...";
+      document.getElementById("ai-status").textContent = "🔮 Ögon öppna, analyserar...";
 
-      // Ändrad från gemini-1.5-flash-latest till enbart gemini-flash-latest för att spegla din curl helt identiskt!
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
       
+      // Bygg upp en dynamisk struktur för att stödja både text och bild samtidigt
+      let partsArray = [{ text: `Du är Mike, en legendarisk och hjälpsam båtmotorexpert. Svara kort, proffsigt och koncist på svenska: ${promptText}` }];
+      
+      if (fileBase64 && fileMime) {
+        partsArray.push({
+          inlineData: {
+            mimeType: fileMime,
+            data: fileBase64
+          }
+        });
+      }
+
       try {
         const response = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: `Du är Mike, en pedagogisk båtmotorexpert. Svara mycket kort och koncist på svenska: ${promptText}` }] }]
+            contents: [{ parts: partsArray }]
           })
         });
 
@@ -228,7 +301,7 @@
             errorText = `Statuskod ${response.status}`;
           }
           appendChatMsg("AI", `⚠️ <b>Google API Fel:</b> ${errorText}`);
-          document.getElementById("ai-status").textContent = "❌ Fel vid anrop.";
+          document.getElementById("ai-status").textContent = "❌ Fel vid analys.";
           return;
         }
 
@@ -236,7 +309,7 @@
         if (data.candidates && data.candidates[0].content.parts[0].text) {
           let aiResponse = data.candidates[0].content.parts[0].text;
           appendChatMsg("AI", aiResponse);
-          document.getElementById("ai-status").textContent = "🟢 Svar mottaget.";
+          document.getElementById("ai-status").textContent = "🟢 Analys klar.";
 
           if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
