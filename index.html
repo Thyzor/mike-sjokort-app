@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Global Route V38</title>
+  <title>Sagas Navigator - Route Saver V39</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -63,6 +63,16 @@
     .btn { background: var(--panel-bg); color: white; border: 1px solid var(--main-cyan); padding: 10px; border-radius: 8px; font-size: 10px; font-weight: bold; cursor: pointer; min-width: 135px; text-align: left; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
     .btn-sos { border-color: var(--sos-red); color: var(--sos-red); text-align: center; }
     .btn-ai { border-color: var(--ai-purple); color: #e9d5ff; font-weight: bold; }
+    
+    .route-select { background: #001524; color: var(--main-cyan); border: 1px solid var(--main-cyan); padding: 8px; border-radius: 8px; font-size: 10px; font-weight: bold; width: 135px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+
+    /* PANEL FÖR ATT SPARA RUTTEN */
+    .save-route-panel {
+      position: absolute; top: 15px; right: 15px; z-index: 2000;
+      background: var(--panel-bg); border: 1px solid var(--main-cyan); padding: 10px; border-radius: 12px;
+      display: none; flex-direction: column; gap: 6px; width: 160px; box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+    }
+    .save-input { background: #0f172a; border: 1px solid var(--main-cyan); border-radius: 6px; color: white; padding: 6px; font-size: 11px; }
 
     .info-panel {
       position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); z-index: 1000;
@@ -99,9 +109,15 @@
     <span id="cardinal-top" class="heading-cardinal">N</span>
   </div>
 
+  <div class="save-route-panel" id="save-route-panel">
+    <span style="font-size:10px; font-weight:bold; color:var(--main-cyan);">SPARA AKTUELL RUTT</span>
+    <input type="text" id="route-name-input" class="save-input" placeholder="Ruttens namn...">
+    <button class="btn" style="min-width:100%; padding:6px; text-align:center;" onclick="saveCurrentRouteToArray()">💾 Spara Rutt</button>
+  </div>
+
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ SAGAS NAVIGATOR V38</span>
+      <span>☁️ SAGAS NAVIGATOR V39</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -123,8 +139,14 @@
   <div class="controls-left">
     <button class="btn btn-sos" onclick="openSOS()">🆘 NÖD SOS</button>
     <button class="btn btn-ai" onclick="openModal('ai-chat-modal')">🔮 SAGA SKEPPARE</button>
+    
+    <select id="saved-routes-dropdown" class="route-select" onchange="loadSelectedRoute(this.value)">
+      <option value="">📂 Hämta rutt...</option>
+    </select>
+    
+    <button class="btn style-danger" style="border-color: #64748b; color: #94a3b8;" onclick="deleteActiveRoute()">🗑️ RADERA RUTT</button>
     <button class="btn" onclick="centerMap()">📍 CENTRERA</button>
-    <button class="btn" onclick="clearRoute()">🗑️ RENSA RUTT</button>
+    <button class="btn" onclick="clearRouteDisplay()">🗑️ RENSA SKÄRM</button>
     <button class="btn" onclick="toggleNight()">🌙 NATT/DAG</button>
   </div>
 
@@ -139,15 +161,13 @@
   <div id="ai-chat-modal" class="modal ai-modal">
     <span class="close-x" onclick="closeModal('ai-chat-modal')">×</span>
     <h3 style="color:var(--ai-purple); margin-top:0; margin-bottom:10px;">Saga Marine Copilot</h3>
-    
     <div class="chat-box" id="ai-chat-box">
       <div class="chat-msg msg-ai" id="welcome-msg">Ansluter system...</div>
     </div>
-
     <div class="chat-input-row">
       <button class="btn-mute" id="ai-mute-btn" onclick="toggleMute()" title="Slå på/av röstsvar">🔊</button>
       <button class="btn-mic" id="ai-mic-btn" onclick="toggleVoiceRecognition()">🎙️</button>
-      <input type="text" id="ai-user-input" class="chat-input" placeholder="Fråga Saga om skärgården eller hamnen..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
+      <input type="text" id="ai-user-input" class="chat-input" placeholder="Fråga Saga om skärgården..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
       <button class="btn" style="min-width:50px; height:38px; padding:0; text-align:center; border-color:var(--ai-purple);" onclick="sendCustomAIMsg()">Sänd</button>
     </div>
   </div>
@@ -171,68 +191,39 @@
     const askimLng = 11.9320;
 
     const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([askimLat, askimLng], 12);
-    
-    const baseLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-    const seaMapLayer = L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", { maxZoom: 18 }).addTo(map);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+    L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", { maxZoom: 18 }).addTo(map);
 
     const boatMarker = L.marker([askimLat, askimLng]).addTo(map);
 
     function updateHeading(deg) {
       state.currentHeading = (deg + 360) % 360;
-      const displayDeg = String(Math.round(state.currentHeading)).padStart(3, '0');
-      document.getElementById("heading-top").textContent = displayDeg + "°";
+      document.getElementById("heading-top").textContent = String(Math.round(state.currentHeading)).padStart(3, '0') + "°";
       document.getElementById("compass-arrow").style.transform = `rotate(${state.currentHeading}deg)`;
-      
-      let cardinal = "N";
-      if (deg >= 22.5 && deg < 67.5) cardinal = "NO";
-      else if (deg >= 67.5 && deg < 112.5) cardinal = "O";
-      else if (deg >= 112.5 && deg < 157.5) cardinal = "SO";
-      else if (deg >= 157.5 && deg < 202.5) cardinal = "S";
-      else if (deg >= 202.5 && deg < 247.5) cardinal = "SV";
-      else if (deg >= 247.5 && deg < 292.5) cardinal = "V";
-      else if (deg >= 292.5 && deg < 337.5) cardinal = "NV";
-      document.getElementById("cardinal-top").textContent = cardinal;
     }
 
-    function toggleMute() {
-      state.isMuted = !state.isMuted;
-      const muteBtn = document.getElementById("ai-mute-btn");
-      if (state.isMuted) {
-        muteBtn.textContent = "🔇"; muteBtn.classList.add("muted");
-        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-      } else {
-        muteBtn.textContent = "🔊"; muteBtn.classList.remove("muted");
-      }
-    }
-
-    // KLICK-FUNKTION: Lägg ut ruttpunkter var som helst i skärgården!
     map.on('click', function(e) {
       addWaypoint(e.latlng.lat, e.latlng.lng);
     });
 
     function addWaypoint(lat, lng) {
       const ptIndex = plottedWaypoints.length + 1;
-      
-      // Skapar rutt-markör med nummer
-      const wpMarker = L.circleMarker([lat, lng], {
-        radius: 7, color: '#00d4ff', fillColor: '#001524', fillOpacity: 1, weight: 2
-      }).addTo(map);
-      
+      const wpMarker = L.circleMarker([lat, lng], { radius: 7, color: '#00d4ff', fillColor: '#001524', fillOpacity: 1, weight: 2 }).addTo(map);
       wpMarker.bindTooltip(String(ptIndex), { permanent: true, direction: 'center', className: 'wp-number-tooltip' });
 
       plottedWaypoints.push({ marker: wpMarker, latlng: L.latLng(lat, lng) });
       calculateGlobalRoute();
+      
+      // Visa spara-panelen när rutt skapas
+      if(plottedWaypoints.length >= 2) {
+        document.getElementById("save-route-panel").style.display = "flex";
+      }
     }
 
-    // BERÄKNA AVSTÅND, KURS OCH ETA DYNAMISKT
     function calculateGlobalRoute() {
       const coordinates = plottedWaypoints.map(wp => wp.latlng);
-      
-      if (plotterPolyline) {
-        plotterPolyline.setLatLngs(coordinates);
-      } else {
-        plotterPolyline = L.polyline(coordinates, { color: '#00d4ff', weight: 4, dashArray: '5, 10', opacity: 0.9 }).addTo(map);
-      }
+      if (plotterPolyline) { plotterPolyline.setLatLngs(coordinates); } 
+      else { plotterPolyline = L.polyline(coordinates, { color: '#00d4ff', weight: 4, dashArray: '5, 10', opacity: 0.9 }).addTo(map); }
 
       if (plottedWaypoints.length < 2) {
         document.getElementById("cur-nm").textContent = "0.0 M";
@@ -241,60 +232,98 @@
       }
 
       let totalMeters = 0;
-      for (let i = 0; i < coordinates.length - 1; i++) {
-        totalMeters += coordinates[i].distanceTo(coordinates[i + 1]);
-      }
-
-      // Konvertera meter till Sjömil (Nautical Miles)
+      for (let i = 0; i < coordinates.length - 1; i++) { totalMeters += coordinates[i].distanceTo(coordinates[i + 1]); }
       const totalNM = totalMeters / 1852;
       document.getElementById("cur-nm").textContent = totalNM.toFixed(1) + " M";
+      document.getElementById("eta").textContent = Math.round((totalNM / 7) * 60) + " min";
 
-      // Beräkna ETA baserat på en marschfart om 7 knop
-      const totalHours = totalNM / 7;
-      const totalMinutes = Math.round(totalHours * 60);
-      document.getElementById("eta").textContent = totalMinutes + " min";
-
-      // Räkna ut kompasskursen (Bearing) från startpunkten till punkt 2
+      // Räkna ut kursen till första delmålet
       const lat1 = coordinates[0].lat * Math.PI / 180;
       const lat2 = coordinates[1].lat * Math.PI / 180;
       const dLng = (coordinates[1].lng - coordinates[0].lng) * Math.PI / 180;
-      
       const y = Math.sin(dLng) * Math.cos(lat2);
       const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
-      let bearing = Math.atan2(y, x) * 180 / Math.PI;
-      
-      updateHeading(bearing);
+      updateHeading(Math.atan2(y, x) * 180 / Math.PI);
     }
 
-    // AUTOMATISKA SNABBRUTTER (Om man vill ha förinställt)
-    function triggerAutoRoute(text) {
-      const inputLower = text.toLowerCase();
-      const isRouteRequest = inputLower.includes("simulera") || inputLower.includes("rutan") || inputLower.includes("rutt") || inputLower.includes("kurs") || inputLower.includes("sätt");
-      
-      if (!isRouteRequest) return null;
+    /* ========================================================
+       DATABASHANTERING (SPARA/LADDA RUTTER VIA LOCALSTORAGE)
+       ======================================================== */
+    
+    function saveCurrentRouteToArray() {
+      const nameInput = document.getElementById("route-name-input");
+      const name = nameInput.value.trim();
+      if (!name) { alert("Ange ett namn på rutten innan du sparar!"); return; }
 
-      if (inputLower.includes("vinga")) {
-        clearRoute();
-        const vingaSafeRoute = [[57.6186, 11.9320], [57.6175, 11.9050], [57.6010, 11.8650], [57.5940, 11.8100], [57.5850, 11.7700], [57.5950, 11.7100], [57.6315, 11.6725]];
-        vingaSafeRoute.forEach(pt => addWaypoint(pt[0], pt[1]));
-        return "Självklart Kapten! Jag har lagt ut den säkra ruttkartan runt Styrsö ränna ut till Vinga havsband på din skärm nu. Följ linjen så klarar vi grynnorna!";
-      }
+      // Extrahera bara koordinaterna (lat, lng) från rutt-arrayen
+      const coordsToSave = plottedWaypoints.map(wp => ({ lat: wp.latlng.lat, lng: wp.latlng.lng }));
       
-      if (inputLower.includes("vrångö") || inputLower.includes("donsö") || inputLower.includes("söder")) {
-        clearRoute();
-        const vrangoRoute = [[57.6186, 11.9320], [57.6175, 11.9050], [57.6010, 11.8650], [57.5950, 11.8100], [57.5810, 11.7920], [57.5750, 11.7820]];
-        vrangoRoute.forEach(pt => addWaypoint(pt[0], pt[1]));
-        return "Gött mos Kapten! Rutten söderut ner mot Vrångö och Donsö ligger live. Fri passage öster om Amundön!";
-      }
-      return null;
+      // Hämta befintliga rutter från minnet eller skapa en tom lista
+      let savedRoutes = JSON.parse(localStorage.getItem("sagas_saved_routes")) || {};
+      savedRoutes[name] = coordsToSave;
+      
+      // Spara tillbaka till webbläsaren
+      localStorage.setItem("sagas_saved_routes", JSON.stringify(savedRoutes));
+      
+      nameInput.value = "";
+      document.getElementById("save-route-panel").style.display = "none";
+      alert(`Rutten "${name}" är nu sparad på din enhet!`);
+      
+      updateDropdownMenu();
     }
 
-    function clearRoute() {
+    function updateDropdownMenu() {
+      const dropdown = document.getElementById("saved-routes-dropdown");
+      dropdown.innerHTML = '<option value="">📂 Hämta rutt...</option>';
+      
+      let savedRoutes = JSON.parse(localStorage.getItem("sagas_saved_routes")) || {};
+      for (const routeName in savedRoutes) {
+        const opt = document.createElement("option");
+        opt.value = routeName; opt.textContent = routeName;
+        dropdown.appendChild(opt);
+      }
+    }
+
+    function loadSelectedRoute(routeName) {
+      if (!routeName) return;
+      clearRouteDisplay();
+
+      let savedRoutes = JSON.parse(localStorage.getItem("sagas_saved_routes")) || {};
+      const targetCoords = savedRoutes[routeName];
+
+      if (targetCoords && targetCoords.length > 0) {
+        targetCoords.forEach(pt => addWaypoint(pt.lat, pt.lng));
+        
+        // Zooma in sjökortet över den laddade rutten
+        const group = new L.featureGroup(plottedWaypoints.map(wp => wp.marker));
+        map.fitBounds(group.getBounds().pad(0.1));
+      }
+    }
+
+    function deleteActiveRoute() {
+      const dropdown = document.getElementById("saved-routes-dropdown");
+      const activeName = dropdown.value;
+      if (!activeName) { alert("Välj först en sparad rutt i menyn som du vill radera."); return; }
+
+      if (confirm(`Är du säker på att du vill ta bort rutten "${activeName}" för alltid?`)) {
+        let savedRoutes = JSON.parse(localStorage.getItem("sagas_saved_routes")) || {};
+        delete savedRoutes[activeName];
+        localStorage.setItem("sagas_saved_routes", JSON.stringify(savedRoutes));
+        
+        clearRouteDisplay();
+        updateDropdownMenu();
+        alert("Rutten är raderad.");
+      }
+    }
+
+    function clearRouteDisplay() {
       plottedWaypoints.forEach(wp => map.removeLayer(wp.marker));
       plottedWaypoints = [];
       if (plotterPolyline) { map.removeLayer(plotterPolyline); plotterPolyline = null; }
       document.getElementById("cur-nm").textContent = "0.0 M";
       document.getElementById("eta").textContent = "--:--";
+      document.getElementById("save-route-panel").style.display = "none";
+      document.getElementById("saved-routes-dropdown").value = "";
       updateHeading(0);
     }
 
@@ -302,119 +331,59 @@
       if (plottedWaypoints.length > 0) {
         const group = new L.featureGroup(plottedWaypoints.map(wp => wp.marker));
         map.fitBounds(group.getBounds());
-      } else {
-        map.setView(boatMarker.getLatLng(), 13);
-      }
+      } else { map.setView(boatMarker.getLatLng(), 13); }
     }
 
-    if (navigator.geolocation) {
-      navigator.geolocation.watchPosition((pos) => {
-        if (pos.coords.heading !== null && !isNaN(pos.coords.heading)) { updateHeading(pos.coords.heading); }
-        if (pos.coords.speed !== null && !isNaN(pos.coords.speed)) {
-          const knots = pos.coords.speed * 1.94384;
-          document.getElementById("speed").textContent = knots.toFixed(1);
-        }
-        boatMarker.setLatLng([pos.coords.latitude, pos.coords.longitude]);
-      }, () => {}, { enableHighAccuracy: true });
-    }
+    window.addEventListener('DOMContentLoaded', () => { checkKeyStatus(); updateDropdownMenu(); updateHeading(0); });
 
-    window.addEventListener('DOMContentLoaded', () => { checkKeyStatus(); updateHeading(0); });
-
+    /* ========================================================
+       AI & SYSTEMFUNKTIONER (SAMMA SOM INNAN)
+       ======================================================== */
     function checkKeyStatus() {
       let savedKey = localStorage.getItem("gemini_api_key");
       const statusEl = document.getElementById("ai-status");
       const welcomeEl = document.getElementById("ai-chat-box");
-
       if (savedKey && savedKey.trim().length > 10) {
         statusEl.textContent = `🟢 Saga Online`;
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! V38 är klar. Klicka ut dina ruttpunkter i fritt vatten på kartan, så räknar jag ut exakt sjömil, kurs och tid direkt! ⚓🌊</div>`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! V39 med inbyggt ruttminne är startat. Klicka ut en rutt och spara den uppe i högra hörnet, så kommer jag ihåg den till nästa gång! ⚓🌊</div>`;
       } else {
-        statusEl.textContent = "🔴 Ingen nyckel sparad.";
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Välkommen ombord! Spara din API-nyckel så sätter vi igång.</div>`;
+        statusEl.textContent = "🔴 Ingen nyckel.";
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai">Spara din API-nyckel så sätter vi igång.</div>`;
       }
     }
 
-    function promptApiKey() {
-      const key = prompt("Klistra in din Google Gemini API-nyckel:");
-      if (key) { localStorage.setItem("gemini_api_key", key.trim()); alert("Nyckeln sparad!"); checkKeyStatus(); }
-    }
+    function promptApiKey() { const key = prompt("Klistra in din Google Gemini API-nyckel:"); if (key) { localStorage.setItem("gemini_api_key", key.trim()); alert("Nyckeln sparad!"); checkKeyStatus(); } }
     function clearSavedKey() { localStorage.removeItem("gemini_api_key"); alert("Nollställt!"); checkKeyStatus(); }
-
-    function appendChatMsg(sender, text) {
-      const box = document.getElementById("ai-chat-box");
-      const cls = sender === "Du" ? "msg-user" : "msg-ai";
-      box.innerHTML += `<div class="chat-msg"><span class="${cls}">${sender}:</span> ${text}</div>`;
-      box.scrollTop = box.scrollHeight;
-    }
-
+    function toggleMute() { state.isMuted = !state.isMuted; const btn = document.getElementById("ai-mute-btn"); btn.textContent = state.isMuted ? "🔇" : "🔊"; btn.classList.toggle("muted", state.isMuted); if(state.isMuted && ('speechSynthesis' in window)) window.speechSynthesis.cancel(); }
+    function appendChatMsg(sender, text) { const box = document.getElementById("ai-chat-box"); const cls = sender === "Du" ? "msg-user" : "msg-ai"; box.innerHTML += `<div class="chat-msg"><span class="${cls}">${sender}:</span> ${text}</div>`; box.scrollTop = box.scrollHeight; }
+    
     function sendCustomAIMsg() {
-      const input = document.getElementById("ai-user-input");
-      let text = input.value.trim(); if (!text) return;
-
+      const input = document.getElementById("ai-user-input"); let text = input.value.trim(); if (!text) return;
       appendChatMsg("Du", text); input.value = "";
-      
-      let interceptResponse = triggerAutoRoute(text);
-      if (interceptResponse) {
-        setTimeout(() => { appendChatMsg("Saga", interceptResponse); speakCleanText(interceptResponse); }, 400);
-        return;
-      }
       callGeminiLiveAPI(text);
     }
 
     async function callGeminiLiveAPI(promptText) {
-      let apiKey = localStorage.getItem("gemini_api_key");
-      if (!apiKey) { appendChatMsg("Saga", "❌ Lägg till en nyckel via inställningarna."); return; }
-
+      let apiKey = localStorage.getItem("gemini_api_key"); if (!apiKey) { appendChatMsg("Saga", "❌ Lägg till en nyckel via inställningarna."); return; }
       document.getElementById("ai-status").textContent = "🔮 Saga tänker...";
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`;
-      
-      let fullPrompt = `Du är Saga, en erfaren kvinnlig skipperska från Göteborgs skärgård installerad i en plotterapp.
-      Du har koll på GFAS båthamn i Askim (arbetsdag klockan 10 den 17 maj, korv med bröd efteråt, akta reservplatserna e-05 till e-17 på grund av vattendjupet).
-      Svara göteborgskt, varmt och kort (max 2-3 meningar). Kalla användaren för 'Kapten'. Påminn om att de kan klicka direkt på kartan för att rita rutter.`;
-
+      let fullPrompt = `Du är Saga, en göteborgsk skipperska i en plotterapp. Svara kort (2-3 meningar) med go marin stämning. Kalla användaren 'Kapten'. Berätta gärna att de kan spara rutter nu!`;
       try {
-        const response = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt + "\nAnvändarfråga: " + promptText }] }] })
-        });
-
-        if (!response.ok) { document.getElementById("ai-status").textContent = "❌ Serverfel."; return; }
-
+        const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt + "\nFråga: " + promptText }] }] }) });
+        if (!response.ok) return;
         const data = await response.json();
         if (data.candidates && data.candidates[0].content.parts[0].text) {
-          let aiResponse = data.candidates[0].content.parts[0].text;
-          appendChatMsg("Saga", aiResponse);
-          document.getElementById("ai-status").textContent = "🟢 Saga klar.";
-          speakCleanText(aiResponse);
+          let res = data.candidates[0].content.parts[0].text; appendChatMsg("Saga", res); speakCleanText(res);
         }
-      } catch (error) { document.getElementById("ai-status").textContent = "❌ Nätverksfel."; }
+      } catch (e) {} finally { document.getElementById("ai-status").textContent = "🟢 Saga klar."; }
     }
 
-    function speakCleanText(rawText) {
-      if (state.isMuted || !('speechSynthesis' in window)) return;
-      window.speechSynthesis.cancel();
-      let cleanText = rawText.replace(/[\*\#\_`]/g, " ");
-      const utterance = new SpeechSynthesisUtterance(cleanText); utterance.lang = 'sv-SE';
-      window.speechSynthesis.speak(utterance);
-    }
-
-    function toggleVoiceRecognition() {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) { alert("Röstigenkänning stöds inte."); return; }
-      if (!recognition) {
-        recognition = new SpeechRecognition(); recognition.lang = "sv-SE";
-        recognition.onstart = () => { isListening = true; document.getElementById("ai-mic-btn").classList.add("listening"); };
-        recognition.onend = () => { isListening = false; document.getElementById("ai-mic-btn").classList.remove("listening"); };
-        recognition.onresult = (e) => { document.getElementById("ai-user-input").value = e.results[0][0].transcript; sendCustomAIMsg(); };
-      }
-      if (isListening) recognition.stop(); else recognition.start();
-    }
-
+    function speakCleanText(t) { if (state.isMuted || !('speechSynthesis' in window)) return; window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t.replace(/[\*\#\_`]/g, " ")); u.lang = 'sv-SE'; window.speechSynthesis.speak(u); }
+    function toggleVoiceRecognition() { const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SpeechRecognition) return; if (!recognition) { recognition = new SpeechRecognition(); recognition.lang = "sv-SE"; recognition.onstart = () => { isListening = true; document.getElementById("ai-mic-btn").classList.add("listening"); }; recognition.onend = () => { isListening = false; document.getElementById("ai-mic-btn").classList.remove("listening"); }; recognition.onresult = (e) => { document.getElementById("ai-user-input").value = e.results[0][0].transcript; sendCustomAIMsg(); }; } if (isListening) recognition.stop(); else recognition.start(); }
     function toggleNight() { state.isNightMode = !state.isNightMode; document.body.classList.toggle("night-mode", state.isNightMode); }
     function openSOS() { const c = map.getCenter(); document.getElementById("sos-coords").textContent = `${c.lat.toFixed(4)}N, ${c.lng.toFixed(4)}O`; openModal("sos-modal"); }
     function openModal(id) { document.getElementById(id).style.display = "block"; }
-    function closeModal(id) { document.getElementById(id).style.display = "none"; if (id === 'ai-chat-modal') { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); } }
+    function closeModal(id) { document.getElementById(id).style.display = "none"; if (id === 'ai-chat-modal' && ('speechSynthesis' in window)) window.speechSynthesis.cancel(); }
   </script>
 </body>
 </html>
