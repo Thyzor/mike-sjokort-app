@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Mikes Navigator - Vision V25</title>
+  <title>Mikes Navigator - Universal Files V26</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -66,9 +66,9 @@
     .msg-user { color: var(--main-cyan); font-weight: bold; }
     .msg-ai { color: #e9d5ff; }
     
-    /* NYTT FÖR BILD-PREVIEW */
     .preview-container { display: none; padding: 6px; background: rgba(168, 85, 247, 0.1); border: 1px dashed var(--ai-purple); border-radius: 6px; margin-bottom: 10px; align-items: center; justify-content: space-between; font-size: 11px; }
-    .preview-img { height: 35px; border-radius: 4px; border: 1px solid var(--ai-purple); }
+    .preview-icon { font-size: 20px; margin-right: 4px; }
+    .preview-img { height: 35px; border-radius: 4px; border: 1px solid var(--ai-purple); display: none; }
     .preview-remove { color: var(--sos-red); cursor: pointer; font-weight: bold; font-size: 14px; margin-right: 5px; }
 
     .chat-input-row { display: flex; gap: 6px; align-items: center; }
@@ -89,7 +89,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ MIKE NAVIGATOR V25 (VISION)</span>
+      <span>☁️ MIKE NAVIGATOR V26 (ALL FILES)</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -131,18 +131,19 @@
 
     <div class="preview-container" id="file-preview-container">
       <div style="display:flex; align-items:center; gap:8px;">
+        <span id="file-preview-icon" class="preview-icon">📄</span>
         <img src="" id="file-preview-img" class="preview-img" />
-        <span id="file-preview-name">bild.jpg</span>
+        <span id="file-preview-name">filnamn.pdf</span>
       </div>
       <span class="preview-remove" onclick="clearSelectedFile()">×</span>
     </div>
 
     <div class="chat-input-row">
-      <input type="file" id="ai-file-input" accept="image/*" style="display:none;" onchange="handleFileSelect(this)">
+      <input type="file" id="ai-file-input" accept="*/*" style="display:none;" onchange="handleFileSelect(this)">
       <button class="btn-file-trigger" onclick="document.getElementById('ai-file-input').click()">📎</button>
       
       <button class="btn-mic" id="ai-mic-btn" onclick="toggleVoiceRecognition()">🎙️</button>
-      <input type="text" id="ai-user-input" class="chat-input" placeholder="Skriv fråga eller bifoga bild..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
+      <input type="text" id="ai-user-input" class="chat-input" placeholder="Fråga eller ladda upp manual/bild..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
       <button class="btn" style="min-width:50px; height:38px; padding:0; text-align:center; border-color:var(--ai-purple);" onclick="sendCustomAIMsg()">Sänd</button>
     </div>
   </div>
@@ -159,9 +160,10 @@
     let recognition = null;
     let isListening = false;
     
-    // VARIABLER FÖR ATT HÅLLA BILD-DATA
+    // FIL-DATAKONTEXT
     let attachedFileData = null; 
     let attachedFileMime = null;
+    let attachedFileTextContent = null; // För råtextfiler (.txt, .log, .csv)
 
     window.addEventListener('DOMContentLoaded', () => {
       checkKeyStatus();
@@ -174,37 +176,69 @@
 
       if (savedKey && savedKey.trim().length > 10) {
         let masked = savedKey.trim().substring(0, 6) + "..." + savedKey.trim().substring(savedKey.trim().length - 4);
-        statusEl.textContent = `🟢 Vision-Läge (${masked})`;
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>AI:</b> Systemet är uppgraderat! Nu kan du klicka på gem-ikonen (📎) för att fota eller bifoga en bild på t.ex. motorn eller instrumentpanelen. Tryck sedan på sänd!</div>`;
+        statusEl.textContent = `🟢 Universal Media (${masked})`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>AI:</b> Systemet är vidöppet! Du kan nu ladda upp **bilder, PDF-manualer, loggar eller textfiler** via gemet (📎).</div>`;
       } else {
         statusEl.textContent = "🔴 Ingen nyckel sparad.";
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>AI:</b> Tryck på <b>⚙️ Nyckel</b> för att spara din nyckel lokalt.</div>`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>AI:</b> Tryck på <b>⚙️ Nyckel</b> för att spara din nyckel.</div>`;
       }
     }
 
-    // HANTERA NÄR ANVÄNDAREN VÄLJER EN BILD
+    // UNIVERSELL FIL-INLÄSNING
     function handleFileSelect(input) {
       const file = input.files[0];
       if (!file) return;
 
-      attachedFileMime = file.type;
-      const reader = new FileReader();
+      attachedFileMime = file.type || "application/octet-stream";
+      const iconEl = document.getElementById("file-preview-icon");
+      const imgEl = document.getElementById("file-preview-img");
       
-      reader.onload = function(e) {
-        // Splitta bort "data:image/jpeg;base64," för att bara få rå-datan som Google vill ha
-        attachedFileData = e.target.result.split(',')[1];
+      document.getElementById("file-preview-name").textContent = file.name.length > 20 ? file.name.substring(0,18) + "..." : file.name;
+
+      // Om det är en bild, läs som Base64 och visa miniatyr
+      if (attachedFileMime.startsWith("image/")) {
+        iconEl.style.display = "none";
+        imgEl.style.display = "block";
         
-        // Visa förhandsgranskningen i chatten
-        document.getElementById("file-preview-img").src = e.target.result;
-        document.getElementById("file-preview-name").textContent = file.name.length > 20 ? file.name.substring(0,18) + "..." : file.name;
-        document.getElementById("file-preview-container").style.display = "flex";
-      };
-      reader.readAsDataURL(file);
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          attachedFileData = e.target.result.split(',')[1];
+          imgEl.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      } 
+      // Om det är en ren textfil/loggfil, läs ut innehållet direkt
+      else if (attachedFileMime.startsWith("text/") || file.name.endsWith(".log") || file.name.endsWith(".csv")) {
+        imgEl.style.display = "none";
+        iconEl.style.display = "block";
+        iconEl.textContent = "📊";
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          attachedFileTextContent = e.target.result;
+        };
+        reader.readAsText(file);
+      } 
+      // För PDF-filer eller övriga dokumenttyper, kör binär Base64
+      else {
+        imgEl.style.display = "none";
+        iconEl.style.display = "block";
+        iconEl.textContent = file.name.endsWith(".pdf") ? "📕" : "📄";
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          attachedFileData = e.target.result.split(',')[1];
+        };
+        reader.readAsDataURL(file);
+      }
+
+      document.getElementById("file-preview-container").style.display = "flex";
     }
 
     function clearSelectedFile() {
       attachedFileData = null;
       attachedFileMime = null;
+      attachedFileTextContent = null;
       document.getElementById("ai-file-input").value = "";
       document.getElementById("file-preview-container").style.display = "none";
     }
@@ -239,27 +273,22 @@
       const input = document.getElementById("ai-user-input");
       let text = input.value.trim();
       
-      if (!text && !attachedFileData) return;
+      if (!text && !attachedFileData && !attachedFileTextContent) return;
       
       let displayLabel = text;
-      if (attachedFileData && !text) {
-        displayLabel = "<i>Skickade en bild...</i>";
-      } else if (attachedFileData) {
-        displayLabel = `🖼️ [Bild bifogad] ${text}`;
+      if ((attachedFileData || attachedFileTextContent) && !text) {
+        displayLabel = "<i>Skickade en bifogad fil...</i>";
+      } else if (attachedFileData || attachedFileTextContent) {
+        displayLabel = `📎 [Fil bifogad] ${text}`;
       }
 
       appendChatMsg("Du", displayLabel);
       input.value = "";
       
-      // Skicka med texten samt bild-datan om den finns
-      callGeminiLiveAPI(text || "Analysera denna bild från båten.", attachedFileData, attachedFileMime);
-      
-      // Rensa förhandsgranskningen direkt efter sändning
-      clearSelectedFile();
+      callGeminiLiveAPI(text);
     }
 
-    // MULTIMODAL MOTOR (STÖDER BÅDE TEXT OCH RAW BASE64-BILDER)
-    async function callGeminiLiveAPI(promptText, fileBase64 = null, fileMime = null) {
+    async function callGeminiLiveAPI(promptText) {
       let apiKey = localStorage.getItem("gemini_api_key");
       if (!apiKey) {
         appendChatMsg("AI", "❌ Lägg till en nyckel via inställningarna först.");
@@ -267,21 +296,34 @@
       }
 
       apiKey = apiKey.trim();
-      document.getElementById("ai-status").textContent = "🔮 Ögon öppna, analyserar...";
+      document.getElementById("ai-status").textContent = "🔮 Bearbetar dokument...";
 
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
       
-      // Bygg upp en dynamisk struktur för att stödja både text och bild samtidigt
-      let partsArray = [{ text: `Du är Mike, en legendarisk och hjälpsam båtmotorexpert. Svara kort, proffsigt och koncist på svenska: ${promptText}` }];
+      // Bygg grundprompten
+      let fullPrompt = `Du är Mike, en legendarisk och hjälpsam båtmotorexpert. Svara kort, proffsigt och koncist på svenska. `;
       
-      if (fileBase64 && fileMime) {
+      // Om det fanns textinnehåll i filen, injicera det direkt i instruktionen till AI:n
+      if (attachedFileTextContent) {
+        fullPrompt += `\n\n[Innehåll från bifogad textfil/loggfil]:\n${attachedFileTextContent}\n\n`;
+      }
+      
+      fullPrompt += promptText || "Analysera det bifogade materialet.";
+
+      let partsArray = [{ text: fullPrompt }];
+      
+      // Om det är en binär fil (bild eller PDF), skicka med den i inlineData
+      if (attachedFileData && attachedFileMime) {
         partsArray.push({
           inlineData: {
-            mimeType: fileMime,
-            data: fileBase64
+            mimeType: attachedFileMime,
+            data: attachedFileData
           }
         });
       }
+
+      // Nolla filfälten direkt så användaren kan ladda upp nytt under laddningstiden
+      clearSelectedFile();
 
       try {
         const response = await fetch(url, {
@@ -301,7 +343,7 @@
             errorText = `Statuskod ${response.status}`;
           }
           appendChatMsg("AI", `⚠️ <b>Google API Fel:</b> ${errorText}`);
-          document.getElementById("ai-status").textContent = "❌ Fel vid analys.";
+          document.getElementById("ai-status").textContent = "❌ Fel vid bearbetning.";
           return;
         }
 
@@ -309,7 +351,7 @@
         if (data.candidates && data.candidates[0].content.parts[0].text) {
           let aiResponse = data.candidates[0].content.parts[0].text;
           appendChatMsg("AI", aiResponse);
-          document.getElementById("ai-status").textContent = "🟢 Analys klar.";
+          document.getElementById("ai-status").textContent = "🟢 Svar klart.";
 
           if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
