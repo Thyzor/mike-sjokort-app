@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Flash Stable V35</title>
+  <title>Sagas Navigator - Multi-Route V36</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -109,7 +109,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ SAGAS NAVIGATOR V35</span>
+      <span>☁️ SAGAS NAVIGATOR V36</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -155,7 +155,7 @@
     <div class="chat-input-row">
       <button class="btn-mute" id="ai-mute-btn" onclick="toggleMute()" title="Slå på/av röstsvar">🔊</button>
       <button class="btn-mic" id="ai-mic-btn" onclick="toggleVoiceRecognition()">🎙️</button>
-      <input type="text" id="ai-user-input" class="chat-input" placeholder="Prata med Saga på västkustska..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
+      <input type="text" id="ai-user-input" class="chat-input" placeholder="Säg vart vi ska (Vinga eller Vrångö)..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
       <button class="btn" style="min-width:50px; height:38px; padding:0; text-align:center; border-color:var(--ai-purple);" onclick="sendCustomAIMsg()">Sänd</button>
     </div>
   </div>
@@ -178,7 +178,7 @@
     const askimLat = 57.6186;
     const askimLng = 11.9320;
 
-    const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([askimLat, askimLng], 12);
+    const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([askimLat, askimLng], 11);
     
     const baseLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
     const seaMapLayer = L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", { maxZoom: 18 }).addTo(map);
@@ -228,7 +228,7 @@
       updatePlotterLine();
     }
 
-    function updatePlotterLine() {
+    function updatePlotterLine(headingDeg = 245, etaText = "35 min") {
       const coordinates = plottedWaypoints.map(wp => wp.latlng);
       if (plotterPolyline) {
         plotterPolyline.setLatLngs(coordinates);
@@ -238,34 +238,59 @@
         }).addTo(map);
       }
       if(plottedWaypoints.length > 1) {
-        document.getElementById("eta").textContent = "35 min";
-        updateHeading(245); 
+        document.getElementById("eta").textContent = etaText;
+        updateHeading(headingDeg); 
       }
     }
 
+    // UPPDATERAD: Känner nu av skillnad på måldestinationer
     function triggerAutoRoute(text) {
       const inputLower = text.toLowerCase();
+      const isRouteRequest = inputLower.includes("simulera") || inputLower.includes("rutan") || inputLower.includes("rutt") || inputLower.includes("kurs");
       
-      if (inputLower.includes("vrångö") || inputLower.includes("simulera") || inputLower.includes("rutan") || inputLower.includes("rutt") || inputLower.includes("donsö")) {
+      if (!isRouteRequest) return null;
+
+      // Kollar om Kaptenen specifikt vill till Vinga
+      if (inputLower.includes("vinga")) {
         clearRoute();
         
-        // Genererar en rutt ner mot Donsö/Vrångö-området
-        const targetRoute = [
+        // Rutt ut ur viken och västerut mot Vingafyr
+        const vingaRoute = [
+          [57.6186, 11.9320], // GFAS Askim
+          [57.6250, 11.8750], // Ut på Rivö Fjord
+          [57.6330, 11.7850], // Söder om Vinga Sand
+          [57.6315, 11.6725]  // Vinga Angöring/Gästhamn
+        ];
+
+        vingaRoute.forEach(pt => addWaypoint(pt[0], pt[1]));
+        
+        const group = new L.featureGroup(plottedWaypoints.map(wp => wp.marker));
+        map.fitBounds(group.getBounds().pad(0.1));
+        
+        return "Självklart, Kapten! Nu lägger jag kursen västerut mot Vinga istället! Vi styr ut ur Askimsviken, går norr om Amundön, korsar Rivö fjord och siktar rakt ut i havsbandet. Pilen är inställd på västlig kurs 285°.";
+      }
+      
+      // Standardrutt ner mot Vrångö/Donsö
+      if (inputLower.includes("vrångö") || inputLower.includes("donsö") || inputLower.includes("söder")) {
+        clearRoute();
+        
+        const vrangoRoute = [
           [57.6186, 11.9320],
           [57.6175, 11.9050],
           [57.6010, 11.8650],
           [57.5950, 11.8100],
           [57.5810, 11.7920],
-          [57.5750, 11.7820],
+          [57.5750, 11.7820]
         ];
 
-        targetRoute.forEach(pt => addWaypoint(pt[0], pt[1]));
+        vrangoRoute.forEach(pt => addWaypoint(pt[0], pt[1]));
         
         const group = new L.featureGroup(plottedWaypoints.map(wp => wp.marker));
         map.fitBounds(group.getBounds().pad(0.1));
         
-        return "Gött mos, Kapten! Den optimala rutten ut mot öarna ligger live på din ruttplotter nu! Vi startar i Askimsviken, rundar Amundön på behörigt avstånd och tar farleden söderut. Pilen pekar ut kursen, bara att hänga med!";
+        return "Gött mos, Kapten! Den optimala rutten ner till södra skärgården och Vrångö ligger live på plottern. Vi rundar Amundön på behörigt avstånd och tar farleden söderut. Kursen är satt till 245°!";
       }
+      
       return null;
     }
 
@@ -308,7 +333,7 @@
 
       if (savedKey && savedKey.trim().length > 10) {
         statusEl.textContent = `🟢 Saga Online`;
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! V35 är säkrad och nätverkskopplingen till de nya stabila Flash-servrarna är uppdaterad. Vart styr vi skutan idag? ⚓🌊</div>`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! V36 är redo. Nu lyssnar jag noga på om du vill till Vinga eller Vrångö och ritar rätt rutt på direkten! ⚓🌊</div>`;
       } else {
         statusEl.textContent = "🔴 Ingen nyckel sparad.";
         welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Välkommen ombord! Spara din API-nyckel så sätter vi igång.</div>`;
@@ -340,6 +365,11 @@
       if (interceptResponse) {
         setTimeout(() => {
           appendChatMsg("Saga", interceptResponse);
+          // Justera kompassnålen beroende på destination
+          if(text.toLowerCase().includes("vinga")) {
+             updateHeading(285);
+             document.getElementById("eta").textContent = "50 min";
+          }
           speakCleanText(interceptResponse);
         }, 400);
         return;
@@ -353,17 +383,15 @@
       if (!apiKey) { appendChatMsg("Saga", "❌ Lägg till en nyckel via inställningarna."); return; }
 
       document.getElementById("ai-status").textContent = "🔮 Saga tänker...";
-      
-      // UPPDATERAD SLUTPUNKT: Använder stabila gemini-2.5-flash produktionsmodellen
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`;
       
       let fullPrompt = `Du är Saga, en erfaren kvinnlig skipperska, båtexpert och lokalnavigator från Göteborgs skärgård. 
       Du är installerad i användarens digitala plotterapp. 
       Dina drag:
-      1. Du har total koll på Göteborgs södra och norra skärgård (öar som Vrångö, Donsö, grynnorna i Askimsviken, etc.).
+      1. Du har total koll på Göteborgs skärgård (öar som Vrångö, Donsö, Vinga och grynnorna i Askimsviken).
       2. Du pratar med en sjösäker, göteborgsk, peppande och varm ton. Du kallar användaren för "Kapten".
       3. Svara alltid mycket kort, kärnfullt och direkt på svenska (max 2-3 meningar) så att det är lätt att läsa eller lyssna på i hög sjö.
-      4. Om användaren vill plotta/simulera en rutt, påminn bara glatt om att skriva t.ex 'Simulera rutt till Vrångö'.`;
+      4. Om användaren ber dig simulera eller sätta kurs, svara bekräftande utifrån vald destination.`;
 
       try {
         const response = await fetch(url, {
@@ -374,7 +402,7 @@
 
         if (!response.ok) {
           document.getElementById("ai-status").textContent = "❌ Serverfel.";
-          appendChatMsg("Saga", "⚠️ <b>API-fel.</b> Google nekade anslutningen. Kontrollera att din sparade API-nyckel stämmer.");
+          appendChatMsg("Saga", "⚠️ API-fel. Kontrollera din sparade API-nyckel.");
           return;
         }
 
