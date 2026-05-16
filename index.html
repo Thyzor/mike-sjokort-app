@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Safe Passage V37</title>
+  <title>Sagas Navigator - Global Route V38</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -58,13 +58,6 @@
       transition: transform 0.2s ease-out;
       filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
     }
-    .compass-arrow::after {
-      content: ''; position: absolute; top: 32px; left: -10px;
-      width: 0; height: 0;
-      border-left: 10px solid transparent;
-      border-right: 10px solid transparent;
-      border-top: 8px solid rgba(0, 21, 36, 0.85);
-    }
 
     .controls-left { position: absolute; top: 90px; left: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 6px; }
     .btn { background: var(--panel-bg); color: white; border: 1px solid var(--main-cyan); padding: 10px; border-radius: 8px; font-size: 10px; font-weight: bold; cursor: pointer; min-width: 135px; text-align: left; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
@@ -93,8 +86,7 @@
     
     .btn-mic { background: #1e1b4b; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; cursor: pointer; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
     .btn-mic.listening { background: var(--sos-red); border-color: white; }
-    
-    .btn-mute { background: #0f172a; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; cursor: pointer; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: all 0.2s; }
+    .btn-mute { background: #0f172a; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; cursor: pointer; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
     .btn-mute.muted { background: rgba(255, 0, 0, 0.2); border-color: var(--sos-red); color: var(--sos-red); }
   </style>
 </head>
@@ -109,7 +101,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ SAGAS NAVIGATOR V37</span>
+      <span>☁️ SAGAS NAVIGATOR V38</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -137,11 +129,11 @@
   </div>
 
   <div class="info-panel">
-    <div>DJUP <span id="cur-depth" class="info-value">>6m</span></div>
+    <div>DISTANS <span id="cur-nm" class="info-value">0.0 M</span></div>
     <div>KNOP <span id="speed" class="info-value">0.0</span></div>
     <div>VIND <span id="wind" class="info-value">3 m/s</span></div>
     <div>BRÄNSLE <span id="fuel" class="info-value">--</span></div>
-    <div>ETA <span id="eta" class="info-value">--:--</span></div>
+    <div>ETA (7kn) <span id="eta" class="info-value">--:--</span></div>
   </div>
 
   <div id="ai-chat-modal" class="modal ai-modal">
@@ -155,7 +147,7 @@
     <div class="chat-input-row">
       <button class="btn-mute" id="ai-mute-btn" onclick="toggleMute()" title="Slå på/av röstsvar">🔊</button>
       <button class="btn-mic" id="ai-mic-btn" onclick="toggleVoiceRecognition()">🎙️</button>
-      <input type="text" id="ai-user-input" class="chat-input" placeholder="Säg vart vi ska (Vinga eller Vrångö)..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
+      <input type="text" id="ai-user-input" class="chat-input" placeholder="Fråga Saga om skärgården eller hamnen..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
       <button class="btn" style="min-width:50px; height:38px; padding:0; text-align:center; border-color:var(--ai-purple);" onclick="sendCustomAIMsg()">Sänd</button>
     </div>
   </div>
@@ -178,7 +170,7 @@
     const askimLat = 57.6186;
     const askimLng = 11.9320;
 
-    const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([askimLat, askimLng], 11);
+    const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([askimLat, askimLng], 12);
     
     const baseLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
     const seaMapLayer = L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", { maxZoom: 18 }).addTo(map);
@@ -186,7 +178,7 @@
     const boatMarker = L.marker([askimLat, askimLng]).addTo(map);
 
     function updateHeading(deg) {
-      state.currentHeading = deg % 360;
+      state.currentHeading = (deg + 360) % 360;
       const displayDeg = String(Math.round(state.currentHeading)).padStart(3, '0');
       document.getElementById("heading-top").textContent = displayDeg + "°";
       document.getElementById("compass-arrow").style.transform = `rotate(${state.currentHeading}deg)`;
@@ -206,93 +198,94 @@
       state.isMuted = !state.isMuted;
       const muteBtn = document.getElementById("ai-mute-btn");
       if (state.isMuted) {
-        muteBtn.textContent = "🔇";
-        muteBtn.classList.add("muted");
+        muteBtn.textContent = "🔇"; muteBtn.classList.add("muted");
         if ('speechSynthesis' in window) window.speechSynthesis.cancel();
       } else {
-        muteBtn.textContent = "🔊";
-        muteBtn.classList.remove("muted");
+        muteBtn.textContent = "🔊"; muteBtn.classList.remove("muted");
       }
     }
 
+    // KLICK-FUNKTION: Lägg ut ruttpunkter var som helst i skärgården!
     map.on('click', function(e) {
       addWaypoint(e.latlng.lat, e.latlng.lng);
     });
 
     function addWaypoint(lat, lng) {
+      const ptIndex = plottedWaypoints.length + 1;
+      
+      // Skapar rutt-markör med nummer
       const wpMarker = L.circleMarker([lat, lng], {
-        radius: 6, color: '#00d4ff', fillColor: '#001524', fillOpacity: 1, weight: 2
+        radius: 7, color: '#00d4ff', fillColor: '#001524', fillOpacity: 1, weight: 2
       }).addTo(map);
+      
+      wpMarker.bindTooltip(String(ptIndex), { permanent: true, direction: 'center', className: 'wp-number-tooltip' });
 
       plottedWaypoints.push({ marker: wpMarker, latlng: L.latLng(lat, lng) });
-      updatePlotterLine();
+      calculateGlobalRoute();
     }
 
-    function updatePlotterLine(headingDeg = 245, etaText = "35 min") {
+    // BERÄKNA AVSTÅND, KURS OCH ETA DYNAMISKT
+    function calculateGlobalRoute() {
       const coordinates = plottedWaypoints.map(wp => wp.latlng);
+      
       if (plotterPolyline) {
         plotterPolyline.setLatLngs(coordinates);
       } else {
-        plotterPolyline = L.polyline(coordinates, {
-          color: '#00d4ff', weight: 4, dashArray: '5, 10', opacity: 0.9
-        }).addTo(map);
+        plotterPolyline = L.polyline(coordinates, { color: '#00d4ff', weight: 4, dashArray: '5, 10', opacity: 0.9 }).addTo(map);
       }
-      if(plottedWaypoints.length > 1) {
-        document.getElementById("eta").textContent = etaText;
-        updateHeading(headingDeg); 
+
+      if (plottedWaypoints.length < 2) {
+        document.getElementById("cur-nm").textContent = "0.0 M";
+        document.getElementById("eta").textContent = "--:--";
+        return;
       }
+
+      let totalMeters = 0;
+      for (let i = 0; i < coordinates.length - 1; i++) {
+        totalMeters += coordinates[i].distanceTo(coordinates[i + 1]);
+      }
+
+      // Konvertera meter till Sjömil (Nautical Miles)
+      const totalNM = totalMeters / 1852;
+      document.getElementById("cur-nm").textContent = totalNM.toFixed(1) + " M";
+
+      // Beräkna ETA baserat på en marschfart om 7 knop
+      const totalHours = totalNM / 7;
+      const totalMinutes = Math.round(totalHours * 60);
+      document.getElementById("eta").textContent = totalMinutes + " min";
+
+      // Räkna ut kompasskursen (Bearing) från startpunkten till punkt 2
+      const lat1 = coordinates[0].lat * Math.PI / 180;
+      const lat2 = coordinates[1].lat * Math.PI / 180;
+      const dLng = (coordinates[1].lng - coordinates[0].lng) * Math.PI / 180;
+      
+      const y = Math.sin(dLng) * Math.cos(lat2);
+      const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+      let bearing = Math.atan2(y, x) * 180 / Math.PI;
+      
+      updateHeading(bearing);
     }
 
-    // SÄKRARE VEGO-RUTTER UTAN LAND-KORSNINGAR
+    // AUTOMATISKA SNABBRUTTER (Om man vill ha förinställt)
     function triggerAutoRoute(text) {
       const inputLower = text.toLowerCase();
       const isRouteRequest = inputLower.includes("simulera") || inputLower.includes("rutan") || inputLower.includes("rutt") || inputLower.includes("kurs") || inputLower.includes("sätt");
       
       if (!isRouteRequest) return null;
 
-      // SÄKER RUTT TILL VINGA (Rundar Köpstadsö och Brännö på södra sidan via rätt farled)
       if (inputLower.includes("vinga")) {
         clearRoute();
-        
-        const vingaSafeRoute = [
-          [57.6186, 11.9320], // GFAS Askim
-          [57.6175, 11.9050], // Ut ur Askimsviken
-          [57.6010, 11.8650], // Söderut förbi Amundön
-          [57.5940, 11.8100], // Säkert västerut i farleden
-          [57.5850, 11.7700], // Söder om Donsö / Styrsö ränna
-          [57.5950, 11.7100], // Ut mot Vinga Sand (Fritt vatten väster om skärgården)
-          [57.6315, 11.6725]  // Vinga Angöring / Fyr
-        ];
-
+        const vingaSafeRoute = [[57.6186, 11.9320], [57.6175, 11.9050], [57.6010, 11.8650], [57.5940, 11.8100], [57.5850, 11.7700], [57.5950, 11.7100], [57.6315, 11.6725]];
         vingaSafeRoute.forEach(pt => addWaypoint(pt[0], pt[1]));
-        
-        const group = new L.featureGroup(plottedWaypoints.map(wp => wp.marker));
-        map.fitBounds(group.getBounds().pad(0.1));
-        
-        return "Inga landbackar den här gången, Kapten! Nu har jag ritat en helt säker farled ut till Vinga. Vi går tryggt söderut runt Amundön, följer rännan söder om Donsö och Styrsö, och tar sedan det öppna vattnet på utsidan rakt upp mot Vingafyr! Kursen är utstakad.";
+        return "Självklart Kapten! Jag har lagt ut den säkra ruttkartan runt Styrsö ränna ut till Vinga havsband på din skärm nu. Följ linjen så klarar vi grynnorna!";
       }
       
-      // SÄKER RUTT TILL VRÅNGÖ / DONSÖ
       if (inputLower.includes("vrångö") || inputLower.includes("donsö") || inputLower.includes("söder")) {
         clearRoute();
-        
-        const vrangoRoute = [
-          [57.6186, 11.9320],
-          [57.6175, 11.9050],
-          [57.6010, 11.8650],
-          [57.5950, 11.8100],
-          [57.5810, 11.7920],
-          [57.5750, 11.7820]
-        ];
-
+        const vrangoRoute = [[57.6186, 11.9320], [57.6175, 11.9050], [57.6010, 11.8650], [57.5950, 11.8100], [57.5810, 11.7920], [57.5750, 11.7820]];
         vrangoRoute.forEach(pt => addWaypoint(pt[0], pt[1]));
-        
-        const group = new L.featureGroup(plottedWaypoints.map(wp => wp.marker));
-        map.fitBounds(group.getBounds().pad(0.1));
-        
-        return "Gött mos, Kapten! Den optimala rutten ner till södra skärgården och Vrångö ligger live på plottern. Vi rundar Amundön på behörigt avstånd och tar farleden söderut. Kursen är satt till 245°!";
+        return "Gött mos Kapten! Rutten söderut ner mot Vrångö och Donsö ligger live. Fri passage öster om Amundön!";
       }
-      
       return null;
     }
 
@@ -300,6 +293,7 @@
       plottedWaypoints.forEach(wp => map.removeLayer(wp.marker));
       plottedWaypoints = [];
       if (plotterPolyline) { map.removeLayer(plotterPolyline); plotterPolyline = null; }
+      document.getElementById("cur-nm").textContent = "0.0 M";
       document.getElementById("eta").textContent = "--:--";
       updateHeading(0);
     }
@@ -315,9 +309,7 @@
 
     if (navigator.geolocation) {
       navigator.geolocation.watchPosition((pos) => {
-        if (pos.coords.heading !== null && !isNaN(pos.coords.heading)) {
-          updateHeading(pos.coords.heading);
-        }
+        if (pos.coords.heading !== null && !isNaN(pos.coords.heading)) { updateHeading(pos.coords.heading); }
         if (pos.coords.speed !== null && !isNaN(pos.coords.speed)) {
           const knots = pos.coords.speed * 1.94384;
           document.getElementById("speed").textContent = knots.toFixed(1);
@@ -335,7 +327,7 @@
 
       if (savedKey && savedKey.trim().length > 10) {
         statusEl.textContent = `🟢 Saga Online`;
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! V37 är live. Ruttkoordinaterna är nu kalibrerade så att vi undviker grynnor och öar på väg mot Vinga! ⚓🌊</div>`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! V38 är klar. Klicka ut dina ruttpunkter i fritt vatten på kartan, så räknar jag ut exakt sjömil, kurs och tid direkt! ⚓🌊</div>`;
       } else {
         statusEl.textContent = "🔴 Ingen nyckel sparad.";
         welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Välkommen ombord! Spara din API-nyckel så sätter vi igång.</div>`;
@@ -357,28 +349,15 @@
 
     function sendCustomAIMsg() {
       const input = document.getElementById("ai-user-input");
-      let text = input.value.trim();
-      if (!text) return;
+      let text = input.value.trim(); if (!text) return;
 
-      appendChatMsg("Du", text);
-      input.value = "";
+      appendChatMsg("Du", text); input.value = "";
       
       let interceptResponse = triggerAutoRoute(text);
       if (interceptResponse) {
-        setTimeout(() => {
-          appendChatMsg("Saga", interceptResponse);
-          if(text.toLowerCase().includes("vinga")) {
-             updateHeading(285);
-             document.getElementById("eta").textContent = "55 min";
-          } else {
-             updateHeading(245);
-             document.getElementById("eta").textContent = "35 min";
-          }
-          speakCleanText(interceptResponse);
-        }, 400);
+        setTimeout(() => { appendChatMsg("Saga", interceptResponse); speakCleanText(interceptResponse); }, 400);
         return;
       }
-
       callGeminiLiveAPI(text);
     }
 
@@ -389,13 +368,9 @@
       document.getElementById("ai-status").textContent = "🔮 Saga tänker...";
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`;
       
-      let fullPrompt = `Du är Saga, en erfaren kvinnlig skipperska, båtexpert och lokalnavigator från Göteborgs skärgård. 
-      Du är installerad i användarens digitala plotterapp. 
-      Dina drag:
-      1. Du har total koll på Göteborgs skärgård (öar som Vrångö, Donsö, Vinga och grynnorna i Askimsviken).
-      2. Du pratar med en sjösäker, göteborgsk, peppande och varm ton. Du kallar användaren för "Kapten".
-      3. Svara alltid mycket kort, kärnfullt och direkt på svenska (max 2-3 meningar) så att det är lätt att läsa eller lyssna på i hög sjö.
-      4. Om användaren ber dig simulera eller sätta kurs, svara bekräftande utifrån vald destination.`;
+      let fullPrompt = `Du är Saga, en erfaren kvinnlig skipperska från Göteborgs skärgård installerad i en plotterapp.
+      Du har koll på GFAS båthamn i Askim (arbetsdag klockan 10 den 17 maj, korv med bröd efteråt, akta reservplatserna e-05 till e-17 på grund av vattendjupet).
+      Svara göteborgskt, varmt och kort (max 2-3 meningar). Kalla användaren för 'Kapten'. Påminn om att de kan klicka direkt på kartan för att rita rutter.`;
 
       try {
         const response = await fetch(url, {
@@ -404,11 +379,7 @@
           body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt + "\nAnvändarfråga: " + promptText }] }] })
         });
 
-        if (!response.ok) {
-          document.getElementById("ai-status").textContent = "❌ Serverfel.";
-          appendChatMsg("Saga", "⚠️ API-fel. Kontrollera din sparade API-nyckel.");
-          return;
-        }
+        if (!response.ok) { document.getElementById("ai-status").textContent = "❌ Serverfel."; return; }
 
         const data = await response.json();
         if (data.candidates && data.candidates[0].content.parts[0].text) {
@@ -417,20 +388,14 @@
           document.getElementById("ai-status").textContent = "🟢 Saga klar.";
           speakCleanText(aiResponse);
         }
-      } catch (error) {
-        document.getElementById("ai-status").textContent = "❌ Nätverksfel.";
-        appendChatMsg("Saga", "⚠️ Kunde inte nå servern.");
-      }
+      } catch (error) { document.getElementById("ai-status").textContent = "❌ Nätverksfel."; }
     }
 
     function speakCleanText(rawText) {
-      if (state.isMuted) return;
-      if (!('speechSynthesis' in window)) return;
-      
+      if (state.isMuted || !('speechSynthesis' in window)) return;
       window.speechSynthesis.cancel();
       let cleanText = rawText.replace(/[\*\#\_`]/g, " ");
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.lang = 'sv-SE';
+      const utterance = new SpeechSynthesisUtterance(cleanText); utterance.lang = 'sv-SE';
       window.speechSynthesis.speak(utterance);
     }
 
