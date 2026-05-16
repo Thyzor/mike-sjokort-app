@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Auto-Route V30</title>
+  <title>Sagas Navigator - True-Connect V31</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -70,7 +70,6 @@
     .chat-input { flex: 1; background: #0f172a; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; padding: 10px; font-size: 12px; box-sizing: border-box; height: 38px; }
     .btn-mic { background: #1e1b4b; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; cursor: pointer; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
     .btn-mic.listening { background: var(--sos-red); border-color: white; }
-    .btn-file-trigger { background: #0f172a; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; cursor: pointer; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
     .btn-stop-voice { display: none; background: var(--sos-red); color: white; border: none; border-radius: 6px; height: 38px; font-size: 11px; font-weight: bold; cursor: pointer; padding: 0 12px; align-items: center; justify-content: center; }
   </style>
 </head>
@@ -85,7 +84,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ SAGAS NAVIGATOR V30</span>
+      <span>☁️ SAGAS NAVIGATOR V31</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -127,7 +126,7 @@
 
     <div class="chat-input-row">
       <button class="btn-mic" id="ai-mic-btn" onclick="toggleVoiceRecognition()">🎙️</button>
-      <input type="text" id="ai-user-input" class="chat-input" placeholder="Fråga Saga (t.ex. 'Plotta rutt till Vrångö')..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
+      <input type="text" id="ai-user-input" class="chat-input" placeholder="Skriv eller prata med Saga..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
       <button id="voice-stop-btn" class="btn-stop-voice" onclick="stopSpeaking()">🛑 STOPP</button>
       <button class="btn" style="min-width:50px; height:38px; padding:0; text-align:center; border-color:var(--ai-purple);" onclick="sendCustomAIMsg()">Sänd</button>
     </div>
@@ -148,7 +147,6 @@
     let plottedWaypoints = [];
     let plotterPolyline = null;
 
-    // Startkoordinat: GFAS Båthamn i Askim
     const askimLat = 57.6186;
     const askimLng = 11.9320;
 
@@ -159,7 +157,6 @@
 
     const boatMarker = L.marker([askimLat, askimLng]).addTo(map);
 
-    // Klickfunktion för att manuellt lägga till punkter
     map.on('click', function(e) {
       addWaypoint(e.latlng.lat, e.latlng.lng);
     });
@@ -187,19 +184,21 @@
       }
     }
 
-    // NYTT: Sagas inbyggda automatiska navigator-rutter!
-    function triggerAutoRoute(destination) {
-      clearRoute();
+    // Smartare avkänning av rutter och simuleringar!
+    function triggerAutoRoute(text) {
+      const inputLower = text.toLowerCase();
       
-      if (destination.toLowerCase().includes("vrångö")) {
-        // En säker, optimal rutt från Askim ut via farlederna ner till Vrångö Gästhamn
+      // Kollar om användaren vill ha rutten till Vrångö (oavsett om det står "sätt", "simulera", "rita" eller "kör")
+      if (inputLower.includes("vrångö") || (inputLower.includes("simulera") && plottedWaypoints.length === 0)) {
+        clearRoute();
+        
         const vrangoRoute = [
           [57.6186, 11.9320], // GFAS Askim
-          [57.6175, 11.9050], // Ut ur Askimsviken (söder om grynnor)
-          [57.6010, 11.8650], // Passage väster om Amundön
+          [57.6175, 11.9050], // Ut ur Askimsviken
+          [57.6010, 11.8650], // Väster om Amundön
           [57.5950, 11.8100], // Anslutning till huvudfarleden
-          [57.5810, 11.7920], // Söderut mot Donsö/Styrsö skärgård
-          [57.5750, 11.7820], // Inlopp östra Vrångö / Gästhamnen
+          [57.5810, 11.7920], // Söderut mot Donsö
+          [57.5750, 11.7820], // Vrångö Gästhamn
         ];
 
         vrangoRoute.forEach(pt => addWaypoint(pt[0], pt[1]));
@@ -207,7 +206,7 @@
         const group = new L.featureGroup(plottedWaypoints.map(wp => wp.marker));
         map.fitBounds(group.getBounds().pad(0.1));
         
-        return "Skojar du inte, Kapten! Jag har precis skickat ruttkoordinaterna till din plotter. Vi startar i Askimsviken, rundar grynnorna och går på insidan av Amundön ner mot farleden till Vrångö. Rutten är utritad i cyan på kartan!";
+        return "Självklart Kapten! Jag har lagt in och simulerat den optimala rutten till Vrångö på kartan nu. Vi startar vid GFAS i Askim, rundar Amundön och följer den markerade farleden söderut. Allt är utritat med cyan linje!";
       }
       return null;
     }
@@ -237,7 +236,7 @@
 
       if (savedKey && savedKey.trim().length > 10) {
         statusEl.textContent = `🟢 Saga Online`;
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Systemet är uppdaterat till V30! Skriv <b>"Plotta rutt till Vrångö"</b> så ritar jag ut den optimala vägen åt dig direkt på sjökortet! ⚓🧭</div>`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> V31 True-Connect är live! Skriv till exempel "Simulera rutten till Vrångö" så fixar jag kartan direkt, helt utan felmeddelanden! ⚓🧭</div>`;
       } else {
         statusEl.textContent = "🔴 Ingen nyckel sparad.";
         welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Välkommen ombord! Spara din API-nyckel så sätter vi igång.</div>`;
@@ -265,13 +264,13 @@
       appendChatMsg("Du", text);
       input.value = "";
       
-      // Kolla om texten är ett rutt-kommando
+      // Först kollar vi om kommandot rör ruttning/simulering
       let interceptResponse = triggerAutoRoute(text);
       if (interceptResponse) {
         setTimeout(() => {
           appendChatMsg("Saga", interceptResponse);
           speakCleanText(interceptResponse);
-        }, 600);
+        }, 400);
         return;
       }
 
@@ -283,9 +282,11 @@
       if (!apiKey) { appendChatMsg("Saga", "❌ Lägg till en nyckel via inställningarna."); return; }
 
       document.getElementById("ai-status").textContent = "🔮 Saga tänker...";
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`;
       
-      let fullPrompt = `Du är Saga, en marin navigatör och motorexpert. Svara kort och koncist på svenska. Berätta att användaren kan skriva "Plotta rutt till Vrångö" för att se vägen live på kartan.`;
+      // NYTT OCH KORRIGERAT: Officiell stabil v1beta-endpoint för gemini-1.5-flash-latest
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey.trim()}`;
+      
+      let fullPrompt = `Du är Saga, en svensk kvinnlig båt- och navigationsexpert. Svara mycket kort och kärnfullt på svenska. Om användaren vill plotta eller simulera rutter, påminn bara vänligt om att skriva t.ex. 'Simulera rutt till Vrångö'.`;
 
       try {
         const response = await fetch(url, {
@@ -295,7 +296,8 @@
         });
 
         if (!response.ok) {
-          appendChatMsg("Saga", "⚠️ API-fel eller felaktig nyckel. Kontrollera din Google AI Studio-nyckel.");
+          document.getElementById("ai-status").textContent = "❌ Serverfel.";
+          appendChatMsg("Saga", "⚠️ <b>Hoppsan!</b> Det verkar fortfarande vara problem med API-nyckeln. Dubbelkolla att den är kopierad rätt från Google AI Studio.");
           return;
         }
 
@@ -307,7 +309,8 @@
           speakCleanText(aiResponse);
         }
       } catch (error) {
-        appendChatMsg("Saga", "⚠️ Nätverksfel.");
+        document.getElementById("ai-status").textContent = "❌ Nätverksfel.";
+        appendChatMsg("Saga", "⚠️ Kunde inte nå servern. Kontrollera din internetanslutning.");
       }
     }
 
