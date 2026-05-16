@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Copilot Fix V44</title>
+  <title>Sagas Navigator - Depth Guard V45</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -97,6 +97,14 @@
     .btn-mic.listening { background: var(--sos-red); border-color: white; }
     .btn-mute { background: #0f172a; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; cursor: pointer; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
     .btn-mute.muted { background: rgba(255, 0, 0, 0.2); border-color: var(--sos-red); color: var(--sos-red); }
+
+    /* Blinking effect for shallow water warning */
+    @keyframes shallow-blink {
+      0% { border-color: var(--sos-red); box-shadow: 0 0 10px var(--sos-red); }
+      50% { border-color: #000; box-shadow: none; }
+      100% { border-color: var(--sos-red); box-shadow: 0 0 10px var(--sos-red); }
+    }
+    .shallow-warning-active { animation: shallow-blink 0.8s infinite; background: rgba(255, 0, 0, 0.2) !important; }
   </style>
 </head>
 <body>
@@ -116,7 +124,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ SAGAS NAVIGATOR V44</span>
+      <span>☁️ SAGAS NAVIGATOR V45</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -136,7 +144,7 @@
   </div>
 
   <div class="controls-left">
-    <button class="btn btn-sos" onclick="openSOS()">🆘 NÖD SOS</button>
+    <button class="btn btn-sos" id="sos-main-btn" onclick="openSOS()">🆘 NÖD SOS</button>
     <button class="btn btn-ai" onclick="openModal('ai-chat-modal')">🔮 SAGA SKEPPARE</button>
     
     <select id="saved-routes-dropdown" class="route-select" onchange="loadSelectedRoute(this.value)">
@@ -191,6 +199,15 @@
     let isSimulating = false;
     let simWaypointIndex = 0;
     let lastRealLocation = null;
+    let lastWarningTime = 0;
+
+    // Lista över kända kritiska grundområden i skärgården för djupskyddslarmet
+    const shallowHazards = [
+      { name: "Vinga Grund", lat: 57.6310, lng: 11.6020, radius: 450 },
+      { name: "Buskärsrevet", lat: 57.6362, lng: 11.6732, radius: 350 },
+      { name: "Svenska Högarna Delmål", lat: 57.6012, lng: 11.8210, radius: 300 },
+      { name: "Danafjord Klack", lat: 57.6780, lng: 11.6920, radius: 400 }
+    ];
 
     const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([currentBoatLatLng.lat, currentBoatLatLng.lng], 13);
     
@@ -253,6 +270,38 @@
       }
     }
 
+    // AUTOMATISKT GRUNDSKYDD/VARNINGSSYSTEM
+    function checkDepthHazards(latlng) {
+      let hazardDetected = false;
+      let detectedName = "";
+
+      for (let hazard of shallowHazards) {
+        let dist = latlng.distanceTo(L.latLng(hazard.lat, hazard.lng));
+        if (dist <= hazard.radius) {
+          hazardDetected = true;
+          detectedName = hazard.name;
+          break;
+        }
+      }
+
+      const sosBtn = document.getElementById("sos-main-btn");
+      if (hazardDetected) {
+        sosBtn.classList.add("shallow-warning-active");
+        sosBtn.textContent = `⚠️ GRUND: ${detectedName.toUpperCase()}`;
+        
+        let now = Date.now();
+        if (now - lastWarningTime > 15000) { // Varna max var 15:e sekund
+          let warningText = `Se upp Kapten! Vi närmar oss grunt vatten vid ${detectedName}. Håll koll på djupsiffrorna!`;
+          appendChatMsg("Saga ⚠️", warningText);
+          speakCleanText(warningText);
+          lastWarningTime = now;
+        }
+      } else {
+        sosBtn.classList.remove("shallow-warning-active");
+        sosBtn.textContent = "🆘 NÖD SOS";
+      }
+    }
+
     if (navigator.geolocation) {
       navigator.geolocation.watchPosition((pos) => {
         const lat = pos.coords.latitude;
@@ -263,6 +312,7 @@
         if (!isSimulating) {
           currentBoatLatLng = realLoc;
           boatMarker.setLatLng(currentBoatLatLng);
+          checkDepthHazards(currentBoatLatLng);
 
           if (!state.hasCenteredOnStart) {
             map.setView(currentBoatLatLng, 14);
@@ -333,6 +383,7 @@
         
         currentBoatLatLng = L.latLng(nextLat, nextLng);
         boatMarker.setLatLng(currentBoatLatLng);
+        checkDepthHazards(currentBoatLatLng);
 
         let remainingMeters = currentBoatLatLng.distanceTo(currentTarget);
         for (let i = simWaypointIndex + 1; i < plottedWaypoints.length - 1; i++) {
@@ -353,6 +404,8 @@
         simulationInterval = null;
       }
       isSimulating = false;
+      document.getElementById("sos-main-btn").classList.remove("shallow-warning-active");
+      document.getElementById("sos-main-btn").textContent = "🆘 NÖD SOS";
       if (lastRealLocation) {
         currentBoatLatLng = lastRealLocation;
         boatMarker.setLatLng(currentBoatLatLng);
@@ -442,7 +495,7 @@
       let savedKey = localStorage.getItem("gemini_api_key");
       const welcomeEl = document.getElementById("ai-chat-box");
       if (savedKey && savedKey.trim().length > 10) {
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! Nu har jag rensat proppen i talsystemet. Nu pratar jag om precis vad som helst igen – både rutter, kobbar och skämt! ⚓🌊</div>`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! Nu har jag installerat djupbevakningen (V45). Skulle vi navigera för nära kända grund runt Göteborg så slår jag på stort larm direkt! ⚓🌊</div>`;
       } else {
         welcomeEl.innerHTML = `<div class="chat-msg msg-ai">Spara din API-nyckel så sätter vi igång.</div>`;
       }
@@ -459,7 +512,6 @@
       
       const lower = text.toLowerCase();
       
-      // 1. KONTROLLERA SIMULERINGSKOMMANDON FÖRST
       if (lower.includes("simulera") || lower.includes("starta rutt") || lower.includes("kör rutt") || lower.includes("starta resan")) {
         const simRes = startRouteSimulation();
         appendChatMsg("Saga", simRes);
@@ -471,7 +523,6 @@
         appendChatMsg("Saga", stopRes);
         speakCleanText(stopRes);
       } 
-      // 2. OM DET INTE VAR RUTT-STYRNING: SKICKA VIDARE TILL GEMINI NU!
       else {
         callGeminiLiveAPI(text);
       }
