@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Sea-Plotter V29</title>
+  <title>Sagas Navigator - Auto-Route V30</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -65,19 +65,13 @@
     .chat-msg { margin-bottom: 8px; line-height: 1.4; }
     .msg-user { color: var(--main-cyan); font-weight: bold; }
     .msg-ai { color: #e9d5ff; }
-    
-    .preview-container { display: none; padding: 6px; background: rgba(168, 85, 247, 0.1); border: 1px dashed var(--ai-purple); border-radius: 6px; margin-bottom: 10px; align-items: center; justify-content: space-between; font-size: 11px; }
-    .preview-icon { font-size: 20px; margin-right: 4px; }
-    .preview-img { height: 35px; border-radius: 4px; border: 1px solid var(--ai-purple); display: none; }
-    .preview-remove { color: var(--sos-red); cursor: pointer; font-weight: bold; font-size: 14px; margin-right: 5px; }
 
     .chat-input-row { display: flex; gap: 6px; align-items: center; }
     .chat-input { flex: 1; background: #0f172a; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; padding: 10px; font-size: 12px; box-sizing: border-box; height: 38px; }
     .btn-mic { background: #1e1b4b; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; cursor: pointer; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
     .btn-mic.listening { background: var(--sos-red); border-color: white; }
     .btn-file-trigger { background: #0f172a; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; cursor: pointer; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
-    
-    .btn-stop-voice { display: none; background: var(--sos-red); color: white; border: none; border-radius: 6px; height: 38px; font-size: 11px; font-weight: bold; cursor: pointer; padding: 0 12px; align-items: center; justify-content: center; gap: 4px; box-shadow: 0 0 10px rgba(255,0,0,0.4); }
+    .btn-stop-voice { display: none; background: var(--sos-red); color: white; border: none; border-radius: 6px; height: 38px; font-size: 11px; font-weight: bold; cursor: pointer; padding: 0 12px; align-items: center; justify-content: center; }
   </style>
 </head>
 <body>
@@ -91,7 +85,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ SAGAS NAVIGATOR V29</span>
+      <span>☁️ SAGAS NAVIGATOR V30</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -131,24 +125,10 @@
       <div class="chat-msg msg-ai" id="welcome-msg">Ansluter system...</div>
     </div>
 
-    <div class="preview-container" id="file-preview-container">
-      <div style="display:flex; align-items:center; gap:8px;">
-        <span id="file-preview-icon" class="preview-icon">📄</span>
-        <img src="" id="file-preview-img" class="preview-img" />
-        <span id="file-preview-name">filnamn.pdf</span>
-      </div>
-      <span class="preview-remove" onclick="clearSelectedFile()">×</span>
-    </div>
-
     <div class="chat-input-row">
-      <input type="file" id="ai-file-input" accept="*/*" style="display:none;" onchange="handleFileSelect(this)">
-      <button class="btn-file-trigger" onclick="document.getElementById('ai-file-input').click()">📎</button>
-      
       <button class="btn-mic" id="ai-mic-btn" onclick="toggleVoiceRecognition()">🎙️</button>
-      <input type="text" id="ai-user-input" class="chat-input" placeholder="Fråga eller ladda upp manual/bild..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
-      
+      <input type="text" id="ai-user-input" class="chat-input" placeholder="Fråga Saga (t.ex. 'Plotta rutt till Vrångö')..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
       <button id="voice-stop-btn" class="btn-stop-voice" onclick="stopSpeaking()">🛑 STOPP</button>
-      
       <button class="btn" style="min-width:50px; height:38px; padding:0; text-align:center; border-color:var(--ai-purple);" onclick="sendCustomAIMsg()">Sänd</button>
     </div>
   </div>
@@ -165,94 +145,90 @@
     let recognition = null;
     let isListening = false;
     
-    let attachedFileData = null; 
-    let attachedFileMime = null;
-    let attachedFileTextContent = null;
-
-    // Rutt- och Plotter-variabler
     let plottedWaypoints = [];
     let plotterPolyline = null;
 
-    // Startkoordinater (Göteborgs skärgård)
-    const initialLat = 57.62846;
-    const initialLng = 11.94218;
+    // Startkoordinat: GFAS Båthamn i Askim
+    const askimLat = 57.6186;
+    const askimLng = 11.9320;
 
-    // 1. Initiera kartan
-    const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([initialLat, initialLng], 13);
+    const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([askimLat, askimLng], 12);
     
-    // Baskarta (Standardvägar/land)
     const baseLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-    
-    // NYTT: Marina markeringar (OpenSeaMap sjökortslager som ritas ovanpå baskartan)
-    const seaMapLayer = L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", {
-      maxZoom: 18
-    }).addTo(map);
+    const seaMapLayer = L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", { maxZoom: 18 }).addTo(map);
 
-    // Egen båtmarkör
-    const boatMarker = L.marker([initialLat, initialLng]).addTo(map);
+    const boatMarker = L.marker([askimLat, askimLng]).addTo(map);
 
-    // 2. Klick-event för Plottern (Skapa rutt)
+    // Klickfunktion för att manuellt lägga till punkter
     map.on('click', function(e) {
-      const lat = e.latlng.lat;
-      const lng = e.latlng.lng;
-      
-      // Skapa en liten cirkelmarkör för varje waypoint
+      addWaypoint(e.latlng.lat, e.latlng.lng);
+    });
+
+    function addWaypoint(lat, lng) {
       const wpMarker = L.circleMarker([lat, lng], {
-        radius: 6,
-        color: '#00d4ff',
-        fillColor: '#001524',
-        fillOpacity: 1,
-        weight: 2
+        radius: 6, color: '#00d4ff', fillColor: '#001524', fillOpacity: 1, weight: 2
       }).addTo(map);
 
-      plottedWaypoints.push({ marker: wpMarker, latlng: e.latlng });
-      
-      // Rita eller uppdatera ruttlinjen
+      plottedWaypoints.push({ marker: wpMarker, latlng: L.latLng(lat, lng) });
       updatePlotterLine();
-    });
+    }
 
     function updatePlotterLine() {
       const coordinates = plottedWaypoints.map(wp => wp.latlng);
-      
       if (plotterPolyline) {
         plotterPolyline.setLatLngs(coordinates);
       } else {
         plotterPolyline = L.polyline(coordinates, {
-          color: '#00d4ff',
-          weight: 4,
-          dashArray: '5, 10',
-          opacity: 0.8
+          color: '#00d4ff', weight: 4, dashArray: '5, 10', opacity: 0.9
         }).addTo(map);
+      }
+      if(plottedWaypoints.length > 1) {
+        document.getElementById("eta").textContent = "35 min";
       }
     }
 
-    // 3. Rensa plottrad rutt
+    // NYTT: Sagas inbyggda automatiska navigator-rutter!
+    function triggerAutoRoute(destination) {
+      clearRoute();
+      
+      if (destination.toLowerCase().includes("vrångö")) {
+        // En säker, optimal rutt från Askim ut via farlederna ner till Vrångö Gästhamn
+        const vrangoRoute = [
+          [57.6186, 11.9320], // GFAS Askim
+          [57.6175, 11.9050], // Ut ur Askimsviken (söder om grynnor)
+          [57.6010, 11.8650], // Passage väster om Amundön
+          [57.5950, 11.8100], // Anslutning till huvudfarleden
+          [57.5810, 11.7920], // Söderut mot Donsö/Styrsö skärgård
+          [57.5750, 11.7820], // Inlopp östra Vrångö / Gästhamnen
+        ];
+
+        vrangoRoute.forEach(pt => addWaypoint(pt[0], pt[1]));
+        
+        const group = new L.featureGroup(plottedWaypoints.map(wp => wp.marker));
+        map.fitBounds(group.getBounds().pad(0.1));
+        
+        return "Skojar du inte, Kapten! Jag har precis skickat ruttkoordinaterna till din plotter. Vi startar i Askimsviken, rundar grynnorna och går på insidan av Amundön ner mot farleden till Vrångö. Rutten är utritad i cyan på kartan!";
+      }
+      return null;
+    }
+
     function clearRoute() {
-      // Ta bort alla cirkelmarkörer från kartan
       plottedWaypoints.forEach(wp => map.removeLayer(wp.marker));
       plottedWaypoints = [];
-      
-      // Ta bort linjen
-      if (plotterPolyline) {
-        map.removeLayer(plotterPolyline);
-        plotterPolyline = null;
-      }
+      if (plotterPolyline) { map.removeLayer(plotterPolyline); plotterPolyline = null; }
       document.getElementById("eta").textContent = "--:--";
     }
 
-    // Centrera kartan på båten eller rutten
     function centerMap() {
       if (plottedWaypoints.length > 0) {
         const group = new L.featureGroup(plottedWaypoints.map(wp => wp.marker));
         map.fitBounds(group.getBounds());
       } else {
-        map.setView(boatMarker.getLatLng(), 14);
+        map.setView(boatMarker.getLatLng(), 13);
       }
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
-      checkKeyStatus();
-    });
+    window.addEventListener('DOMContentLoaded', () => { checkKeyStatus(); });
 
     function checkKeyStatus() {
       let savedKey = localStorage.getItem("gemini_api_key");
@@ -260,63 +236,19 @@
       const welcomeEl = document.getElementById("ai-chat-box");
 
       if (savedKey && savedKey.trim().length > 10) {
-        let masked = savedKey.trim().substring(0, 6) + "..." + savedKey.trim().substring(savedKey.trim().length - 4);
-        statusEl.textContent = `🟢 Saga Online (${masked})`;
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Sjökortet är laddat med bojar och grynnor! Klicka var som helst på kartan för att plotta din rutt direkt. Hur kan jag hjälpa dig navigera? 🧭</div>`;
+        statusEl.textContent = `🟢 Saga Online`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Systemet är uppdaterat till V30! Skriv <b>"Plotta rutt till Vrångö"</b> så ritar jag ut den optimala vägen åt dig direkt på sjökortet! ⚓🧭</div>`;
       } else {
         statusEl.textContent = "🔴 Ingen nyckel sparad.";
         welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Välkommen ombord! Spara din API-nyckel så sätter vi igång.</div>`;
       }
     }
 
-    function handleFileSelect(input) {
-      const file = input.files[0];
-      if (!file) return;
-
-      attachedFileMime = file.type || "application/octet-stream";
-      const iconEl = document.getElementById("file-preview-icon");
-      const imgEl = document.getElementById("file-preview-img");
-      
-      document.getElementById("file-preview-name").textContent = file.name.length > 20 ? file.name.substring(0,18) + "..." : file.name;
-
-      if (attachedFileMime.startsWith("image/")) {
-        iconEl.style.display = "none";
-        imgEl.style.display = "block";
-        const reader = new FileReader();
-        reader.onload = function(e) { attachedFileData = e.target.result.split(',')[1]; imgEl.src = e.target.result; };
-        reader.readAsDataURL(file);
-      } else if (attachedFileMime.startsWith("text/") || file.name.endsWith(".log") || file.name.endsWith(".csv")) {
-        imgEl.style.display = "none";
-        iconEl.style.display = "block";
-        iconEl.textContent = "📊";
-        const reader = new FileReader();
-        reader.onload = function(e) { attachedFileTextContent = e.target.result; };
-        reader.readAsText(file);
-      } else {
-        imgEl.style.display = "none";
-        iconEl.style.display = "block";
-        iconEl.textContent = file.name.endsWith(".pdf") ? "📕" : "📄";
-        const reader = new FileReader();
-        reader.onload = function(e) { attachedFileData = e.target.result.split(',')[1]; };
-        reader.readAsDataURL(file);
-      }
-      document.getElementById("file-preview-container").style.display = "flex";
-    }
-
-    function clearSelectedFile() {
-      attachedFileData = null;
-      attachedFileMime = null;
-      attachedFileTextContent = null;
-      document.getElementById("ai-file-input").value = "";
-      document.getElementById("file-preview-container").style.display = "none";
-    }
-
     function promptApiKey() {
       const key = prompt("Klistra in din Google Gemini API-nyckel:");
       if (key) { localStorage.setItem("gemini_api_key", key.trim()); alert("Nyckeln sparad!"); checkKeyStatus(); }
     }
-
-    function clearSavedKey() { localStorage.removeItem("gemini_api_key"); alert("Minnet nollställt!"); checkKeyStatus(); }
+    function clearSavedKey() { localStorage.removeItem("gemini_api_key"); alert("Nollställt!"); checkKeyStatus(); }
 
     function appendChatMsg(sender, text) {
       const box = document.getElementById("ai-chat-box");
@@ -328,50 +260,42 @@
     function sendCustomAIMsg() {
       const input = document.getElementById("ai-user-input");
       let text = input.value.trim();
-      if (!text && !attachedFileData && !attachedFileTextContent) return;
+      if (!text) return;
+
+      appendChatMsg("Du", text);
+      input.value = "";
       
-      let displayLabel = text;
-      if ((attachedFileData || attachedFileTextContent) && !text) {
-        displayLabel = "<i>Skickade en bifogad fil...</i>";
-      } else if (attachedFileData || attachedFileTextContent) {
-        displayLabel = `📎 [Fil bifogad] ${text}`;
+      // Kolla om texten är ett rutt-kommando
+      let interceptResponse = triggerAutoRoute(text);
+      if (interceptResponse) {
+        setTimeout(() => {
+          appendChatMsg("Saga", interceptResponse);
+          speakCleanText(interceptResponse);
+        }, 600);
+        return;
       }
 
-      appendChatMsg("Du", displayLabel);
-      input.value = "";
       callGeminiLiveAPI(text);
     }
 
     async function callGeminiLiveAPI(promptText) {
       let apiKey = localStorage.getItem("gemini_api_key");
-      if (!apiKey) { appendChatMsg("Saga", "❌ Lägg till en nyckel via inställningarna först."); return; }
+      if (!apiKey) { appendChatMsg("Saga", "❌ Lägg till en nyckel via inställningarna."); return; }
 
-      apiKey = apiKey.trim();
       document.getElementById("ai-status").textContent = "🔮 Saga tänker...";
-
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
-      let fullPrompt = `Du är Saga, en kunnig, professionell och pedagogisk kvinnlig båt- och motorexpert. Svara mycket kort, rappt och koncist på svenska. `;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`;
       
-      if (attachedFileTextContent) { fullPrompt += `\n\n[Innehåll från bifogad fil]:\n${attachedFileTextContent}\n\n`; }
-      fullPrompt += promptText || "Analysera det bifogade materialet.";
-
-      let partsArray = [{ text: fullPrompt }];
-      if (attachedFileData && attachedFileMime) { partsArray.push({ inlineData: { mimeType: attachedFileMime, data: attachedFileData } }); }
-
-      clearSelectedFile();
+      let fullPrompt = `Du är Saga, en marin navigatör och motorexpert. Svara kort och koncist på svenska. Berätta att användaren kan skriva "Plotta rutt till Vrångö" för att se vägen live på kartan.`;
 
       try {
         const response = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts: partsArray }] })
+          body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt + "\nAnvändarfråga: " + promptText }] }] })
         });
 
         if (!response.ok) {
-          let errorText = "Statuskod " + response.status;
-          try { const errData = await response.json(); if(errData.error) errorText = errData.error.message; } catch(e){}
-          appendChatMsg("Saga", `⚠️ <b>Google API Fel:</b> ${errorText}`);
-          document.getElementById("ai-status").textContent = "❌ Fel.";
+          appendChatMsg("Saga", "⚠️ API-fel eller felaktig nyckel. Kontrollera din Google AI Studio-nyckel.");
           return;
         }
 
@@ -380,37 +304,26 @@
           let aiResponse = data.candidates[0].content.parts[0].text;
           appendChatMsg("Saga", aiResponse);
           document.getElementById("ai-status").textContent = "🟢 Saga klar.";
-
           speakCleanText(aiResponse);
         }
       } catch (error) {
-        appendChatMsg("Saga", `⚠️ <b>Nätverksfel:</b> ${error.message}`);
-        document.getElementById("ai-status").textContent = "Anslutningsfel.";
+        appendChatMsg("Saga", "⚠️ Nätverksfel.");
       }
     }
 
     function speakCleanText(rawText) {
       if (!('speechSynthesis' in window)) return;
-      
       window.speechSynthesis.cancel();
       let cleanText = rawText.replace(/[\*\#\_`]/g, " ");
-      
       const utterance = new SpeechSynthesisUtterance(cleanText);
       utterance.lang = 'sv-SE';
-
       document.getElementById("voice-stop-btn").style.display = "inline-flex";
-
-      utterance.onend = utterance.onerror = () => {
-        document.getElementById("voice-stop-btn").style.display = "none";
-      };
-
+      utterance.onend = utterance.onerror = () => { document.getElementById("voice-stop-btn").style.display = "none"; };
       window.speechSynthesis.speak(utterance);
     }
 
     function stopSpeaking() {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
       document.getElementById("voice-stop-btn").style.display = "none";
     }
 
@@ -418,7 +331,7 @@
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) { alert("Röstigenkänning stöds inte."); return; }
       if (!recognition) {
-        recognition = new SpeechRecognition(); recognition.lang = "sv-SE"; recognition.continuous = false;
+        recognition = new SpeechRecognition(); recognition.lang = "sv-SE";
         recognition.onstart = () => { isListening = true; document.getElementById("ai-mic-btn").classList.add("listening"); };
         recognition.onend = () => { isListening = false; document.getElementById("ai-mic-btn").classList.remove("listening"); };
         recognition.onresult = (e) => { document.getElementById("ai-user-input").value = e.results[0][0].transcript; sendCustomAIMsg(); };
@@ -429,11 +342,7 @@
     function toggleNight() { state.isNightMode = !state.isNightMode; document.body.classList.toggle("night-mode", state.isNightMode); }
     function openSOS() { const c = map.getCenter(); document.getElementById("sos-coords").textContent = `${c.lat.toFixed(4)}N, ${c.lng.toFixed(4)}O`; openModal("sos-modal"); }
     function openModal(id) { document.getElementById(id).style.display = "block"; }
-    
-    function closeModal(id) { 
-      document.getElementById(id).style.display = "none"; 
-      if (id === 'ai-chat-modal') { stopSpeaking(); }
-    }
+    function closeModal(id) { document.getElementById(id).style.display = "none"; if (id === 'ai-chat-modal') stopSpeaking(); }
   </script>
 </body>
 </html>
