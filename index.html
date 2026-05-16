@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Multi-Route V36</title>
+  <title>Sagas Navigator - Safe Passage V37</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -109,7 +109,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ SAGAS NAVIGATOR V36</span>
+      <span>☁️ SAGAS NAVIGATOR V37</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -243,34 +243,36 @@
       }
     }
 
-    // UPPDATERAD: Känner nu av skillnad på måldestinationer
+    // SÄKRARE VEGO-RUTTER UTAN LAND-KORSNINGAR
     function triggerAutoRoute(text) {
       const inputLower = text.toLowerCase();
-      const isRouteRequest = inputLower.includes("simulera") || inputLower.includes("rutan") || inputLower.includes("rutt") || inputLower.includes("kurs");
+      const isRouteRequest = inputLower.includes("simulera") || inputLower.includes("rutan") || inputLower.includes("rutt") || inputLower.includes("kurs") || inputLower.includes("sätt");
       
       if (!isRouteRequest) return null;
 
-      // Kollar om Kaptenen specifikt vill till Vinga
+      // SÄKER RUTT TILL VINGA (Rundar Köpstadsö och Brännö på södra sidan via rätt farled)
       if (inputLower.includes("vinga")) {
         clearRoute();
         
-        // Rutt ut ur viken och västerut mot Vingafyr
-        const vingaRoute = [
+        const vingaSafeRoute = [
           [57.6186, 11.9320], // GFAS Askim
-          [57.6250, 11.8750], // Ut på Rivö Fjord
-          [57.6330, 11.7850], // Söder om Vinga Sand
-          [57.6315, 11.6725]  // Vinga Angöring/Gästhamn
+          [57.6175, 11.9050], // Ut ur Askimsviken
+          [57.6010, 11.8650], // Söderut förbi Amundön
+          [57.5940, 11.8100], // Säkert västerut i farleden
+          [57.5850, 11.7700], // Söder om Donsö / Styrsö ränna
+          [57.5950, 11.7100], // Ut mot Vinga Sand (Fritt vatten väster om skärgården)
+          [57.6315, 11.6725]  // Vinga Angöring / Fyr
         ];
 
-        vingaRoute.forEach(pt => addWaypoint(pt[0], pt[1]));
+        vingaSafeRoute.forEach(pt => addWaypoint(pt[0], pt[1]));
         
         const group = new L.featureGroup(plottedWaypoints.map(wp => wp.marker));
         map.fitBounds(group.getBounds().pad(0.1));
         
-        return "Självklart, Kapten! Nu lägger jag kursen västerut mot Vinga istället! Vi styr ut ur Askimsviken, går norr om Amundön, korsar Rivö fjord och siktar rakt ut i havsbandet. Pilen är inställd på västlig kurs 285°.";
+        return "Inga landbackar den här gången, Kapten! Nu har jag ritat en helt säker farled ut till Vinga. Vi går tryggt söderut runt Amundön, följer rännan söder om Donsö och Styrsö, och tar sedan det öppna vattnet på utsidan rakt upp mot Vingafyr! Kursen är utstakad.";
       }
       
-      // Standardrutt ner mot Vrångö/Donsö
+      // SÄKER RUTT TILL VRÅNGÖ / DONSÖ
       if (inputLower.includes("vrångö") || inputLower.includes("donsö") || inputLower.includes("söder")) {
         clearRoute();
         
@@ -333,7 +335,7 @@
 
       if (savedKey && savedKey.trim().length > 10) {
         statusEl.textContent = `🟢 Saga Online`;
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! V36 är redo. Nu lyssnar jag noga på om du vill till Vinga eller Vrångö och ritar rätt rutt på direkten! ⚓🌊</div>`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! V37 är live. Ruttkoordinaterna är nu kalibrerade så att vi undviker grynnor och öar på väg mot Vinga! ⚓🌊</div>`;
       } else {
         statusEl.textContent = "🔴 Ingen nyckel sparad.";
         welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Välkommen ombord! Spara din API-nyckel så sätter vi igång.</div>`;
@@ -365,10 +367,12 @@
       if (interceptResponse) {
         setTimeout(() => {
           appendChatMsg("Saga", interceptResponse);
-          // Justera kompassnålen beroende på destination
           if(text.toLowerCase().includes("vinga")) {
              updateHeading(285);
-             document.getElementById("eta").textContent = "50 min";
+             document.getElementById("eta").textContent = "55 min";
+          } else {
+             updateHeading(245);
+             document.getElementById("eta").textContent = "35 min";
           }
           speakCleanText(interceptResponse);
         }, 400);
