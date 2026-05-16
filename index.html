@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Route Refiner V42</title>
+  <title>Sagas Navigator - Copilot Fix V44</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -116,7 +116,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ SAGAS NAVIGATOR V42</span>
+      <span>☁️ SAGAS NAVIGATOR V44</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -185,8 +185,12 @@
     
     let plottedWaypoints = [];
     let plotterPolyline = null;
-
     let currentBoatLatLng = L.latLng(57.6186, 11.9320);
+
+    let simulationInterval = null;
+    let isSimulating = false;
+    let simWaypointIndex = 0;
+    let lastRealLocation = null;
 
     const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([currentBoatLatLng.lat, currentBoatLatLng.lng], 13);
     
@@ -205,6 +209,7 @@
     }
 
     map.on('click', function(e) {
+      if (isSimulating) stopSimulation();
       addWaypoint(e.latlng.lat, e.latlng.lng);
     });
 
@@ -216,7 +221,6 @@
       plottedWaypoints.push({ marker: wpMarker, latlng: L.latLng(lat, lng) });
       calculateGlobalRoute();
       
-      // VISAR BARA MENYN OM VI INTE BARA HÅLLER PÅ ATT LÄSA IN EN BEFINTLIG RUTT
       if(plottedWaypoints.length >= 2 && !state.isRouteLoading) {
         document.getElementById("save-route-panel").style.display = "flex";
       }
@@ -239,40 +243,124 @@
       document.getElementById("cur-nm").textContent = totalNM.toFixed(1) + " M";
       document.getElementById("eta").textContent = Math.round((totalNM / 7) * 60) + " min";
 
-      const lat1 = coordinates[0].lat * Math.PI / 180;
-      const lat2 = coordinates[1].lat * Math.PI / 180;
-      const dLng = (coordinates[1].lng - coordinates[0].lng) * Math.PI / 180;
-      const y = Math.sin(dLng) * Math.cos(lat2);
-      const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
-      updateHeading(Math.atan2(y, x) * 180 / Math.PI);
+      if (!isSimulating) {
+        const lat1 = coordinates[0].lat * Math.PI / 180;
+        const lat2 = coordinates[1].lat * Math.PI / 180;
+        const dLng = (coordinates[1].lng - coordinates[0].lng) * Math.PI / 180;
+        const y = Math.sin(dLng) * Math.cos(lat2);
+        const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+        updateHeading(Math.atan2(y, x) * 180 / Math.PI);
+      }
     }
 
     if (navigator.geolocation) {
       navigator.geolocation.watchPosition((pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-        currentBoatLatLng = L.latLng(lat, lng);
+        const realLoc = L.latLng(lat, lng);
+        lastRealLocation = realLoc;
         
-        boatMarker.setLatLng(currentBoatLatLng);
+        if (!isSimulating) {
+          currentBoatLatLng = realLoc;
+          boatMarker.setLatLng(currentBoatLatLng);
 
-        if (!state.hasCenteredOnStart) {
-          map.setView(currentBoatLatLng, 14);
-          state.hasCenteredOnStart = true;
-          document.getElementById("ai-status").textContent = "🟢 GPS Position Låst";
-        }
+          if (!state.hasCenteredOnStart) {
+            map.setView(currentBoatLatLng, 14);
+            state.hasCenteredOnStart = true;
+            document.getElementById("ai-status").textContent = "🟢 GPS Position Låst";
+          }
 
-        if (pos.coords.speed !== null && !isNaN(pos.coords.speed)) {
-          const knots = pos.coords.speed * 1.94384;
-          document.getElementById("speed").textContent = knots.toFixed(1);
-        }
-        
-        if (pos.coords.heading !== null && !isNaN(pos.coords.heading) && plottedWaypoints.length === 0) {
-          updateHeading(pos.coords.heading);
+          if (pos.coords.speed !== null && !isNaN(pos.coords.speed)) {
+            const knots = pos.coords.speed * 1.94384;
+            document.getElementById("speed").textContent = knots.toFixed(1);
+          }
+          
+          if (pos.coords.heading !== null && !isNaN(pos.coords.heading) && plottedWaypoints.length === 0) {
+            updateHeading(pos.coords.heading);
+          }
         }
       }, (err) => {
         console.log("GPS-fel:", err);
-        document.getElementById("ai-status").textContent = "⚠️ GPS Avstängd/Saknas";
+        if(!isSimulating) document.getElementById("ai-status").textContent = "⚠️ GPS Avstängd/Saknas";
       }, { enableHighAccuracy: true, timeout: 10000 });
+    }
+
+    function startRouteSimulation() {
+      if (plottedWaypoints.length < 2) return "Det finns ingen rutt utlagd att simulera än, Kapten. Klicka ut några punkter först!";
+      
+      stopSimulation();
+      isSimulating = true;
+      simWaypointIndex = 0;
+      document.getElementById("ai-status").textContent = "🔵 Simulerar rutt (7.0 knop)";
+      document.getElementById("speed").textContent = "7.0";
+
+      currentBoatLatLng = plottedWaypoints[0].latlng;
+      boatMarker.setLatLng(currentBoatLatLng);
+      map.setView(currentBoatLatLng, 14);
+
+      simulationInterval = setInterval(() => {
+        if (!isSimulating || simWaypointIndex >= plottedWaypoints.length - 1) {
+          stopSimulation();
+          appendChatMsg("Saga", "Framme vid slutdestinationen, Kapten! Simuleringen avslutad.");
+          speakCleanText("Framme vid slutdestinationen, Kapten! Simuleringen avslutad.");
+          return;
+        }
+
+        const currentTarget = plottedWaypoints[simWaypointIndex + 1].latlng;
+        const distToTarget = currentBoatLatLng.distanceTo(currentTarget);
+
+        if (distToTarget < 25) {
+          simWaypointIndex++;
+          if (simWaypointIndex >= plottedWaypoints.length - 1) {
+            stopSimulation();
+            appendChatMsg("Saga", "Framme vid slutdestinationen, Kapten! Simuleringen avslutad.");
+            speakCleanText("Framme vid slutdestinationen, Kapten! Simuleringen avslutad.");
+            return;
+          }
+        }
+
+        const lat1 = currentBoatLatLng.lat * Math.PI / 180;
+        const lat2 = currentTarget.lat * Math.PI / 180;
+        const dLng = (currentTarget.lng - currentBoatLatLng.lng) * Math.PI / 180;
+        const y = Math.sin(dLng) * Math.cos(lat2);
+        const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+        const bearing = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+        updateHeading(bearing);
+
+        const moveStep = 0.015;
+        const nextLat = currentBoatLatLng.lat + (currentTarget.lat - currentBoatLatLng.lat) * moveStep;
+        const nextLng = currentBoatLatLng.lng + (currentTarget.lng - currentBoatLatLng.lng) * moveStep;
+        
+        currentBoatLatLng = L.latLng(nextLat, nextLng);
+        boatMarker.setLatLng(currentBoatLatLng);
+
+        let remainingMeters = currentBoatLatLng.distanceTo(currentTarget);
+        for (let i = simWaypointIndex + 1; i < plottedWaypoints.length - 1; i++) {
+          remainingMeters += plottedWaypoints[i].latlng.distanceTo(plottedWaypoints[i+1].latlng);
+        }
+        const remainingNM = remainingMeters / 1852;
+        document.getElementById("cur-nm").textContent = remainingNM.toFixed(1) + " M";
+        document.getElementById("eta").textContent = Math.round((remainingNM / 7) * 60) + " min";
+
+      }, 250);
+
+      return "Klart vi ska! Slår igång autopiloten och simulerar rutten i 7 knop nu. Håll i dig, Kapten! ⚓";
+    }
+
+    function stopSimulation() {
+      if (simulationInterval) {
+        clearInterval(simulationInterval);
+        simulationInterval = null;
+      }
+      isSimulating = false;
+      if (lastRealLocation) {
+        currentBoatLatLng = lastRealLocation;
+        boatMarker.setLatLng(currentBoatLatLng);
+        document.getElementById("ai-status").textContent = "🟢 GPS Position Låst";
+      } else {
+        document.getElementById("ai-status").textContent = "🟢 GPS Aktiv";
+      }
+      calculateGlobalRoute();
     }
 
     function saveCurrentRouteToArray() {
@@ -300,8 +388,6 @@
     function loadSelectedRoute(routeName) {
       if (!routeName) return;
       clearRouteDisplay();
-      
-      // Sätt flaggan till true så spara-panelen hålls gömd under laddningen
       state.isRouteLoading = true;
 
       let savedRoutes = JSON.parse(localStorage.getItem("sagas_saved_routes")) || {};
@@ -312,7 +398,6 @@
         map.fitBounds(group.getBounds().pad(0.1));
       }
 
-      // Återställ flaggan och stäng av panelen definitivt
       state.isRouteLoading = false;
       document.getElementById("save-route-panel").style.display = "none";
     }
@@ -330,6 +415,7 @@
     }
 
     function clearRouteDisplay() {
+      stopSimulation();
       plottedWaypoints.forEach(wp => map.removeLayer(wp.marker));
       plottedWaypoints = [];
       if (plotterPolyline) { map.removeLayer(plotterPolyline); plotterPolyline = null; }
@@ -341,6 +427,7 @@
     }
 
     function centerMap() {
+      stopSimulation();
       if (plottedWaypoints.length > 0) {
         const group = new L.featureGroup(plottedWaypoints.map(wp => wp.marker));
         map.fitBounds(group.getBounds());
@@ -355,7 +442,7 @@
       let savedKey = localStorage.getItem("gemini_api_key");
       const welcomeEl = document.getElementById("ai-chat-box");
       if (savedKey && savedKey.trim().length > 10) {
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! Nu har jag fixat ruttladdningen. Hämtar du en sparad rutt slipper du se spara-rutan i hörnet i onödan! ⚓🌊</div>`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! Nu har jag rensat proppen i talsystemet. Nu pratar jag om precis vad som helst igen – både rutter, kobbar och skämt! ⚓🌊</div>`;
       } else {
         welcomeEl.innerHTML = `<div class="chat-msg msg-ai">Spara din API-nyckel så sätter vi igång.</div>`;
       }
@@ -369,7 +456,25 @@
     function sendCustomAIMsg() {
       const input = document.getElementById("ai-user-input"); let text = input.value.trim(); if (!text) return;
       appendChatMsg("Du", text); input.value = "";
-      callGeminiLiveAPI(text);
+      
+      const lower = text.toLowerCase();
+      
+      // 1. KONTROLLERA SIMULERINGSKOMMANDON FÖRST
+      if (lower.includes("simulera") || lower.includes("starta rutt") || lower.includes("kör rutt") || lower.includes("starta resan")) {
+        const simRes = startRouteSimulation();
+        appendChatMsg("Saga", simRes);
+        speakCleanText(simRes);
+      } 
+      else if (lower.includes("stoppa simul") || lower.includes("avbryt simul")) {
+        stopSimulation();
+        const stopRes = "Autopiloten avstängd. Vi är tillbaka på din live-position, Kapten.";
+        appendChatMsg("Saga", stopRes);
+        speakCleanText(stopRes);
+      } 
+      // 2. OM DET INTE VAR RUTT-STYRNING: SKICKA VIDARE TILL GEMINI NU!
+      else {
+        callGeminiLiveAPI(text);
+      }
     }
 
     async function callGeminiLiveAPI(promptText) {
@@ -387,7 +492,7 @@
     }
 
     function speakCleanText(t) { if (state.isMuted || !('speechSynthesis' in window)) return; window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t.replace(/[\*\#\_`]/g, " ")); u.lang = 'sv-SE'; window.speechSynthesis.speak(u); }
-    function toggleVoiceRecognition() { const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SpeechRecognition) return; if (!recognition) { recognition = new SpeechRecognition(); recognition.lang = "sv-SE"; recognition.onstart = () => { isListening = true; document.getElementById("ai-mic-btn").classList.add("listening"); }; recognition.onend = () => { isListening = false; document.getElementById("ai-mic-btn").classList.remove("listening"); }; recognition.onresult = (e) => { document.getElementById("ai-user-input").value = e.results[0][0].transcript; sendCustomAIMsg(); }; } if (isListening) recognition.stop(); else recognition.start(); }
+    function toggleVoiceRecognition() { const SpeechRecognition = window.SpeechRecognition || window.webkitRecognition || window.webkitSpeechRecognition; if (!SpeechRecognition) return; if (!recognition) { recognition = new SpeechRecognition(); recognition.lang = "sv-SE"; recognition.onstart = () => { isListening = true; document.getElementById("ai-mic-btn").classList.add("listening"); }; recognition.onend = () => { isListening = false; document.getElementById("ai-mic-btn").classList.remove("listening"); }; recognition.onresult = (e) => { document.getElementById("ai-user-input").value = e.results[0][0].transcript; sendCustomAIMsg(); }; } if (isListening) recognition.stop(); else recognition.start(); }
     function toggleNight() { state.isNightMode = !state.isNightMode; document.body.classList.toggle("night-mode", state.isNightMode); }
     function openSOS() { const c = map.getCenter(); document.getElementById("sos-coords").textContent = `${c.lat.toFixed(4)}N, ${c.lng.toFixed(4)}O`; openModal("sos-modal"); }
     function openModal(id) { document.getElementById(id).style.display = "block"; }
