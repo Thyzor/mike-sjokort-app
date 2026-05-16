@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - GPS Auto V40</title>
+  <title>Sagas Navigator - Depth Colors V41</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -14,8 +14,8 @@
       --ai-purple: #a855f7;
     }
     body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: var(--bg-dark); font-family: sans-serif; color: white; }
-    #map { height: 100%; width: 100%; z-index: 1; }
-    .night-mode #map { filter: invert(100%) hue-rotate(180deg) brightness(0.6) contrast(1.3); }
+    #map { height: 100%; width: 100%; z-index: 1; background: #0a1e32; }
+    .night-mode #map { filter: invert(100%) hue-rotate(180deg) brightness(0.5) contrast(1.4); }
 
     .heading-display {
       position: absolute; top: 15px; left: 50%; transform: translateX(-50%); z-index: 2000;
@@ -116,7 +116,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ SAGAS NAVIGATOR V40</span>
+      <span>☁️ SAGAS NAVIGATOR V41</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -186,11 +186,17 @@
     let plottedWaypoints = [];
     let plotterPolyline = null;
 
-    // Standardkoordinater (Askim) om GPS nekas
     let currentBoatLatLng = L.latLng(57.6186, 11.9320);
 
+    // Initiera kartan
     const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([currentBoatLatLng.lat, currentBoatLatLng.lng], 13);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+    
+    // ANVÄNDER EN KARTA MED TYDLIGARE DJUP- OCH KUSTLINJEFÄRGER SOM BASLAGER
+    L.tileLayer('https://{s}.tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apiKey=b57492c10dbb44589d13e015ee6b2b62', {
+      maxZoom: 18
+    }).addTo(map);
+
+    // Lägg till sjömärken, grynnor och sjökortsdetaljer ovanpå
     L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", { maxZoom: 18 }).addTo(map);
 
     const boatMarker = L.marker([currentBoatLatLng.lat, currentBoatLatLng.lng]).addTo(map);
@@ -243,39 +249,32 @@
       updateHeading(Math.atan2(y, x) * 180 / Math.PI);
     }
 
-    /* AUTOMATISK OCH KONTINUERLIG GPS-AVLÄSNING */
     if (navigator.geolocation) {
       navigator.geolocation.watchPosition((pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         currentBoatLatLng = L.latLng(lat, lng);
         
-        // Uppdatera båtmarkörens plats i realtid
         boatMarker.setLatLng(currentBoatLatLng);
 
-        // Centrera kartan AUTOMATISKT vid allra första startladdningen
         if (!state.hasCenteredOnStart) {
           map.setView(currentBoatLatLng, 14);
           state.hasCenteredOnStart = true;
           document.getElementById("ai-status").textContent = "🟢 GPS Position Låst";
         }
 
-        // Uppdatera fart över grund (SOG) i knop
         if (pos.coords.speed !== null && !isNaN(pos.coords.speed)) {
           const knots = pos.coords.speed * 1.94384;
           document.getElementById("speed").textContent = knots.toFixed(1);
         }
         
-        // Uppdatera kurs om enheten rör sig
         if (pos.coords.heading !== null && !isNaN(pos.coords.heading) && plottedWaypoints.length === 0) {
           updateHeading(pos.coords.heading);
         }
       }, (err) => {
-        console.log("GPS-fel eller nekat godkännande:", err);
+        console.log("GPS-fel:", err);
         document.getElementById("ai-status").textContent = "⚠️ GPS Avstängd/Saknas";
       }, { enableHighAccuracy: true, timeout: 10000 });
-    } else {
-      document.getElementById("ai-status").textContent = "❌ Hårdvaru-GPS saknas";
     }
 
     function saveCurrentRouteToArray() {
@@ -350,7 +349,7 @@
       let savedKey = localStorage.getItem("gemini_api_key");
       const welcomeEl = document.getElementById("ai-chat-box");
       if (savedKey && savedKey.trim().length > 10) {
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! V40 är startad och din GPS-position söks automatiskt. Kartan centrerar på båten så fort vi har signal! ⚓🌊</div>`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! Nu har jag färglagt djupen på sjökortet igen, så att du lättare ser grynnorna när du planerar dina rutter! ⚓🌊</div>`;
       } else {
         welcomeEl.innerHTML = `<div class="chat-msg msg-ai">Spara din API-nyckel så sätter vi igång.</div>`;
       }
@@ -370,7 +369,7 @@
     async function callGeminiLiveAPI(promptText) {
       let apiKey = localStorage.getItem("gemini_api_key"); if (!apiKey) { appendChatMsg("Saga", "❌ Lägg till en nyckel via inställningarna."); return; }
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`;
-      let fullPrompt = `Du är Saga, en göteborgsk skipperska i en plotterapp. Svara kort (2-3 meningar) med go marin stämning. Kalla användaren 'Kapten'. Berätta gärna att GPS:en nu autostartar!`;
+      let fullPrompt = `Du är Saga, en göteborgsk skipperska i en plotterapp. Svara kort (2-3 meningar) med go marin stämning. Kalla användaren 'Kapten'. Nämn gärna att djupkartan är igång!`;
       try {
         const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt + "\nFråga: " + promptText }] }] }) });
         if (!response.ok) return;
@@ -382,7 +381,7 @@
     }
 
     function speakCleanText(t) { if (state.isMuted || !('speechSynthesis' in window)) return; window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t.replace(/[\*\#\_`]/g, " ")); u.lang = 'sv-SE'; window.speechSynthesis.speak(u); }
-    function toggleVoiceRecognition() { const SpeechRecognition = window.SpeechRecognition || window.webkitShareRecognition; if (!SpeechRecognition) return; if (!recognition) { recognition = new SpeechRecognition(); recognition.lang = "sv-SE"; recognition.onstart = () => { isListening = true; document.getElementById("ai-mic-btn").classList.add("listening"); }; recognition.onend = () => { isListening = false; document.getElementById("ai-mic-btn").classList.remove("listening"); }; recognition.onresult = (e) => { document.getElementById("ai-user-input").value = e.results[0][0].transcript; sendCustomAIMsg(); }; } if (isListening) recognition.stop(); else recognition.start(); }
+    function toggleVoiceRecognition() { const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SpeechRecognition) return; if (!recognition) { recognition = new SpeechRecognition(); recognition.lang = "sv-SE"; recognition.onstart = () => { isListening = true; document.getElementById("ai-mic-btn").classList.add("listening"); }; recognition.onend = () => { isListening = false; document.getElementById("ai-mic-btn").classList.remove("listening"); }; recognition.onresult = (e) => { document.getElementById("ai-user-input").value = e.results[0][0].transcript; sendCustomAIMsg(); }; } if (isListening) recognition.stop(); else recognition.start(); }
     function toggleNight() { state.isNightMode = !state.isNightMode; document.body.classList.toggle("night-mode", state.isNightMode); }
     function openSOS() { const c = map.getCenter(); document.getElementById("sos-coords").textContent = `${c.lat.toFixed(4)}N, ${c.lng.toFixed(4)}O`; openModal("sos-modal"); }
     function openModal(id) { document.getElementById(id).style.display = "block"; }
