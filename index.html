@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Compass-Arrow V32</title>
+  <title>Sagas Navigator - Mute Control V33</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -34,7 +34,6 @@
     .ai-header { font-weight: bold; color: var(--ai-purple); display: flex; align-items: center; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
     .ai-status { color: #e9d5ff; font-style: italic; }
 
-    /* Uppdaterad kompassbehållare */
     .compass-container {
       position: absolute; bottom: 150px; left: 20px; z-index: 1001; width: 85px; height: 85px;
       background: rgba(0, 21, 36, 0.85); border-radius: 50%; border: 2px solid var(--main-cyan);
@@ -48,7 +47,6 @@
     .o { right: 6px; top: 50%; transform: translateY(-50%); }
     .v { left: 6px; top: 50%; transform: translateY(-50%); }
     
-    /* NYTT: Navigationspilen istället för nålen */
     .compass-arrow {
       position: absolute; top: 50%; left: 50%;
       width: 0; height: 0;
@@ -60,7 +58,6 @@
       transition: transform 0.2s ease-out;
       filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
     }
-    /* Bakre delen på pilen för mer marin känsla */
     .compass-arrow::after {
       content: ''; position: absolute; top: 32px; left: -10px;
       width: 0; height: 0;
@@ -93,9 +90,13 @@
 
     .chat-input-row { display: flex; gap: 6px; align-items: center; }
     .chat-input { flex: 1; background: #0f172a; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; padding: 10px; font-size: 12px; box-sizing: border-box; height: 38px; }
+    
     .btn-mic { background: #1e1b4b; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; cursor: pointer; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
     .btn-mic.listening { background: var(--sos-red); border-color: white; }
-    .btn-stop-voice { display: none; background: var(--sos-red); color: white; border: none; border-radius: 6px; height: 38px; font-size: 11px; font-weight: bold; cursor: pointer; padding: 0 12px; align-items: center; justify-content: center; }
+    
+    /* NYTT: Styling för Mute-knappen */
+    .btn-mute { background: #0f172a; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; cursor: pointer; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: all 0.2s; }
+    .btn-mute.muted { background: rgba(255, 0, 0, 0.2); border-color: var(--sos-red); color: var(--sos-red); }
   </style>
 </head>
 <body>
@@ -109,7 +110,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ SAGAS NAVIGATOR V32</span>
+      <span>☁️ SAGAS NAVIGATOR V33</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -153,9 +154,10 @@
     </div>
 
     <div class="chat-input-row">
+      <button class="btn-mute" id="ai-mute-btn" onclick="toggleMute()" title="Slå på/av röstsvar">🔊</button>
+      
       <button class="btn-mic" id="ai-mic-btn" onclick="toggleVoiceRecognition()">🎙️</button>
       <input type="text" id="ai-user-input" class="chat-input" placeholder="Skriv eller prata med Saga..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
-      <button id="voice-stop-btn" class="btn-stop-voice" onclick="stopSpeaking()">🛑 STOPP</button>
       <button class="btn" style="min-width:50px; height:38px; padding:0; text-align:center; border-color:var(--ai-purple);" onclick="sendCustomAIMsg()">Sänd</button>
     </div>
   </div>
@@ -168,7 +170,7 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    let state = { isNightMode: false, currentHeading: 0 };
+    let state = { isNightMode: false, currentHeading: 0, isMuted: false };
     let recognition = null;
     let isListening = false;
     
@@ -185,16 +187,12 @@
 
     const boatMarker = L.marker([askimLat, askimLng]).addTo(map);
 
-    // Funktion för att uppdatera pilens och displayens kurs live
     function updateHeading(deg) {
       state.currentHeading = deg % 360;
       const displayDeg = String(Math.round(state.currentHeading)).padStart(3, '0');
       document.getElementById("heading-top").textContent = displayDeg + "°";
-      
-      // Rotera navigationspilen på skärmen
       document.getElementById("compass-arrow").style.transform = `rotate(${state.currentHeading}deg)`;
       
-      // Sätt bokstavskurs
       let cardinal = "N";
       if (deg >= 22.5 && deg < 67.5) cardinal = "NO";
       else if (deg >= 67.5 && deg < 112.5) cardinal = "O";
@@ -204,6 +202,24 @@
       else if (deg >= 247.5 && deg < 292.5) cardinal = "V";
       else if (deg >= 292.5 && deg < 337.5) cardinal = "NV";
       document.getElementById("cardinal-top").textContent = cardinal;
+    }
+
+    // NYTT: Funktion för att tysta/aktivera ljudet
+    function toggleMute() {
+      state.isMuted = !state.isMuted;
+      const muteBtn = document.getElementById("ai-mute-btn");
+      
+      if (state.isMuted) {
+        state.isMuted = true;
+        muteBtn.textContent = "🔇";
+        muteBtn.classList.add("muted");
+        // Tysta pågående tal direkt
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      } else {
+        state.isMuted = false;
+        muteBtn.textContent = "🔊";
+        muteBtn.classList.remove("muted");
+      }
     }
 
     map.on('click', function(e) {
@@ -230,7 +246,6 @@
       }
       if(plottedWaypoints.length > 1) {
         document.getElementById("eta").textContent = "35 min";
-        // Simulera en kurs mot första waypointen för att visa att pilen fungerar
         updateHeading(245); 
       }
     }
@@ -242,12 +257,12 @@
         clearRoute();
         
         const vrangoRoute = [
-          [57.6186, 11.9320], // GFAS Askim
-          [57.6175, 11.9050], // Ut ur Askimsviken
-          [57.6010, 11.8650], // Väster om Amundön
-          [57.5950, 11.8100], // Anslutning till huvudfarleden
-          [57.5810, 11.7920], // Söderut mot Donsö
-          [57.5750, 11.7820], // Vrångö Gästhamn
+          [57.6186, 11.9320],
+          [57.6175, 11.9050],
+          [57.6010, 11.8650],
+          [57.5950, 11.8100],
+          [57.5810, 11.7920],
+          [57.5750, 11.7820],
         ];
 
         vrangoRoute.forEach(pt => addWaypoint(pt[0], pt[1]));
@@ -277,7 +292,6 @@
       }
     }
 
-    // Geolocation API för att uppdatera pilen baserat på din verkliga rörelse på sjön
     if (navigator.geolocation) {
       navigator.geolocation.watchPosition((pos) => {
         if (pos.coords.heading !== null && !isNaN(pos.coords.heading)) {
@@ -300,7 +314,7 @@
 
       if (savedKey && savedKey.trim().length > 10) {
         statusEl.textContent = `🟢 Saga Online`;
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> V32 är laddad med den nya roterande navigationspilen och stabila Google-anslutningar! Säg bara till vart vi ska segla! ⚓🧭</div>`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> V33 är redo med en snabb mute-knapp i chatten om du behöver tystnad ombord! Vart styr vi idag? ⚓🧭</div>`;
       } else {
         statusEl.textContent = "🔴 Ingen nyckel sparad.";
         welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Välkommen ombord! Spara din API-nyckel så sätter vi igång.</div>`;
@@ -375,20 +389,16 @@
       }
     }
 
+    // Modifierad för att respektera mute-läget live
     function speakCleanText(rawText) {
+      if (state.isMuted) return; // Prata inte om appen är tystad
       if (!('speechSynthesis' in window)) return;
+      
       window.speechSynthesis.cancel();
       let cleanText = rawText.replace(/[\*\#\_`]/g, " ");
       const utterance = new SpeechSynthesisUtterance(cleanText);
       utterance.lang = 'sv-SE';
-      document.getElementById("voice-stop-btn").style.display = "inline-flex";
-      utterance.onend = utterance.onerror = () => { document.getElementById("voice-stop-btn").style.display = "none"; };
       window.speechSynthesis.speak(utterance);
-    }
-
-    function stopSpeaking() {
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-      document.getElementById("voice-stop-btn").style.display = "none";
     }
 
     function toggleVoiceRecognition() {
@@ -406,7 +416,7 @@
     function toggleNight() { state.isNightMode = !state.isNightMode; document.body.classList.toggle("night-mode", state.isNightMode); }
     function openSOS() { const c = map.getCenter(); document.getElementById("sos-coords").textContent = `${c.lat.toFixed(4)}N, ${c.lng.toFixed(4)}O`; openModal("sos-modal"); }
     function openModal(id) { document.getElementById(id).style.display = "block"; }
-    function closeModal(id) { document.getElementById(id).style.display = "none"; if (id === 'ai-chat-modal') stopSpeaking(); }
+    function closeModal(id) { document.getElementById(id).style.display = "none"; if (id === 'ai-chat-modal') { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); } }
   </script>
 </body>
 </html>
