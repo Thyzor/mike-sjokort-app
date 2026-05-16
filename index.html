@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Depth Colors V41</title>
+  <title>Sagas Navigator - Route Refiner V42</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -116,7 +116,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ SAGAS NAVIGATOR V41</span>
+      <span>☁️ SAGAS NAVIGATOR V42</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -179,7 +179,7 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    let state = { isNightMode: false, currentHeading: 0, isMuted: false, hasCenteredOnStart: false };
+    let state = { isNightMode: false, currentHeading: 0, isMuted: false, hasCenteredOnStart: false, isRouteLoading: false };
     let recognition = null;
     let isListening = false;
     
@@ -188,15 +188,12 @@
 
     let currentBoatLatLng = L.latLng(57.6186, 11.9320);
 
-    // Initiera kartan
     const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([currentBoatLatLng.lat, currentBoatLatLng.lng], 13);
     
-    // ANVÄNDER EN KARTA MED TYDLIGARE DJUP- OCH KUSTLINJEFÄRGER SOM BASLAGER
     L.tileLayer('https://{s}.tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apiKey=b57492c10dbb44589d13e015ee6b2b62', {
       maxZoom: 18
     }).addTo(map);
 
-    // Lägg till sjömärken, grynnor och sjökortsdetaljer ovanpå
     L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", { maxZoom: 18 }).addTo(map);
 
     const boatMarker = L.marker([currentBoatLatLng.lat, currentBoatLatLng.lng]).addTo(map);
@@ -219,7 +216,8 @@
       plottedWaypoints.push({ marker: wpMarker, latlng: L.latLng(lat, lng) });
       calculateGlobalRoute();
       
-      if(plottedWaypoints.length >= 2) {
+      // VISAR BARA MENYN OM VI INTE BARA HÅLLER PÅ ATT LÄSA IN EN BEFINTLIG RUTT
+      if(plottedWaypoints.length >= 2 && !state.isRouteLoading) {
         document.getElementById("save-route-panel").style.display = "flex";
       }
     }
@@ -302,6 +300,10 @@
     function loadSelectedRoute(routeName) {
       if (!routeName) return;
       clearRouteDisplay();
+      
+      // Sätt flaggan till true så spara-panelen hålls gömd under laddningen
+      state.isRouteLoading = true;
+
       let savedRoutes = JSON.parse(localStorage.getItem("sagas_saved_routes")) || {};
       const targetCoords = savedRoutes[routeName];
       if (targetCoords && targetCoords.length > 0) {
@@ -309,6 +311,10 @@
         const group = new L.featureGroup(plottedWaypoints.map(wp => wp.marker));
         map.fitBounds(group.getBounds().pad(0.1));
       }
+
+      // Återställ flaggan och stäng av panelen definitivt
+      state.isRouteLoading = false;
+      document.getElementById("save-route-panel").style.display = "none";
     }
 
     function deleteActiveRoute() {
@@ -349,7 +355,7 @@
       let savedKey = localStorage.getItem("gemini_api_key");
       const welcomeEl = document.getElementById("ai-chat-box");
       if (savedKey && savedKey.trim().length > 10) {
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! Nu har jag färglagt djupen på sjökortet igen, så att du lättare ser grynnorna när du planerar dina rutter! ⚓🌊</div>`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! Nu har jag fixat ruttladdningen. Hämtar du en sparad rutt slipper du se spara-rutan i hörnet i onödan! ⚓🌊</div>`;
       } else {
         welcomeEl.innerHTML = `<div class="chat-msg msg-ai">Spara din API-nyckel så sätter vi igång.</div>`;
       }
@@ -369,7 +375,7 @@
     async function callGeminiLiveAPI(promptText) {
       let apiKey = localStorage.getItem("gemini_api_key"); if (!apiKey) { appendChatMsg("Saga", "❌ Lägg till en nyckel via inställningarna."); return; }
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`;
-      let fullPrompt = `Du är Saga, en göteborgsk skipperska i en plotterapp. Svara kort (2-3 meningar) med go marin stämning. Kalla användaren 'Kapten'. Nämn gärna att djupkartan är igång!`;
+      let fullPrompt = `Du är Saga, en göteborgsk skipperska i en plotterapp. Svara kort (2-3 meningar) med go marin stämning. Kalla användaren 'Kapten'.`;
       try {
         const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt + "\nFråga: " + promptText }] }] }) });
         if (!response.ok) return;
