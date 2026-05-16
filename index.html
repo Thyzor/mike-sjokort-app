@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Mikes Navigator - Sound Fix V27</title>
+  <title>Sagas Navigator - V28</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -71,14 +71,12 @@
     .preview-img { height: 35px; border-radius: 4px; border: 1px solid var(--ai-purple); display: none; }
     .preview-remove { color: var(--sos-red); cursor: pointer; font-weight: bold; font-size: 14px; margin-right: 5px; }
 
-    /* KNAPPAR OCH RADER I INPUT-FÄLTET */
     .chat-input-row { display: flex; gap: 6px; align-items: center; }
     .chat-input { flex: 1; background: #0f172a; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; padding: 10px; font-size: 12px; box-sizing: border-box; height: 38px; }
     .btn-mic { background: #1e1b4b; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; cursor: pointer; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
     .btn-mic.listening { background: var(--sos-red); border-color: white; }
     .btn-file-trigger { background: #0f172a; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; cursor: pointer; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
     
-    /* STOPPKNAPP STYLING */
     .btn-stop-voice { display: none; background: var(--sos-red); color: white; border: none; border-radius: 6px; height: 38px; font-size: 11px; font-weight: bold; cursor: pointer; padding: 0 12px; align-items: center; justify-content: center; gap: 4px; box-shadow: 0 0 10px rgba(255,0,0,0.4); }
   </style>
 </head>
@@ -93,13 +91,13 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ MIKE NAVIGATOR V27 (AUDIO CONTROL)</span>
+      <span>☁️ SAGAS NAVIGATOR V28</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
       </div>
     </div>
-    <div class="ai-status" id="ai-status">Läser enhetens minne...</div>
+    <div class="ai-status" id="ai-status">Ansluter...</div>
   </div>
 
   <div class="compass-container">
@@ -111,7 +109,7 @@
 
   <div class="controls-left">
     <button class="btn btn-sos" onclick="openSOS()">🆘 NÖD SOS</button>
-    <button class="btn btn-ai" onclick="openModal('ai-chat-modal')">🔮 AI SKEPPARE</button>
+    <button class="btn btn-ai" onclick="openModal('ai-chat-modal')">🔮 SAGA SKEPPARE</button>
     <button class="btn" onclick="centerMap()">📍 CENTRERA</button>
     <button class="btn" onclick="clearRoute()">🗑️ RENSA RUTT</button>
     <button class="btn" onclick="toggleNight()">🌙 NATT/DAG</button>
@@ -127,7 +125,7 @@
 
   <div id="ai-chat-modal" class="modal ai-modal">
     <span class="close-x" onclick="closeModal('ai-chat-modal')">×</span>
-    <h3 style="color:var(--ai-purple); margin-top:0; margin-bottom:10px;">Mike Marine Copilot</h3>
+    <h3 style="color:var(--ai-purple); margin-top:0; margin-bottom:10px;">Saga Marine Copilot</h3>
     
     <div class="chat-box" id="ai-chat-box">
       <div class="chat-msg msg-ai" id="welcome-msg">Ansluter system...</div>
@@ -182,11 +180,11 @@
 
       if (savedKey && savedKey.trim().length > 10) {
         let masked = savedKey.trim().substring(0, 6) + "..." + savedKey.trim().substring(savedKey.trim().length - 4);
-        statusEl.textContent = `🟢 Ljudkontroll Aktiv (${masked})`;
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>AI:</b> Nu rensas alla dolda stjärnor bort innan jag pratar, och du har fått en <b>🛑 STOPP-knapp</b> om du vill tysta mig på sjön!</div>`;
+        statusEl.textContent = `🟢 Saga Online (${masked})`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Hej! Jag är din nya marina copilot. Jag är expert på navigation, båtmotorer och elsystem. Vad har du på hjärtat idag? 🌊</div>`;
       } else {
         statusEl.textContent = "🔴 Ingen nyckel sparad.";
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>AI:</b> Klicka på <b>⚙️ Nyckel</b> för att spara en API-nyckel.</div>`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Hej! Spara din API-nyckel under inställningar så kliver jag ombord direkt.</div>`;
       }
     }
 
@@ -267,16 +265,17 @@
       callGeminiLiveAPI(text);
     }
 
-    // GLOWING AUDIO CONTROLLER ENGINE
     async function callGeminiLiveAPI(promptText) {
       let apiKey = localStorage.getItem("gemini_api_key");
-      if (!apiKey) { appendChatMsg("AI", "❌ Lägg till en nyckel via inställningarna först."); return; }
+      if (!apiKey) { appendChatMsg("Saga", "❌ Lägg till en nyckel via inställningarna först."); return; }
 
       apiKey = apiKey.trim();
-      document.getElementById("ai-status").textContent = "🔮 Bearbetar...";
+      document.getElementById("ai-status").textContent = "🔮 Saga tänker...";
 
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
-      let fullPrompt = `Du är Mike, en legendarisk och hjälpsam båtmotorexpert. Svara kort, proffsigt och koncist på svenska. `;
+      
+      // HÄR HAR VI DEFINIERAT SAGAS NYA IDENTITET:
+      let fullPrompt = `Du är Saga, en kunnig, professionell och pedagogisk kvinnlig båt- och motorexpert. Svara mycket kort, rappt och koncist på svenska. `;
       
       if (attachedFileTextContent) { fullPrompt += `\n\n[Innehåll från bifogad fil]:\n${attachedFileTextContent}\n\n`; }
       fullPrompt += promptText || "Analysera det bifogade materialet.";
@@ -296,7 +295,7 @@
         if (!response.ok) {
           let errorText = "Statuskod " + response.status;
           try { const errData = await response.json(); if(errData.error) errorText = errData.error.message; } catch(e){}
-          appendChatMsg("AI", `⚠️ <b>Google API Fel:</b> ${errorText}`);
+          appendChatMsg("Saga", `⚠️ <b>Google API Fel:</b> ${errorText}`);
           document.getElementById("ai-status").textContent = "❌ Fel.";
           return;
         }
@@ -304,37 +303,30 @@
         const data = await response.json();
         if (data.candidates && data.candidates[0].content.parts[0].text) {
           let aiResponse = data.candidates[0].content.parts[0].text;
-          appendChatMsg("AI", aiResponse);
-          document.getElementById("ai-status").textContent = "🟢 Klar.";
+          appendChatMsg("Saga", aiResponse);
+          document.getElementById("ai-status").textContent = "🟢 Saga klar.";
 
-          // STARTA TALPRODUKTIONEN
           speakCleanText(aiResponse);
         }
       } catch (error) {
-        appendChatMsg("AI", `⚠️ <b>Nätverksfel:</b> ${error.message}`);
+        appendChatMsg("Saga", `⚠️ <b>Nätverksfel:</b> ${error.message}`);
         document.getElementById("ai-status").textContent = "Anslutningsfel.";
       }
     }
 
-    // FUNKTION SOM RENSER TEXTEN FRÅN ASS-TECKEN OCH STARTAR TALET
     function speakCleanText(rawText) {
       if (!('speechSynthesis' in window)) return;
       
-      // Stoppa eventuellt pågående tal först
       window.speechSynthesis.cancel();
 
-      // REGEX-RENSNING: Plockar bort stjärnor (*), brädgårdar (#), understreck och bakåtfnuttar
+      // Rensar bort Markdown så att rösten pratar helt rent
       let cleanText = rawText.replace(/[\*\#\_`]/g, " ");
       
       const utterance = new SpeechSynthesisUtterance(cleanText);
       utterance.lang = 'sv-SE';
 
-      // Visa stoppknappen när rösten pratar
-      utterance.onstart = () => {
-        document.getElementById("voice-stop-btn").style.display = "inline-flex";
-      };
+      document.getElementById("voice-stop-btn").style.display = "inline-flex";
 
-      // Göm stoppknappen när rösten pratat klart eller avbrutits
       utterance.onend = utterance.onerror = () => {
         document.getElementById("voice-stop-btn").style.display = "none";
       };
@@ -342,7 +334,6 @@
       window.speechSynthesis.speak(utterance);
     }
 
-    // MANUELL STOPPKNAPP
     function stopSpeaking() {
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
@@ -368,7 +359,6 @@
     function openSOS() { const c = map.getCenter(); document.getElementById("sos-coords").textContent = `${c.lat.toFixed(4)}N, ${c.lng.toFixed(4)}O`; openModal("sos-modal"); }
     function openModal(id) { document.getElementById(id).style.display = "block"; }
     
-    // Om användaren stänger modalen ska rösten också tystna automatiskt
     function closeModal(id) { 
       document.getElementById(id).style.display = "none"; 
       if (id === 'ai-chat-modal') { stopSpeaking(); }
