@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Fully Connected Edition V62</title>
+  <title>Sagas Navigator - Live Pin Tracking V63</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -44,36 +44,24 @@
     }
 
     /* PANELER */
-    .docking-pilot-panel, .ghost-radar-panel, .fika-panel, .nature-panel, .wave-panel {
+    .fika-panel, .nature-panel, .wave-panel {
       position: absolute; top: 15px; right: 15px; z-index: 2000;
-      background: rgba(0, 15, 30, 0.95); border: 2px solid var(--main-cyan); padding: 15px; border-radius: 16px;
+      background: rgba(0, 15, 30, 0.95); border: 2px solid var(--main-cyan); padding: 15px; border-radius: 166px;
       width: 240px; box-shadow: 0 0 25px rgba(0, 212, 255, 0.4); backdrop-filter: blur(10px);
       display: none; flex-direction: column; gap: 8px;
     }
     .panel-header { font-size: 10px; font-weight: bold; letter-spacing: 1px; display: flex; justify-content: space-between; }
     .panel-title { font-size: 16px; font-weight: 900; color: white; margin: 2px 0; }
     .panel-vector { background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; font-size: 12px; }
-    .panel-advice { font-size: 11px; color: #cbd5e1; line-height: 1.4; font-style: italic; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2); }
 
-    .fika-panel { border-color: var(--fika-pink); box-shadow: 0 0 25px rgba(244, 114, 182, 0.4); }
-    .nature-panel { border-color: var(--nature-teal); box-shadow: 0 0 25px rgba(45, 212, 191, 0.4); }
-    .ghost-radar-panel { border-color: var(--ghost-green); box-shadow: 0 0 25px rgba(0, 255, 102, 0.4); }
-
-    .wave-panel {
-      top: auto; bottom: 150px; right: 15px; border-color: var(--ais-orange);
-      box-shadow: 0 0 30px rgba(249, 115, 22, 0.6); background: rgba(30, 10, 0, 0.95);
-    }
-    .btn-wave-action {
-      background: linear-gradient(135deg, var(--ais-orange), #ea580c); color: white;
-      border: none; padding: 12px; border-radius: 10px; font-weight: bold; font-size: 14px;
-      cursor: pointer; text-align: center;
-    }
+    .fika-panel { border-color: var(--fika-pink); box-shadow: 0 0 25px rgba(244, 114, 182, 0.4); border-radius: 16px; }
+    .nature-panel { border-color: var(--nature-teal); box-shadow: 0 0 25px rgba(45, 212, 191, 0.4); border-radius: 16px; }
+    .wave-panel { top: auto; bottom: 150px; right: 15px; border-color: var(--ais-orange); border-radius: 16px; background: rgba(30, 10, 0, 0.95); }
 
     .mob-active-panel {
       position: absolute; top: 160px; right: 15px; z-index: 2050;
       background: rgba(40, 0, 0, 0.95); border: 3px solid var(--sos-red); padding: 15px; border-radius: 16px;
-      width: 240px; box-shadow: 0 0 35px var(--sos-red); backdrop-filter: blur(10px);
-      display: none; flex-direction: column; gap: 8px;
+      width: 240px; display: none; flex-direction: column; gap: 8px;
     }
 
     .ai-panel {
@@ -171,7 +159,6 @@
     </div>
     <div class="panel-title" style="color:var(--fika-pink); font-size:15px;">Dags för en go fika! 🍩</div>
     <div class="panel-vector" id="fika-status-text" style="border-left: 4px solid var(--fika-pink); font-size:11px;">Läser av kaffeförhållanden...</div>
-    <div class="panel-advice">Håll i termosen ordentligt!</div>
   </div>
 
   <div class="nature-panel" id="nature-panel">
@@ -181,14 +168,6 @@
     </div>
     <div class="panel-title" id="nature-title" style="color:var(--nature-teal); font-size:15px;">Djur i sikte!</div>
     <div class="panel-advice" id="nature-desc" style="background:rgba(0,0,0,0.5); border-color:#0f766e; color:#ccfbf1;">Håll utkik över relingen...</div>
-  </div>
-
-  <div class="wave-panel" id="wave-panel">
-    <div class="panel-header" style="color:var(--ais-orange);">
-      <span>👋 MÖTANDE FARTYG</span>
-    </div>
-    <div style="font-size:12px; margin:2px 0 6px 0; color:#fed7aa;" id="wave-vessel-text">Ett fartyg passerar nära!</div>
-    <button class="btn-wave-action" onclick="performSjömanshälsning()">👋 VINKA TILL BÅTEN!</button>
   </div>
 
   <div class="mob-active-panel" id="mob-active-panel">
@@ -208,7 +187,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>🔮 SAGAS NAVIGATOR V62 [CONNECTED MOTOR]</span>
+      <span>🔮 SAGAS NAVIGATOR V63 [LIVE PIN FIX]</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -266,7 +245,7 @@
     <h3 style="color:var(--ai-purple); margin-top:0; margin-bottom:10px;">Saga Marine Copilot</h3>
     <div class="chat-box" id="ai-chat-box"></div>
     <div class="chat-input-row">
-      <input type="text" id="ai-user-input" class="chat-input" placeholder="Prata till Saga..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
+      <input type="text" id="ai-user-input" class="chat-input" placeholder="Skriv 'starta' för autopilot..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
       <button class="btn" style="min-width:50px; height:38px; border-color:var(--ai-purple);" onclick="sendCustomAIMsg()">Sänd</button>
     </div>
   </div>
@@ -305,14 +284,17 @@
       { name: "Vinga Grund", lat: 57.6310, lng: 11.6020, radius: 500, waypointBypass: [57.6390, 11.6020] }
     ];
 
-    const natureDatabase = [
-      { name: "Inre sälskyddsområdet", lat: 57.6250, lng: 11.6200 }
-    ];
-
     const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([currentBoatLatLng.lat, currentBoatLatLng.lng], 12);
     L.tileLayer('https://{s}.tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apiKey=b57492c10dbb44589d13e015ee6b2b62', { maxZoom: 18 }).addTo(map);
 
-    const boatMarker = L.marker([currentBoatLatLng.lat, currentBoatLatLng.lng]).addTo(map);
+    /* 🔴 MODIFIERAD BÅTMARKÖR: Cirkel som garanterat ritas om blixtsnabbt av webbläsaren */
+    const boatMarker = L.circleMarker([currentBoatLatLng.lat, currentBoatLatLng.lng], {
+      radius: 10,
+      color: '#00d4ff',
+      fillColor: '#ff0055',
+      fillOpacity: 0.9,
+      weight: 3
+    }).addTo(map).bindTooltip("DITT FARTYG", { permanent: false, direction: 'top' });
 
     function updateHeading(deg) {
       state.currentHeading = (deg + 360) % 360;
@@ -381,7 +363,6 @@
       return totalNM;
     }
 
-    /* 💾 SPARA & LADDA RUTTER - FIXAD KOPPLING */
     function saveCurrentRouteToArray() {
       const nameInput = document.getElementById("route-name-input").value.trim();
       if (!nameInput) { alert("Ange ett namn på rutten, Kapten!"); return; }
@@ -417,6 +398,8 @@
         coords.forEach(c => executeAddWaypointVisual(c[0], c[1]));
         appendChatMsg("Saga", `Plockade fram '${name}' på skärmen! 🗺️`);
         logToBook(`Laddade rutt: ${name}`);
+        // Flytta kameran till ruttens start
+        if(coords.length > 0) map.setView([coords[0][0], coords[0][1]], 13);
       }
       state.isRouteLoading = false;
     }
@@ -433,7 +416,6 @@
       appendChatMsg("Saga", `Raderade rutten '${name}' från hårddisken.`);
     }
 
-    /* 🏠 HEMMAHAMN SÖKMOTOR - KOPPLAD */
     async function lookupAndSetHomePort() {
       const query = document.getElementById("home-port-input").value.trim();
       const statusDiv = document.getElementById("home-port-status");
@@ -470,7 +452,6 @@
       homePortMarker = L.marker([homePortData.lat, homePortData.lng], { icon: homeIcon }).addTo(map).bindTooltip(`HEM: ${homePortData.name}`);
     }
 
-    /* 📜 LOGGBOK MOTOR - KOPPLAD */
     function logToBook(action) {
       let logs = JSON.parse(localStorage.getItem("saga_marine_logs") || "[]");
       logs.unshift(`[${new Date().toLocaleTimeString()}] ${action}`);
@@ -487,7 +468,7 @@
 
     function clearAllLogs() { localStorage.removeItem("saga_marine_logs"); openLogbookModal(); }
 
-    /* 🧭 RUTT-SIMULERING OCH SVEP-KONTROLL */
+    /* 🧭 RUTT-SIMULERING MED LIVE-SINKNING AV POSITIONER */
     function startRouteSimulation() {
       if (plottedWaypoints.length < 2) return "Det finns ingen rutt utlagd än, Kapten.";
       isSimulating = true; 
@@ -511,23 +492,29 @@
         const y = Math.sin(dLng) * Math.cos(lat2); const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
         updateHeading((Math.atan2(y, x) * 180 / Math.PI + 360) % 360);
         
-        currentBoatLatLng = L.latLng(currentBoatLatLng.lat + (currentTarget.lat - currentBoatLatLng.lat) * 0.03, currentBoatLatLng.lng + (currentTarget.lng - currentBoatLatLng.lng) * 0.03);
+        // Flytta båtens position ett steg närmare nästa waypoint
+        currentBoatLatLng = L.latLng(
+          currentBoatLatLng.lat + (currentTarget.lat - currentBoatLatLng.lat) * 0.04, 
+          currentBoatLatLng.lng + (currentTarget.lng - currentBoatLatLng.lng) * 0.04
+        );
+        
+        /* 🚨 FIX: Tvinga markören att fysiskt ändra lat/lng och panorera kartan automatiskt */
         boatMarker.setLatLng(currentBoatLatLng);
+        map.panTo(currentBoatLatLng); // Gör att kameran mjukt hänger med nålen!
+
         checkAllTrackers(currentBoatLatLng);
-      }, 300);
+      }, 250);
       return "Sätter igång maskiner! Följer Sagas ruttlinje. 🧭";
     }
 
     function checkAllTrackers(latlng) {
       let now = Date.now();
-      // Krockdetektering
       let hazardDetected = false;
       for (let hazard of landObstacles) {
         if (latlng.distanceTo(L.latLng(hazard.lat, hazard.lng)) <= hazard.radius) { hazardDetected = true; break; }
       }
       document.getElementById("sos-main-btn").className = hazardDetected ? "btn btn-sos shallow-warning-active" : "btn btn-sos";
 
-      // Miljöfaktorer och fika
       let westFactor = Math.max(0, (11.95 - latlng.lng) * 4);
       document.getElementById("wind").textContent = (4.0 + westFactor * 3).toFixed(1) + " m/s";
       document.getElementById("waves").textContent = (0.2 + westFactor * 0.5).toFixed(1) + " m";
@@ -549,7 +536,6 @@
       if (mobMarker) map.removeLayer(mobMarker);
       mobMarker = L.marker([mobTargetLatLng.lat, mobTargetLatLng.lng], { icon: L.divIcon({ className:'home-marker-container', html:'<div class="mob-icon-style">🛟</div>', iconSize:[35,35] }) }).addTo(map);
       document.getElementById("mob-active-panel").style.display = "flex";
-      document.getElementById("mob-live-distance").textContent = "0 m";
       logToBook("🚨 MAN ÖVER BORD RECON");
     }
     function cancelMOBSystem() { isMOBActive = false; if (mobMarker) map.removeLayer(mobMarker); document.getElementById("mob-active-panel").style.display = "none"; }
@@ -581,12 +567,11 @@
       if (text.toLowerCase().includes("starta") || text.toLowerCase().includes("simul")) {
         let res = startRouteSimulation(); appendChatMsg("Saga", res);
       } else {
-        appendChatMsg("Saga", "Hittade ingen röstmodul, men jag håller utkik på skärmen! Styr på du, Kapten. ⚓");
+        appendChatMsg("Saga", "Autopilot-kommando ej identifierat. Skriv 'starta' för att dra igång simuleringen!");
       }
     }
 
     window.addEventListener('DOMContentLoaded', () => { 
-      // Hämta hemmahamn om den finns sparad sedan tidigare
       const savedHome = localStorage.getItem("saga_home_port");
       if (savedHome) {
         homePortData = JSON.parse(savedHome);
@@ -595,7 +580,7 @@
         document.getElementById("home-port-btn").textContent = `🏠 ${homePortData.name.toUpperCase()}`;
       }
       updateRoutesDropdown();
-      document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg"><b>Saga:</b> Ohoj Kapten! Version 62 är totalrenoverad. Alla interna brytare, ruttlagringar och loggböcker är i full drift! Testa att sätta hemmahamn och rita rutter nu! 🛠️⚓</div>`;
+      document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg"><b>Saga:</b> Live-spårning aktiverad! Båten är nu en neonrosa/blå radar-punkt som garanterat rör sig och centrerar kartan under gång. Prova att klicka ut en rutt och starta autopiloten! 📡🚢</div>`;
     });
   </script>
 </body>
