@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Harbor Radar V52</title>
+  <title>Sagas Navigator - Ghost Wreck Radar V53</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -17,11 +17,12 @@
       --log-gold: #fbbf24;
       --eco-green: #10b981;
       --harbor-blue: #3b82f6;
+      --wreck-purple: #c084fc;
     }
     body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: var(--bg-dark); font-family: sans-serif; color: white; }
     #map { height: 100%; width: 100%; z-index: 1; background: #0a1e32; }
 
-    /* NATT-FILTER: Ger naturskyddszoner och hamnar en utomjordisk glöd */
+    /* NATT-FILTER */
     .night-mode #map { 
       filter: invert(100%) hue-rotate(180deg) brightness(0.65) contrast(1.6) drop-shadow(0 0 3px var(--main-cyan));
     }
@@ -51,7 +52,7 @@
     .ai-header { font-weight: bold; color: var(--ai-purple); display: flex; align-items: center; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
     .ai-status { color: #e9d5ff; font-style: italic; }
 
-    /* GÄSTHAMNS-RADAR POPUP PÅ SKÄRMEN */
+    /* RADARPANELER PÅ SKÄRMEN */
     .harbor-radar-panel {
       position: absolute; top: 15px; right: 15px; z-index: 2000;
       background: rgba(0, 31, 63, 0.95); border: 2px solid var(--harbor-blue); padding: 10px; border-radius: 12px;
@@ -126,8 +127,9 @@
     .log-meta { display: flex; justify-content: space-between; font-weight: bold; color: var(--log-gold); margin-bottom: 3px; }
     .log-note { font-style: italic; color: #cbd5e1; margin-top: 4px; }
 
+    /* BLINK-ANIMATIONER FÖR VARNINGAR */
     @keyframes shallow-blink { 0% { border-color: var(--sos-red); box-shadow: 0 0 10px var(--sos-red); } 50% { border-color: #000; box-shadow: none; } 100% { border-color: var(--sos-red); box-shadow: 0 0 10px var(--sos-red); } }
-    .shallow-warning-active { animation: shallow-blink 0.8s infinite; background: rgba(255, 0, 0, 0.2) !important; }
+    .shallow-warning-active { animation: shallow-blink 0.8s infinite; background: rgba(255, 0, 0, 0.2) !important; color: var(--sos-red) !important; }
 
     @keyframes ais-blink { 0% { border-color: var(--ais-orange); box-shadow: 0 0 12px var(--ais-orange); } 50% { border-color: #000; box-shadow: none; } 100% { border-color: var(--ais-orange); box-shadow: 0 0 12px var(--ais-orange); } }
     .ais-warning-active { animation: ais-blink 0.6s infinite; background: rgba(249, 115, 22, 0.25) !important; color: var(--ais-orange) !important; border-color: var(--ais-orange) !important; }
@@ -135,14 +137,28 @@
     @keyframes eco-blink { 0% { border-color: var(--eco-green); box-shadow: 0 0 12px var(--eco-green); } 50% { border-color: #000; box-shadow: none; } 100% { border-color: var(--eco-green); box-shadow: 0 0 12px var(--eco-green); } }
     .eco-warning-active { animation: eco-blink 1s infinite; background: rgba(16, 185, 129, 0.25) !important; color: #a7f3d0 !important; border-color: var(--eco-green) !important; }
 
+    @keyframes ghost-blink { 0% { border-color: var(--wreck-purple); box-shadow: 0 0 15px var(--wreck-purple); } 50% { border-color: #000; box-shadow: none; } 100% { border-color: var(--wreck-purple); box-shadow: 0 0 15px var(--wreck-purple); } }
+    .ghost-warning-active { animation: ghost-blink 1.2s infinite; background: rgba(147, 51, 234, 0.25) !important; color: #e9d5ff !important; border-color: var(--wreck-purple) !important; }
+
     .wind-arrow-icon { font-size: 16px; color: rgba(56, 189, 248, 0.6); text-shadow: 0 0 4px rgba(0,0,0,0.8); }
     .ais-vessel-tooltip { background: #1e293b; border: 1px solid var(--ais-orange); color: #f8fafc; font-weight: bold; font-size: 9px; padding: 2px 5px; border-radius: 4px; }
     .eco-zone-tooltip { background: #064e3b; border: 1px solid var(--eco-green); color: #a7f3d0; font-size: 10px; font-weight: bold; }
     
-    /* DESIGN FÖR HAMNIKONEN */
-    .harbor-icon { font-size: 20px; text-shadow: 0 0 6px rgba(0,0,0,1); cursor: pointer; }
-    .harbor-popup-style .leaflet-popup-content-wrapper { background: #001f3f; color: white; border: 1px solid var(--harbor-blue); border-radius: 12px; font-size: 11px; }
-    .harbor-popup-style .leaflet-popup-tip { background: #001f3f; border: 1px solid var(--harbor-blue); }
+    .harbor-marker-container { pointer-events: auto !important; }
+    .harbor-icon { font-size: 24px; text-shadow: 0 0 6px rgba(0,0,0,1); cursor: pointer; text-align: center; line-height: 1; }
+    
+    /* VRAK-DESIGN */
+    .wreck-marker-container { pointer-events: auto !important; }
+    .wreck-icon { font-size: 22px; text-shadow: 0 0 8px rgba(168, 85, 247, 0.8); cursor: pointer; text-align: center; line-height: 1; animation: float-wreck 3s infinite ease-in-out; }
+    @keyframes float-wreck { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+
+    .harbor-popup-style .leaflet-popup-content-wrapper { background: #001f3f !important; color: white !important; border: 1px solid var(--harbor-blue) !important; border-radius: 12px; font-size: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
+    .harbor-popup-style .leaflet-popup-tip { background: #001f3f !important; border: 1px solid var(--harbor-blue) !important; }
+    
+    .wreck-popup-style .leaflet-popup-content-wrapper { background: #13072e !important; color: #f3e8ff !important; border: 1.5px solid var(--wreck-purple) !important; border-radius: 12px; font-size: 12px; box-shadow: 0 4px 20px rgba(147, 51, 234, 0.5); }
+    .wreck-popup-style .leaflet-popup-tip { background: #13072e !important; border: 1.5px solid var(--wreck-purple) !important; }
+    .wreck-popup-style a.leaflet-popup-close-button { color: var(--wreck-purple) !important; padding: 6px 4px 0 0; }
+    a.leaflet-popup-close-button { color: var(--main-cyan) !important; padding: 6px 4px 0 0; }
   </style>
 </head>
 <body>
@@ -168,7 +184,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>☁️ SAGAS NAVIGATOR V52 [HARBOR RADAR]</span>
+      <span>🔮 SAGAS NAVIGATOR V53 [GHOST RADAR]</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -249,7 +265,7 @@
 
     let simulationInterval = null; let isSimulating = false;
     let simWaypointIndex = 0; let lastRealLocation = null;
-    let lastWarningTime = 0; let lastAisWarningTime = 0; let lastWeatherWarningTime = 0; let lastEcoWarningTime = 0; let lastHarborAnnounceTime = 0;
+    let lastWarningTime = 0; let lastAisWarningTime = 0; let lastWeatherWarningTime = 0; let lastEcoWarningTime = 0; let lastHarborAnnounceTime = 0; let lastWreckWarningTime = 0;
     
     let currentRouteName = "Ospecificerad rutt";
     let maxWindDuringTrip = 0;
@@ -268,26 +284,31 @@
 
     const ecoZones = [
       { name: "Vinga Sälskyddsområde", coords: [[57.633, 11.600], [57.625, 11.595], [57.620, 11.610], [57.630, 11.620]], polygon: null },
-      { name: "Öckerö Fågelskyddszon", coords: [[57.715, 11.620], [57.705, 11.615], [57.700, 11.635], [57.712, 11.640]], polygon: null },
-      { name: "Tistlarna Naturreservat", coords: [[57.515, 11.720], [57.495, 11.710], [57.490, 11.740], [57.510, 11.750]], polygon: null }
+      { name: "Öckerö Fågelskyddszon", coords: [[57.715, 11.620], [57.705, 11.615], [57.700, 11.635], [57.712, 11.640]], polygon: null }
     ];
 
-    // DATABAS FÖR GÄSTHAMNAR OCH SAGAS UNIKA RECENSIONER
     const harborDatabase = [
+      { name: "Långedrags Gästhamn", lat: 57.6695, lng: 11.8615, spots: "Ca 40 platser", facilities: "🚿 Dusch, 🔌 El, 🚽 WC, ☕ Kafé", sagaReview: "Klassisk mark, Kapten! Fint men se upp för hård västlig vind." },
+      { name: "Hjuviks Båthamn", lat: 57.6845, lng: 11.7015, spots: "Ca 15 gästplatser", facilities: "🔌 El, 🚰 Färskvatten, 🚌 Buss", sagaReview: "Perfekt strategiskt stopp innan du drar ut över Danafjorden!" },
+      { name: "Rörö Gästhamn", lat: 57.7712, lng: 11.6160, spots: "Över 100 platser", facilities: "🪵 Bastu, 🛒 ICA-butik, 🚿 Dusch", sagaReview: "Ett absolut måste i norra skärgården! Fantastiska naturstigar." }
+    ];
+
+    // NYTT I V53: HISTORISK VRAK-DATABAS
+    const wreckDatabase = [
       {
-        name: "Långedrags Gästhamn", lat: 57.6695, lng: 11.8615,
-        spots: "Approximativt 40 platser", facilities: "🚿 Dusch, 🔌 El, 🚽 WC, ☕ Kafé, 🛠️ Varv",
-        sagaReview: "Klassisk mark, Kapten! Här ligger du fint och tittar på kappseglingar, men se upp för hård västlig vind som kan ge lite guppig nattvila."
+        name: "Ångbåten Thetis", lat: 57.6430, lng: 11.6410, depth: "22 meter", sunkYear: "1923",
+        story: "Sjönk i tät tjocka efter att ha kolliderat med klipporna. Hela besättningen klarade sig mirakulöst, men fartyget gled snabbt ner i djupet.",
+        diving: "Kräver Advanced Open Water (AOW). Vraket är relativt välbevarat men mörkt."
       },
       {
-        name: "Hjuviks Båthamn", lat: 57.6845, lng: 11.7015,
-        spots: "Ca 15 gästplatser", facilities: "🔌 El, 🚰 Färskvatten, 🚌 Buss till stan",
-        sagaReview: "Perfekt strategiskt stopp innan du drar ut över Danafjorden! Väldigt skyddat och skönt, men ingen jättestor gästhamn."
+        name: "Skonaren Norden", lat: 57.6080, lng: 11.7550, depth: "14 meter", sunkYear: "1897",
+        story: "Lastad med tunga granitblock från Bohuslän när en brutal höststorm knäckte riggen. Granitblocken ligger fortfarande spridda runt skrovet.",
+        diving: "Perfekt för sportdykare! Ljust och fint djup, men se upp för strömmar i rännan."
       },
       {
-        name: "Rörö Gästhamn", lat: 57.7712, lng: 11.6160,
-        spots: "Över 100 platser", facilities: "🪵 Bastu, 🛒 ICA-butik,  Grillplatser, 🔌 El, 🚿 Dusch",
-        sagaReview: "Ett absolut måste i norra skärgården! Fantastiska naturstigar på utsidan av ön och grym stämning på bryggorna på kvällen."
+        name: "Ubåten U-135 (Simulering)", lat: 57.6520, lng: 11.8150, depth: "31 meter", sunkYear: "1944",
+        story: "Sägs ha gått på en hemlig mina under slutskedet av kriget. Vraket vilar i en djuphåla strax väster om farleden.",
+        diving: "Endast för tekniska dykare. Extremt dålig sikt och djupt."
       }
     ];
 
@@ -303,33 +324,22 @@
       document.getElementById("compass-arrow").style.transform = `rotate(${state.currentHeading}deg)`;
     }
 
-    map.on('click', function(e) {
-      if (isSimulating) stopSimulation();
-      addWaypoint(e.latlng.lat, e.latlng.lng);
-    });
+    map.on('click', function(e) { if (isSimulating) stopSimulation(); addWaypoint(e.latlng.lat, e.latlng.lng); });
 
     function addWaypoint(lat, lng) {
       const ptIndex = plottedWaypoints.length + 1;
       const wpMarker = L.circleMarker([lat, lng], { radius: 7, color: '#00d4ff', fillColor: '#001524', fillOpacity: 1, weight: 2 }).addTo(map);
       wpMarker.bindTooltip(String(ptIndex), { permanent: true, direction: 'center', className: 'wp-number-tooltip' });
-
       plottedWaypoints.push({ marker: wpMarker, latlng: L.latLng(lat, lng) });
       calculateGlobalRoute();
-      if(plottedWaypoints.length >= 2 && !state.isRouteLoading) {
-        document.getElementById("save-route-panel").style.display = "flex";
-      }
+      if(plottedWaypoints.length >= 2 && !state.isRouteLoading) document.getElementById("save-route-panel").style.display = "flex";
     }
 
     function calculateGlobalRoute() {
       const coordinates = plottedWaypoints.map(wp => wp.latlng);
       if (plotterPolyline) { plotterPolyline.setLatLngs(coordinates); } 
       else { plotterPolyline = L.polyline(coordinates, { color: '#00d4ff', weight: 4, dashArray: '5, 10', opacity: 0.9 }).addTo(map); }
-
-      if (plottedWaypoints.length < 2) {
-        document.getElementById("cur-nm").textContent = "0.0 M";
-        document.getElementById("eta").textContent = "--:--";
-        return 0;
-      }
+      if (plottedWaypoints.length < 2) { document.getElementById("cur-nm").textContent = "0.0 M"; document.getElementById("eta").textContent = "--:--"; return 0; }
       let totalMeters = 0;
       for (let i = 0; i < coordinates.length - 1; i++) { totalMeters += coordinates[i].distanceTo(coordinates[i + 1]); }
       const totalNM = totalMeters / 1852;
@@ -340,25 +350,22 @@
 
     function calculateLiveWeather(latlng) {
       let westFactor = Math.max(0, (11.95 - latlng.lng) * 4);
-      let liveWind = 4.2 + (westFactor * 3.5);
-      let liveWaves = 0.2 + (westFactor * 0.55);
+      let liveWind = 4.2 + (westFactor * 3.5); let liveWaves = 0.2 + (westFactor * 0.55);
       if (liveWind > maxWindDuringTrip) maxWindDuringTrip = liveWind;
-
       document.getElementById("wind").textContent = liveWind.toFixed(1) + " m/s";
       document.getElementById("waves").textContent = liveWaves.toFixed(1) + " m";
 
       if (liveWind > 11.0) {
         let now = Date.now();
         if (now - lastWeatherWarningTime > 25000) {
-          let weatherText = `Oj du Kapten, nu börjar det friska i! Hela ${liveWind.toFixed(1)} m/s och ${liveWaves.toFixed(1)} meters vågor här ute. Håll i kaffekoppen!`;
-          appendChatMsg("Saga 💨", weatherText); speakCleanText(weatherText);
-          lastWeatherWarningTime = now;
+          let weatherText = `Oj du Kapten, nu börjar det friska i! Hela ${liveWind.toFixed(1)} m/s här ute.`;
+          appendChatMsg("Saga 💨", weatherText); speakCleanText(weatherText); lastWeatherWarningTime = now;
         }
       }
     }
 
     function initWeatherArrows() {
-      const arrowPoints = [[57.6500, 11.6800], [57.6200, 11.6200], [57.6700, 11.7200], [57.5900, 11.7500], [57.6300, 11.8100]];
+      const arrowPoints = [[57.6500, 11.6800], [57.6200, 11.6200], [57.6700, 11.7200]];
       arrowPoints.forEach(pt => {
         let windIcon = L.divIcon({ className: 'wind-arrow-container', html: '<div class="wind-arrow-icon">➔</div>', iconSize: [20, 20] });
         L.marker(pt, { icon: windIcon, interactive: false }).addTo(map);
@@ -368,12 +375,12 @@
     function initAndAnimateAIS() {
       aisVessels.forEach(v => {
         v.marker = L.circleMarker([v.lat, v.lng], { radius: 6, color: '#f97316', fillColor: '#000', fillOpacity: 1, weight: 2 }).addTo(map);
-        v.marker.bindTooltip(`${v.name} [${v.speed}kn]`, { permanent: false, className: 'ais-vessel-tooltip' });
+        v.marker.bindTooltip(`${v.name}`, { permanent: false, className: 'ais-vessel-tooltip' });
       });
       setInterval(() => {
         aisVessels.forEach(v => {
-          let step = 0.0003 * v.direction; v.lng += step; v.lat += (step * 0.2);
-          if (v.lng > 11.9000 || v.lng < 11.6500) { v.direction *= -1; v.heading = (v.heading + 180) % 360; }
+          let step = 0.0003 * v.direction; v.lng += step;
+          if (v.lng > 11.9000 || v.lng < 11.6500) v.direction *= -1;
           if (v.marker) v.marker.setLatLng([v.lat, v.lng]);
         });
         checkAISCollisions();
@@ -383,30 +390,33 @@
     function initEcoZones() {
       ecoZones.forEach(zone => {
         zone.polygon = L.polygon(zone.coords, { color: '#10b981', fillColor: '#047857', fillOpacity: 0.25, weight: 2, dashArray: '4, 6' }).addTo(map);
-        zone.polygon.bindTooltip(`🦭 ${zone.name}`, { sticky: true, className: 'eco-zone-tooltip' });
       });
     }
 
-    // INITIERA GÄSTHAMNAR PÅ KARTAN
     function initHarbors() {
       harborDatabase.forEach(h => {
-        let harborIcon = L.divIcon({
-          className: 'harbor-marker-container',
-          html: `<div class="harbor-icon" title="${h.name}">⚓</div>`,
-          iconSize: [24, 24]
-        });
-        let m = L.marker([h.lat, h.lng], { icon: harborIcon }).addTo(map);
-        
-        let popupContent = `
-          <div style="min-width:180px;">
-            <h4 style="margin:0 0 5px 0; color:var(--main-cyan); font-size:13px;">⚓ ${h.name}</h4>
-            <p style="margin:2px 0;"><b>Kapacitet:</b> ${h.spots}</p>
-            <p style="margin:2px 0;"><b>Service:</b> ${h.facilities}</p>
-            <hr style="border-color:#1e3a8a; margin:6px 0;">
-            <p style="margin:0; font-style:italic; color:#cbd5e1;"><b>Saga:</b> "${h.sagaReview}"</p>
+        let harborIcon = L.divIcon({ className: 'harbor-marker-container', html: `<div class="harbor-icon">⚓</div>`, iconSize: [26, 26], iconAnchor: [13, 13] });
+        let m = L.marker([h.lat, h.lng], { icon: harborIcon, interactive: true }).addTo(map);
+        let content = `<div style="min-width:190px; color:white;"><h4 style="margin:0 0 6px 0; color:var(--main-cyan);">⚓ ${h.name}</h4><div><b>Kapacitet:</b> ${h.spots}</div><div><b>Service:</b> ${h.facilities}</div><hr style="border:0; border-top:1px solid #1e3a8a; margin:8px 0;"><div style="font-style:italic; color:#cbd5e1;"><b>Saga:</b> "${h.sagaReview}"</div></div>`;
+        m.bindPopup(content, { className: 'harbor-popup-style', offset: [0, -5] });
+      });
+    }
+
+    // NYTT I V53: RITA UT VRAKEN PÅ KARTAN
+    function initWrecks() {
+      wreckDatabase.forEach(w => {
+        let wreckIcon = L.divIcon({ className: 'wreck-marker-container', html: `<div class="wreck-icon">🏴‍☠️</div>`, iconSize: [26, 26], iconAnchor: [13, 13] });
+        let m = L.marker([w.lat, w.lng], { icon: wreckIcon, interactive: true }).addTo(map);
+        let content = `
+          <div style="min-width:210px;">
+            <h4 style="margin:0 0 4px 0; color:var(--wreck-purple); font-size:14px; font-weight:bold;">🏴‍☠️ ${w.name}</h4>
+            <div style="font-size:11px; color:#a855f7; margin-bottom:6px;">Sjönk år ${w.sunkYear} | Djup: ${w.depth}</div>
+            <div style="line-height:1.3; margin-bottom:6px;">${w.story}</div>
+            <hr style="border:0; border-top:1px solid #4c1d95; margin:6px 0;">
+            <div style="font-size:11px; color:#d8b4fe;">🤿 <b>Dykinfo:</b> ${w.diving}</div>
           </div>
         `;
-        m.bindPopup(popupContent, { className: 'harbor-popup-style' });
+        m.bindPopup(content, { className: 'wreck-popup-style', offset: [0, -5] });
       });
     }
 
@@ -417,11 +427,11 @@
         if (dist < minDistance) { minDistance = dist; if (dist <= 800) dangerousVessel = v; }
       });
       const sosBtn = document.getElementById("sos-main-btn");
-      if (dangerousVessel && !sosBtn.classList.contains("shallow-warning-active") && !sosBtn.classList.contains("eco-warning-active")) {
+      if (dangerousVessel && !sosBtn.classList.contains("shallow-warning-active") && !sosBtn.classList.contains("eco-warning-active") && !sosBtn.classList.contains("ghost-warning-active")) {
         sosBtn.classList.add("ais-warning-active"); sosBtn.textContent = `🚨 KOLLISION: ${dangerousVessel.name.toUpperCase()}`;
         let now = Date.now();
         if (now - lastAisWarningTime > 12000) {
-          let warningText = `Kapten! AIS-larm. Nära möte med ${dangerousVessel.name}! Avstånd ${Math.round(minDistance)} meter!`;
+          let warningText = `Kapten! AIS-larm. Nära möte med ${dangerousVessel.name}!`;
           appendChatMsg("Saga 🚨", warningText); speakCleanText(warningText); lastAisWarningTime = now;
         }
       } else if (!dangerousVessel && sosBtn.classList.contains("ais-warning-active")) {
@@ -429,7 +439,6 @@
       }
     }
 
-    // UTÖKAD DETEKTERING: KOLLA GRUND, MILJÖZONER OCH NU ÄVEN HAMNRADAR
     function checkAllTrackers(latlng) {
       let hazardDetected = false; let detectedName = "";
       for (let hazard of shallowHazards) {
@@ -438,11 +447,8 @@
       }
 
       let insideEcoZone = null;
-      for (let zone of ecoZones) {
-        if (isPointInPolygon(latlng, zone.coords)) { insideEcoZone = zone; break; }
-      }
+      for (let zone of ecoZones) { if (isPointInPolygon(latlng, zone.coords)) { insideEcoZone = zone; break; } }
 
-      // GÄSTHAMNS-RADAR LOGIK
       let closestHarbor = null; let minHarborDist = 999999;
       harborDatabase.forEach(h => {
         let dist = latlng.distanceTo(L.latLng(h.lat, h.lng));
@@ -454,45 +460,46 @@
         document.getElementById("radar-harbor-name").textContent = closestHarbor.name;
         document.getElementById("radar-harbor-dist").textContent = `Avstånd: ${Math.round(minHarborDist)} m`;
         radarPanel.style.display = "flex";
-
         let now = Date.now();
         if (now - lastHarborAnnounceTime > 35000) {
-          let harborText = `Kapten, min gästhamnsradar ger utslag! Vi närmar oss ${closestHarbor.name}. Det är bara ${Math.round(minHarborDist)} meter kvar dit om vi vill rulla in och unna oss nåt gott! ☕⚓`;
-          appendChatMsg("Saga ⚓", harborText); speakCleanText(harborText);
-          lastHarborAnnounceTime = now;
+          let harborText = `Vi närmar oss ${closestHarbor.name}, Kapten! Läge för ett stopp? ☕⚓`;
+          appendChatMsg("Saga ⚓", harborText); speakCleanText(harborText); lastHarborAnnounceTime = now;
         }
-      } else {
-        radarPanel.style.display = "none";
-      }
+      } else { radarPanel.style.display = "none"; }
+
+      // NYTT I V53: SPÖK-RADAR DETEKTERING
+      let activeWreck = null; let minWreckDist = 999999;
+      wreckDatabase.forEach(w => {
+        let dist = latlng.distanceTo(L.latLng(w.lat, w.lng));
+        if (dist < minWreckDist) { minWreckDist = dist; if (dist <= 600) activeWreck = w; }
+      });
 
       const sosBtn = document.getElementById("sos-main-btn");
+      
       if (hazardDetected) {
-        resetEcoButtonState();
-        sosBtn.classList.add("shallow-warning-active"); sosBtn.textContent = `⚠️ GRUND: ${detectedName.toUpperCase()}`;
+        sosBtn.className = "btn btn-sos shallow-warning-active"; sosBtn.textContent = `⚠️ GRUND: ${detectedName.toUpperCase()}`;
         let now = Date.now();
         if (now - lastWarningTime > 15000) {
-          let warningText = `Se upp Kapten! Vi närmar oss grunt vatten vid ${detectedName}. Kolla djupsiffrorna!`;
+          let warningText = `Se upp Kapten! Vi närmar oss grunt vatten vid ${detectedName}.`;
           appendChatMsg("Saga ⚠️", warningText); speakCleanText(warningText); lastWarningTime = now;
         }
+      } else if (activeWreck) {
+        sosBtn.className = "btn btn-sos ghost-warning-active"; sosBtn.textContent = `👻 VRAK: ${activeWreck.name.toUpperCase()}`;
+        let now = Date.now();
+        if (now - lastWreckWarningTime > 30000) {
+          let ghostText = `Uff Kapten... känner du kåren längs ryggraden? Precis under oss på ${activeWreck.depth} djup vilar gamla ${activeWreck.name} som förliste år ${activeWreck.sunkYear}! 🏴‍☠️👻🌊`;
+          appendChatMsg("Saga 👻", ghostText); speakCleanText(ghostText); lastWreckWarningTime = now;
+        }
       } else if (insideEcoZone) {
-        sosBtn.classList.remove("shallow-warning-active", "ais-warning-active");
-        sosBtn.classList.add("eco-warning-active"); sosBtn.textContent = `🦭 SKYDDZON: 12 KN MAX`;
+        sosBtn.className = "btn btn-sos eco-warning-active"; sosBtn.textContent = `🦭 SKYDDZON: 12 KN MAX`;
         let now = Date.now();
         if (now - lastEcoWarningTime > 20000) {
-          let ecoText = `Hoppla Kapten! Nu gled vi in i ${insideEcoZone.name}. Sänk farten, ta fram kikaren och se till så vi inte stör sälarna eller fågellivet här ute! 🦭🦅`;
+          let ecoText = `Hoppla Kapten! Nu gled vi in i ${insideEcoZone.name}. Sänk farten! 🦭🦅`;
           appendChatMsg("Saga 🌿", ecoText); speakCleanText(ecoText); lastEcoWarningTime = now;
         }
       } else {
-        sosBtn.classList.remove("shallow-warning-active");
-        resetEcoButtonState();
-      }
-    }
-
-    function resetEcoButtonState() {
-      const sosBtn = document.getElementById("sos-main-btn");
-      if (sosBtn.classList.contains("eco-warning-active")) {
-        sosBtn.classList.remove("eco-warning-active");
-        if (!document.querySelector(".ais-warning-active") && !document.querySelector(".shallow-warning-active")) sosBtn.textContent = "🆘 NÖD SOS";
+        sosBtn.className = "btn btn-sos";
+        if (!document.querySelector(".ais-warning-active")) sosBtn.textContent = "🆘 NÖD SOS";
       }
     }
 
@@ -521,11 +528,8 @@
 
     function startRouteSimulation() {
       if (plottedWaypoints.length < 2) return "Det finns ingen rutt utlagd att simulera än, Kapten. Klicka ut några punkter först!";
-      stopSimulation();
-      isSimulating = true; simWaypointIndex = 0; maxWindDuringTrip = 0;
-      document.getElementById("ai-status").textContent = "🔵 Simulerar rutt (7.0 knop)";
-      document.getElementById("speed").textContent = "7.0";
-
+      stopSimulation(); isSimulating = true; simWaypointIndex = 0; maxWindDuringTrip = 0;
+      document.getElementById("ai-status").textContent = "🔵 Simulerar rutt (7.0 knop)"; document.getElementById("speed").textContent = "7.0";
       currentBoatLatLng = plottedWaypoints[0].latlng; boatMarker.setLatLng(currentBoatLatLng); map.setView(currentBoatLatLng, 13);
 
       simulationInterval = setInterval(() => {
@@ -534,21 +538,17 @@
           let doneText = `Framme vid slutdestinationen för "${currentRouteName}", Kapten! Resan har sparats i loggboken.`;
           appendChatMsg("Saga", doneText); speakCleanText(doneText); return;
         }
-
         const currentTarget = plottedWaypoints[simWaypointIndex + 1].latlng;
         const distToTarget = currentBoatLatLng.distanceTo(currentTarget);
-
         if (distToTarget < 25) {
           simWaypointIndex++;
           if (simWaypointIndex >= plottedWaypoints.length - 1) {
             let finalDist = calculateGlobalRoute(); stopSimulation(); saveLogEntry(currentRouteName, finalDist, 7.0); return;
           }
         }
-
         const lat1 = currentBoatLatLng.lat * Math.PI / 180; const lat2 = currentTarget.lat * Math.PI / 180;
         const dLng = (currentTarget.lng - currentBoatLatLng.lng) * Math.PI / 180;
-        const y = Math.sin(dLng) * Math.cos(lat2);
-        const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+        const y = Math.sin(dLng) * Math.cos(lat2); const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
         updateHeading((Math.atan2(y, x) * 180 / Math.PI + 360) % 360);
 
         currentBoatLatLng = L.latLng(
@@ -557,13 +557,12 @@
         );
         boatMarker.setLatLng(currentBoatLatLng); checkAllTrackers(currentBoatLatLng); calculateLiveWeather(currentBoatLatLng);
       }, 250);
-
-      return "Klart vi ska! Startar resan och aktiverar Sagas loggbok, Kapten! ⚓📜";
+      return "Då sätter vi kurs mot det okända! Aktiverar Spök-radarn och loggboken, Kapten! 🏴‍☠️👻";
     }
 
     function stopSimulation() {
       if (simulationInterval) { clearInterval(simulationInterval); simulationInterval = null; }
-      isSimulating = false; document.getElementById("sos-main-btn").classList.remove("shallow-warning-active", "ais-warning-active", "eco-warning-active");
+      isSimulating = false; document.getElementById("sos-main-btn").className = "btn btn-sos";
       document.getElementById("sos-main-btn").textContent = "🆘 NÖD SOS"; document.getElementById("harbor-radar-panel").style.display = "none";
       if (lastRealLocation) { currentBoatLatLng = lastRealLocation; boatMarker.setLatLng(currentBoatLatLng); document.getElementById("ai-status").textContent = "🟢 GPS Position Låst"; }
       calculateLiveWeather(currentBoatLatLng);
@@ -572,8 +571,8 @@
     function saveLogEntry(name, distance, avgSpeed) {
       let logs = JSON.parse(localStorage.getItem("sagas_logbook")) || [];
       let dateStr = new Date().toLocaleDateString('sv-SE', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
-      let note = "Fint väder och lugna vindar längs rutten.";
-      if (maxWindDuringTrip > 10) note = "Riktigt friskt väder med tuff sjö! Kapten styrde stabilt i kulingen.";
+      let note = "Lugn resa över historiska vatten.";
+      if (maxWindDuringTrip > 10) note = "Tuff kuling men Kapten höll kursen galant!";
       logs.unshift({ date: dateStr, name: name, dist: distance.toFixed(1), speed: avgSpeed, note: note });
       localStorage.setItem("sagas_logbook", JSON.stringify(logs));
     }
@@ -641,12 +640,12 @@
 
     function centerMap() { stopSimulation(); if (plottedWaypoints.length > 0) { const group = new L.featureGroup(plottedWaypoints.map(wp => wp.marker)); map.fitBounds(group.getBounds()); } else { map.setView(boatMarker.getLatLng(), 13); } }
 
-    window.addEventListener('DOMContentLoaded', () => { checkKeyStatus(); updateDropdownMenu(); updateHeading(0); initAndAnimateAIS(); initWeatherArrows(); initEcoZones(); initHarbors(); calculateLiveWeather(currentBoatLatLng); });
+    window.addEventListener('DOMContentLoaded', () => { checkKeyStatus(); updateDropdownMenu(); updateHeading(0); initAndAnimateAIS(); initWeatherArrows(); initEcoZones(); initHarbors(); initWrecks(); calculateLiveWeather(currentBoatLatLng); });
 
     function checkKeyStatus() {
       let savedKey = localStorage.getItem("gemini_api_key"); const welcomeEl = document.getElementById("ai-chat-box");
       if (savedKey && savedKey.trim().length > 10) {
-        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! Version 52 är laddad! Nu är gästhamns-radarn igång och vi har full koll på både service, bastuanläggningar och mitt eget omdöme längs kusten! Klicka på nån av ankarsymbolerna för att läsa mina hemliga tips! ⚓☕🧼</div>`;
+        welcomeEl.innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! Version 53 [GHOST RADAR] är nu live! Jag har lagt till tre gamla vrak på kartan. Klicka på en dödskalle för att höra historien, eller plotta en rutt precis förbi för att testa spök-radarn! 🏴‍☠️👻🧭</div>`;
       } else { welcomeEl.innerHTML = `<div class="chat-msg msg-ai">Spara din API-nyckel så sätter vi igång.</div>`; }
     }
 
@@ -658,7 +657,6 @@
     function sendCustomAIMsg() {
       const input = document.getElementById("ai-user-input"); let text = input.value.trim(); if (!text) return;
       appendChatMsg("Du", text); input.value = ""; const lower = text.toLowerCase();
-      
       if (lower.includes("simulera") || lower.includes("starta rutt") || lower.includes("kör rutt") || lower.includes("starta resan")) {
         const simRes = startRouteSimulation(); appendChatMsg("Saga", simRes); speakCleanText(simRes);
       } else if (lower.includes("stoppa simul") || lower.includes("avbryt simul")) {
@@ -670,7 +668,7 @@
     async function callGeminiLiveAPI(promptText) {
       let apiKey = localStorage.getItem("gemini_api_key"); if (!apiKey) { appendChatMsg("Saga", "❌ Lägg till en nyckel via inställningarna."); return; }
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`;
-      let fullPrompt = `Du är Saga, en göteborgsk skipperska i en plotterapp. Svara kort (2-3 meningar) med go marin stämning. Kalla användaren 'Kapten'. Påpeka gärna att vi har en grym gästhamns-radar aktiv i Version 52 nu!`;
+      let fullPrompt = `Du är Saga, en göteborgsk skipperska i en plotterapp. Svara kort (2-3 meningar) med go marin stämning. Kalla användaren 'Kapten'. Påpeka gärna att vi har en spännande vrak-radar aktiv i V53 nu!`;
       try {
         const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt + "\nFråga: " + promptText }] }] }) });
         if (!response.ok) return; const data = await response.json();
