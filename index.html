@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Advanced Voice AI V55</title>
+  <title>Sagas Navigator - Harbor Docking Pilot V56</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -42,31 +42,38 @@
     .heading-number { font-size: 28px; font-weight: 900; font-family: monospace; display: block; }
     .heading-cardinal { font-size: 18px; color: var(--main-cyan); font-weight: bold; }
 
-    .ai-panel {
-      position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 2000;
-      background: rgba(15, 7, 32, 0.9); border: 1.5px solid var(--ai-purple); padding: 10px 20px; border-radius: 14px;
-      width: 90%; max-width: 450px; box-shadow: 0 4px 20px rgba(168, 85, 247, 0.3); backdrop-filter: blur(8px);
-      font-size: 11px; line-height: 1.4; box-sizing: border-box;
-    }
-    .ai-header { font-weight: bold; color: var(--ai-purple); display: flex; align-items: center; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
-    .ai-status { color: #e9d5ff; font-style: italic; }
-
-    .harbor-radar-panel {
-      position: absolute; top: 15px; right: 15px; z-index: 2000;
-      background: rgba(0, 31, 63, 0.95); border: 2px solid var(--harbor-blue); padding: 10px; border-radius: 12px;
-      display: none; flex-direction: column; width: 180px; box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
-    }
     .gold-counter {
       position: absolute; top: 120px; left: 50%; transform: translateX(-50%); z-index: 2000;
       background: rgba(20, 15, 0, 0.9); border: 2px solid var(--gold-yellow); padding: 4px 12px; border-radius: 20px;
       font-weight: bold; color: var(--gold-yellow); font-size: 13px; display: flex; align-items: center; gap: 6px;
-      box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
     }
+
+    /* NYTT I V56: DYNAMISK HAMN-LOTS / FÖRTÖJNINGSGUIDE */
+    .docking-pilot-panel {
+      position: absolute; top: 15px; right: 15px; z-index: 2000;
+      background: rgba(0, 15, 30, 0.95); border: 2px solid var(--main-cyan); padding: 15px; border-radius: 16px;
+      width: 240px; box-shadow: 0 0 25px rgba(0, 212, 255, 0.4); backdrop-filter: blur(10px);
+      display: none; flex-direction: column; gap: 8px; animation: slide-in 0.3s ease-out;
+    }
+    @keyframes slide-in { from { transform: translateX(110%); } to { transform: translateX(0); } }
+    .docking-header { font-size: 11px; font-weight: bold; color: var(--main-cyan); letter-spacing: 1px; display: flex; justify-content: space-between; }
+    .docking-title { font-size: 16px; font-weight: 900; color: white; margin: 2px 0; }
+    .docking-vector { background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; border-left: 4px solid var(--wind-blue); font-size: 12px; }
+    .docking-advice { font-size: 11px; color: #cbd5e1; line-height: 1.4; font-style: italic; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px; border: 1px dashed rgba(0, 212, 255, 0.2); }
+
+    .ai-panel {
+      position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 2000;
+      background: rgba(15, 7, 32, 0.9); border: 1.5px solid var(--ai-purple); padding: 10px 20px; border-radius: 14px;
+      width: 90%; max-width: 450px; box-shadow: 0 4px 20px rgba(168, 85, 247, 0.3); backdrop-filter: blur(8px);
+      font-size: 11px; box-sizing: border-box;
+    }
+    .ai-header { font-weight: bold; color: var(--ai-purple); display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
+    .ai-status { color: #e9d5ff; font-style: italic; margin-top: 2px; }
 
     .compass-container {
       position: absolute; bottom: 150px; left: 20px; z-index: 1001; width: 85px; height: 85px;
       background: rgba(0, 21, 36, 0.85); border-radius: 50%; border: 2px solid var(--main-cyan);
-      display: flex; align-items: center; justify-content: center; pointer-events: none;
+      display: flex; align-items: center; justify-content: center;
     }
     .compass-rose { width: 100%; height: 100%; position: relative; }
     .comp-mark { position: absolute; font-size: 12px; font-weight: 900; color: #64748b; }
@@ -100,12 +107,12 @@
     .info-panel {
       position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); z-index: 1000;
       background: var(--panel-bg); border: 1px solid var(--main-cyan); padding: 10px; border-radius: 20px;
-      display: flex; gap: 10px; width: 95%; justify-content: space-around; font-size: 11px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      display: flex; gap: 10px; width: 95%; justify-content: space-around; font-size: 11px;
     }
     .info-value { font-weight: 800; font-size: 14px; display: block; color: white; text-align: center; margin-top: 2px; }
 
     .modal { display: none; position: fixed; z-index: 3000; left: 50%; top: 50%; transform: translate(-50%, -50%); 
-             background: #001524; color: white; padding: 20px; border-radius: 18px; width: 85%; max-width: 400px; border: 2px solid var(--main-cyan); box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+             background: #001524; color: white; padding: 20px; border-radius: 18px; width: 85%; max-width: 400px; border: 2px solid var(--main-cyan); }
     .close-x { float: right; cursor: pointer; font-size: 24px; color: var(--main-cyan); font-weight: bold; margin-top: -5px; }
     
     .quiz-modal { border-color: var(--gold-yellow); background: #0c1005; }
@@ -121,13 +128,11 @@
     .chat-input-row { display: flex; gap: 6px; align-items: center; }
     .chat-input { flex: 1; background: #0f172a; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; padding: 10px; font-size: 12px; box-sizing: border-box; height: 38px; }
     
-    /* MIKROFON MED PULS FÖR AKTIV RÖSTSTYRNING */
     .btn-mic { background: #1e1b4b; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; cursor: pointer; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: all 0.3s; }
     .btn-mic.listening { background: var(--sos-red); animation: mic-pulse 1.2s infinite ease-in-out; border-color: white; }
     @keyframes mic-pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); } }
     
     .btn-mute { background: #0f172a; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; cursor: pointer; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
-    .btn-mute.muted { background: rgba(255, 0, 0, 0.2); border-color: var(--sos-red); color: var(--sos-red); }
 
     .log-modal { border-color: var(--log-gold); max-width: 450px; }
     .log-list { background: rgba(0,0,0,0.4); border: 1px solid #451a03; border-radius: 10px; padding: 10px; height: 260px; overflow-y: auto; font-size: 11px; }
@@ -139,14 +144,9 @@
     .shallow-warning-active { animation: shallow-blink 0.8s infinite; background: rgba(255, 0, 0, 0.2) !important; color: var(--sos-red) !important; }
     @keyframes ais-blink { 0% { border-color: var(--ais-orange); box-shadow: 0 0 12px var(--ais-orange); } 50% { border-color: #000; box-shadow: none; } 100% { border-color: var(--ais-orange); box-shadow: 0 0 12px var(--ais-orange); } }
     .ais-warning-active { animation: ais-blink 0.6s infinite; background: rgba(249, 115, 22, 0.25) !important; color: var(--ais-orange) !important; }
-    @keyframes eco-blink { 0% { border-color: var(--eco-green); box-shadow: 0 0 12px var(--eco-green); } 50% { border-color: #000; box-shadow: none; } 100% { border-color: var(--eco-green); box-shadow: 0 0 12px var(--eco-green); } }
-    .eco-warning-active { animation: eco-blink 1s infinite; background: rgba(16, 185, 129, 0.25) !important; color: #a7f3d0 !important; }
-    @keyframes ghost-blink { 0% { border-color: var(--wreck-purple); box-shadow: 0 0 15px var(--wreck-purple); } 50% { border-color: #000; box-shadow: none; } 100% { border-color: var(--wreck-purple); box-shadow: 0 0 15px var(--wreck-purple); } }
-    .ghost-warning-active { animation: ghost-blink 1.2s infinite; background: rgba(147, 51, 234, 0.25) !important; color: #e9d5ff !important; }
     @keyframes treasure-blink { 0% { border-color: var(--gold-yellow); box-shadow: 0 0 15px var(--gold-yellow); } 50% { border-color: #000; box-shadow: none; } 100% { border-color: var(--gold-yellow); box-shadow: 0 0 15px var(--gold-yellow); } }
     .treasure-warning-active { animation: treasure-blink 1s infinite; background: rgba(245, 158, 11, 0.25) !important; color: #fef08a !important; }
 
-    .wind-arrow-icon { font-size: 16px; color: rgba(56, 189, 248, 0.6); }
     .ais-vessel-tooltip { background: #1e293b; border: 1px solid var(--ais-orange); color: #f8fafc; font-size: 9px; padding: 2px 5px; border-radius: 4px; }
     
     .harbor-marker-container, .wreck-marker-container, .chest-marker-container { pointer-events: auto !important; }
@@ -173,10 +173,15 @@
     <span>🪙 Guld:</span><span id="gold-amount">0</span>
   </div>
 
-  <div class="harbor-radar-panel" id="harbor-radar-panel">
-    <span style="font-size:10px; font-weight:bold; color:var(--harbor-blue);">⚓ HAMN I NÄRHETEN</span>
-    <span id="radar-harbor-name" style="font-size:13px; font-weight:bold; display:block; margin:3px 0;">--</span>
-    <span id="radar-harbor-dist" style="font-size:11px; color:#93c5fd;">Avstånd: -- m</span>
+  <div class="docking-pilot-panel" id="docking-pilot-panel">
+    <div class="docking-header">
+      <span>⚓ SAGAS HAMN-LOTS</span>
+      <span style="cursor:pointer; color:var(--sos-red); font-weight:bold;" onclick="document.getElementById('docking-pilot-panel').style.display='none'">×</span>
+    </div>
+    <div class="docking-title" id="docking-harbor-name">Långedrag</div>
+    <div style="font-size:11px; color:#94a3b8;" id="docking-distance">Avstånd: 340m</div>
+    <div class="docking-vector" id="docking-vector-text">🔄 Läser av vindvektorer...</div>
+    <div class="docking-advice" id="docking-advice-text">Förbereder angöringstips...</div>
   </div>
 
   <div class="save-route-panel" id="save-route-panel">
@@ -187,7 +192,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>🔮 SAGAS NAVIGATOR V55 [VOICE CO-PILOT]</span>
+      <span>🔮 SAGAS NAVIGATOR V56 [DOCKING PILOT]</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -272,7 +277,7 @@
 
     let simulationInterval = null; let isSimulating = false;
     let simWaypointIndex = 0; let lastRealLocation = null;
-    let lastWarningTime = 0; let lastAisWarningTime = 0; let lastHarborAnnounceTime = 0; let lastTreasureTime = 0;
+    let lastTreasureTime = 0; let lastHarborPilotTime = 0;
     
     let currentRouteName = "Ospecificerad rutt";
 
@@ -286,11 +291,11 @@
     ];
 
     const harborDatabase = [
-      { name: "Långedrags Gästhamn", lat: 57.6695, lng: 11.8615, spots: "Ca 40 platser", facilities: "🚿 Dusch, 🔌 El", sagaReview: "Klassisk mark, Kapten!" }
+      { name: "Långedrags Gästhamn", lat: 57.6695, lng: 11.8615, spots: "Ca 40 platser", facilities: "🚿 Dusch, 🔌 El", lineHeading: 90 } // lineHeading = bryggans vinkel i grader
     ];
 
     const wreckDatabase = [
-      { name: "Ångbåten Thetis", lat: 57.6430, lng: 11.6410, depth: "22 meter", sunkYear: "1923", story: "Sjönk i tät tjocka.", diving: "Kräver AOW-certifikat." }
+      { name: "Ångbåten Thetis", lat: 57.6430, lng: 11.6410, depth: "22 meter", sunkYear: "1923", story: "Sjönk i tät tjocka." }
     ];
 
     const treasureChests = [
@@ -347,6 +352,7 @@
       let liveWind = 4.2 + (westFactor * 3.5); let liveWaves = 0.2 + (westFactor * 0.55);
       document.getElementById("wind").textContent = liveWind.toFixed(1) + " m/s";
       document.getElementById("waves").textContent = liveWaves.toFixed(1) + " m";
+      return liveWind;
     }
 
     function initAndAnimateAIS() {
@@ -399,6 +405,7 @@
       }
     }
 
+    // NYTT I V56: BERÄKNINGSKÄRNA FÖR HAMN-LOTSEN (AVANCERAD VEKTORANALYS)
     function checkAllTrackers(latlng) {
       let hazardDetected = false; let detectedName = "";
       for (let hazard of shallowHazards) {
@@ -414,17 +421,48 @@
         }
       }
 
+      // Sök efter närmsta hamn för röstlotsen
       let closestHarbor = null; let minHarborDist = 999999;
       harborDatabase.forEach(h => {
         let dist = latlng.distanceTo(L.latLng(h.lat, h.lng));
         if (dist < minHarborDist) { minHarborDist = dist; closestHarbor = h; }
       });
 
-      if (minHarborDist <= 800 && closestHarbor) {
-        document.getElementById("radar-harbor-name").textContent = closestHarbor.name;
-        document.getElementById("radar-harbor-dist").textContent = `Avstånd: ${Math.round(minHarborDist)} m`;
-        document.getElementById("harbor-radar-panel").style.display = "flex";
-      } else { document.getElementById("harbor-radar-panel").style.display = "none"; }
+      // AKTIVERA HAMN-LOTS OM VI ÄR INOM 500 METER
+      if (minHarborDist <= 500 && closestHarbor) {
+        let currentWind = calculateLiveWeather(latlng);
+        let pilotPanel = document.getElementById("docking-pilot-panel");
+        
+        document.getElementById("docking-harbor-name").textContent = closestHarbor.name;
+        document.getElementById("docking-distance").textContent = `Avstånd: ${Math.round(minHarborDist)} meter`;
+        
+        // Simulera/beräkna vindförhållande baserat på fasta bryggvinkeln
+        let isFrånlands = currentWind > 6; 
+        let vectorText = ""; let adviceText = ""; let voiceOutput = "";
+
+        if (isFrånlands) {
+          vectorText = `⚠️ FRÅNLANDSVIND (${currentWind.toFixed(1)} m/s)`;
+          adviceText = "Vinden trycker båten UTÅT från bryggan. Gå in med brant vinkel, sätt fören i bryggan och säkra ett förspring direkt!";
+          voiceOutput = "Kapten, vi har en go men luring frånlandsvind i " + closestHarbor.name + ". Gå in med lite vinkel och ta fören först, annars driver vi te havs!";
+        } else {
+          vectorText = `💨 PÅLANDSVIND (${currentWind.toFixed(1)} m/s)`;
+          adviceText = "Vinden trycker båten IN mot bryggan. Gå in helt parallellt med låg fart och låt vinden göra jobbet. Fram med fendrarna!";
+          voiceOutput = "Tilläggning på gång! Vi har pålandsvind, Kapten. Ta det lugnt och lägg dig parallellt så fixar vinden resten. Ut med fendrarna!";
+        }
+
+        document.getElementById("docking-vector-text").textContent = vectorText;
+        document.getElementById("docking-advice-text").textContent = adviceText;
+        pilotPanel.style.display = "flex";
+
+        let now = Date.now();
+        if (now - lastHarborPilotTime > 45000) { // Säg bara till var 45:e sekund
+          lastHarborPilotTime = now;
+          speakCleanText(voiceOutput);
+          appendChatMsg("Saga ⚓", voiceOutput);
+        }
+      } else {
+        document.getElementById("docking-pilot-panel").style.display = "none";
+      }
 
       const sosBtn = document.getElementById("sos-main-btn");
       if (hazardDetected) {
@@ -464,7 +502,7 @@
     if (navigator.geolocation) {
       navigator.geolocation.watchPosition((pos) => {
         const realLoc = L.latLng(pos.coords.latitude, pos.coords.longitude); lastRealLocation = realLoc;
-        if (!isSimulating) { currentBoatLatLng = realLoc; boatMarker.setLatLng(currentBoatLatLng); checkAllTrackers(currentBoatLatLng); calculateLiveWeather(currentBoatLatLng); }
+        if (!isSimulating) { currentBoatLatLng = realLoc; boatMarker.setLatLng(currentBoatLatLng); checkAllTrackers(currentBoatLatLng); }
       });
     }
 
@@ -488,7 +526,7 @@
           currentBoatLatLng.lat + (currentTarget.lat - currentBoatLatLng.lat) * 0.015,
           currentBoatLatLng.lng + (currentTarget.lng - currentBoatLatLng.lng) * 0.015
         );
-        boatMarker.setLatLng(currentBoatLatLng); checkAllTrackers(currentBoatLatLng); calculateLiveWeather(currentBoatLatLng);
+        boatMarker.setLatLng(currentBoatLatLng); checkAllTrackers(currentBoatLatLng);
       }, 250);
       return "Då går vi för fulla segel! Håll utkik efter flaskposten längs vägen! 👑🧭";
     }
@@ -536,7 +574,7 @@
     window.addEventListener('DOMContentLoaded', () => { 
       updateDropdownMenu(); initAndAnimateAIS(); initHarbors(); initWrecks(); initTreasureChests(); 
       let savedKey = localStorage.getItem("gemini_api_key");
-      if(savedKey) document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! Nu har röststyrningen landat i V55. Tryck på micken och säg "Starta simulering", "Stoppa" eller "Skicka SOS"! Riktigt smidigt när man har händerna på rodret! 🎙️🌊</div>`;
+      if(savedKey) document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! Nu har vi rullat ut Sagas Hamn-lots i V56! Testa att lägga en rutt nära Långedrags gästhamn och kör igång, så ska du se att jag kliver in och läser av vinden åt dig! ⚓💨</div>`;
     });
 
     function promptApiKey() { const key = prompt("API-nyckel:"); if (key) localStorage.setItem("gemini_api_key", key.trim()); }
@@ -544,32 +582,18 @@
     function toggleMute() { state.isMuted = !state.isMuted; document.getElementById("ai-mute-btn").textContent = state.isMuted ? "🔇" : "🔊"; }
     function appendChatMsg(sender, text) { const box = document.getElementById("ai-chat-box"); box.innerHTML += `<div class="chat-msg"><span class="${sender==='Du'?'msg-user':'msg-ai'}">${sender}:</span> ${text}</div>`; box.scrollTop = box.scrollHeight; }
 
-    // NYTT I V55: AVANCERAD RÖSTTOLKNING FÖR NAVIGATIONSKOMMANDON
     function sendCustomAIMsg() {
       const input = document.getElementById("ai-user-input"); let text = input.value.trim(); if (!text) return;
       appendChatMsg("Du", text); input.value = ""; 
-      
       const lower = text.toLowerCase();
       
-      // 1. Kolla lokala smarta röstkommandon först
       if (lower.includes("starta simul") || lower.includes("kör igång rutt") || lower.includes("starta resan") || lower.includes("aktivera rutt")) {
-        let simRes = startRouteSimulation();
-        appendChatMsg("Saga 🧭", simRes);
-        speakCleanText(simRes);
+        let simRes = startRouteSimulation(); appendChatMsg("Saga 🧭", simRes); speakCleanText(simRes);
       } else if (lower.includes("stoppa") || lower.includes("avbryt") || lower.includes("stäng av simul")) {
-        stopSimulation();
-        let stopRes = "Gubbgott, då avbryter vi och slår om till vanlig GPS-mottagning, Kapten!";
-        appendChatMsg("Saga 🛑", stopRes);
-        speakCleanText(stopRes);
+        stopSimulation(); let stopRes = "Gubbgott, då avbryter vi och slår om till vanlig GPS-mottagning, Kapten!"; appendChatMsg("Saga 🛑", stopRes); speakCleanText(stopRes);
       } else if (lower.includes("nöd") || lower.includes("sos") || lower.includes("hjälp") || lower.includes("skicka sos")) {
-        openSOS();
-        let sosRes = "Larmar systemet! Jag har öppnat SOS-panelen med dina koordinater nu direkt, Kapten!";
-        appendChatMsg("Saga 🚨", sosRes);
-        speakCleanText(sosRes);
-      } else { 
-        // 2. Om inget kommando matchar, skicka vidare till den goa AI-hjärnan
-        callGeminiLiveAPI(text); 
-      }
+        openSOS(); let sosRes = "Larmar systemet! Jag har öppnat SOS-panelen med dina koordinater nu direkt, Kapten!"; appendChatMsg("Saga 🚨", sosRes); speakCleanText(sosRes);
+      } else { callGeminiLiveAPI(text); }
     }
 
     async function callGeminiLiveAPI(promptText) {
@@ -583,28 +607,14 @@
 
     function speakCleanText(t) { if (state.isMuted || !('speechSynthesis' in window)) return; window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = 'sv-SE'; window.speechSynthesis.speak(u); }
     
-    // NYTT I V55: FIXAD OCH STABILISERAD SPEECH RECOGNITION
     function toggleVoiceRecognition() { 
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; 
       if (!SpeechRecognition) { alert("Röststyrning stöds tyvärr inte i denna webbläsare."); return; } 
-      
       if (!recognition) { 
-        recognition = new SpeechRecognition(); 
-        recognition.lang = "sv-SE"; 
-        recognition.continuous = false;
-        
-        recognition.onstart = () => { 
-          isListening = true; 
-          document.getElementById("ai-mic-btn").classList.add("listening"); 
-        }; 
-        recognition.onend = () => { 
-          isListening = false; 
-          document.getElementById("ai-mic-btn").classList.remove("listening"); 
-        }; 
-        recognition.onresult = (e) => { 
-          document.getElementById("ai-user-input").value = e.results[0][0].transcript; 
-          sendCustomAIMsg(); 
-        }; 
+        recognition = new SpeechRecognition(); recognition.lang = "sv-SE"; recognition.continuous = false;
+        recognition.onstart = () => { isListening = true; document.getElementById("ai-mic-btn").classList.add("listening"); }; 
+        recognition.onend = () => { isListening = false; document.getElementById("ai-mic-btn").classList.remove("listening"); }; 
+        recognition.onresult = (e) => { document.getElementById("ai-user-input").value = e.results[0][0].transcript; sendCustomAIMsg(); }; 
       } 
       if (isListening) { recognition.stop(); } else { recognition.start(); } 
     }
