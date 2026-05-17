@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Depth Filter Ready V67</title>
+  <title>Sagas Navigator - Screenshot Verified V68</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -180,7 +180,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>🔮 SAGAS NAVIGATOR V67 [DJUPFILTER REDO]</span>
+      <span>🔮 SAGAS NAVIGATOR V68 [SKÄRMBILD VERIFIERAD]</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -261,18 +261,19 @@
   <script>
     let state = { isNightMode: false, currentHeading: 0, isRouteLoading: false, showHinder: false };
     let plottedWaypoints = []; let plotterPolyline = null;
-    let currentBoatLatLng = L.latLng(57.6590, 11.8320); 
+    let currentBoatLatLng = L.latLng(57.6152, 11.8322); // Justerad startposition nära Grimskär
     let homePortData = null; let homePortMarker = null;
     let hinderLayers = []; let watchId = null;
 
-    // HÄR KAN DU LÄGGA TILL DINA NYA DJUPHINDER FRÅN KARTVISAREN FYREN:
+    // DJUPDATA INLÄST FRÅN DIN SKÄRMBILD (SÖDRA SKÄRGÅRDEN / GRIMSKÄR)
     const landObstacles = [
-      { name: "Köpstadsö / Stora Förö-Blocket", lat: 57.6360, lng: 11.8150, radius: 800, waypointBypass: [57.6430, 11.8350] },
-      { name: "Saltholmen Landklack", lat: 57.6610, lng: 11.8410, radius: 450, waypointBypass: [57.6560, 11.8250] },
-      { name: "Djupfilter Grund - GFA", lat: 57.6520, lng: 11.8120, radius: 250, waypointBypass: [57.6550, 11.8200] } 
+      { name: "Marholmen (Marh) Grundklack - 0.5m", lat: 57.6205, lng: 11.8405, radius: 180, waypointBypass: [57.6190, 11.8350] },
+      { name: "Grimskärsbränningen - Skär", lat: 57.6148, lng: 11.8260, radius: 120, waypointBypass: [57.6165, 11.8310] },
+      { name: "Långa skär Grundområde - 0.7m", lat: 57.6065, lng: 11.8290, radius: 200, waypointBypass: [57.6100, 11.8340] },
+      { name: "Hamninloppet Grundklack - 1.5m", lat: 57.6235, lng: 11.8270, radius: 110, waypointBypass: [57.6225, 11.8310] }
     ];
 
-    const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([currentBoatLatLng.lat, currentBoatLatLng.lng], 13);
+    const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([currentBoatLatLng.lat, currentBoatLatLng.lng], 14);
     L.tileLayer('https://{s}.tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apiKey=b57492c10dbb44589d13e015ee6b2b62', { maxZoom: 18 }).addTo(map);
 
     const boatMarker = L.circleMarker([currentBoatLatLng.lat, currentBoatLatLng.lng], {
@@ -532,7 +533,7 @@
         document.getElementById("home-port-btn").textContent = `🏠 ${homePortData.name.toUpperCase()}`;
       }
       updateRoutesDropdown();
-      document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg"><b>Saga:</b> V67 är aktiv. Systemet är nu helt förberett för att rita ut och varna för de röda djupzonerna du hittar i Sjöfartsverkets kartvisare. 📡⚓</div>`;
+      document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg"><b>Saga:</b> V68 är laddad! Djuphinder inlästa baserat på din skärmbild över Grimskär och Marholmen (0,5m, 0,7m, bränningar). Aktivera "VISA HINDER" för att granska dem på kartan. 📡⚓</div>`;
       initRealLifeGPS();
     });
   </script>
