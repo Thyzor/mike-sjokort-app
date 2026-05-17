@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Ultra Clean V81</title>
+  <title>Sagas Navigator - Anti-Overlap V82</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -26,7 +26,7 @@
       filter: invert(100%) hue-rotate(180deg) brightness(0.65) contrast(1.6) drop-shadow(0 0 3px var(--main-cyan));
     }
 
-    /* TOPP CENTER - FULLSTÄNDIGT RENODLAD KURS */
+    /* TOPP CENTER - KURSDISPLAY */
     .heading-display {
       position: absolute; top: 15px; left: 50%; transform: translateX(-50%); z-index: 2000;
       background: var(--panel-bg); border: 2px solid var(--main-cyan); padding: 8px 25px; border-radius: 12px; text-align: center;
@@ -35,23 +35,13 @@
     .heading-number { font-size: 26px; font-weight: 900; font-family: monospace; display: block; }
     .heading-cardinal { font-size: 16px; color: var(--main-cyan); font-weight: bold; }
 
-    /* UNDERMENY-ELEMENT INUTI MODALER */
-    .modal-status-sub-bar {
-      background: rgba(15, 7, 32, 0.6); border: 1px solid var(--ai-purple); padding: 8px; border-radius: 8px;
-      display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-bottom: 12px;
-    }
-    .ai-key-link { color: var(--ai-purple); text-decoration: underline; font-weight: bold; cursor: pointer; }
-    
-    .modal-gold-sub-bar {
-      background: rgba(251, 191, 36, 0.1); border: 1px solid var(--gold-yellow); padding: 8px 12px; border-radius: 8px;
-      font-weight: bold; color: var(--gold-yellow); font-size: 13px; display: flex; align-items: center; gap: 6px; margin-bottom: 12px;
-    }
-
-    /* VÄNSTERMENY */
+    /* VÄNSTERMENY - NU SÄNKT FÖR ATT UNDVIKA KROCK MED KURSDISPLAYEN */
     .controls-left { 
-      position: absolute; top: 15px; left: 15px; z-index: 1000; 
+      position: absolute; 
+      top: 85px; /* Sänkt från 15px till 85px för att rensa ytan bredvid kursen */
+      left: 15px; z-index: 1000; 
       display: flex; flex-direction: column; gap: 6px; 
-      height: calc(100% - 160px); overflow-y: auto; 
+      height: calc(100% - 230px); overflow-y: auto; 
       padding-right: 5px; width: 140px; 
     }
     
@@ -72,7 +62,19 @@
     
     .route-select { background: #001524; color: var(--main-cyan); border: 1px solid var(--main-cyan); padding: 8px; border-radius: 8px; font-size: 11px; font-weight: bold; width: 100%; box-sizing: border-box; }
 
-    /* KOMPASS & INSTRUMENT (OÄNDRADE OCH SÄKRA) */
+    /* UNDERMENY-ELEMENT INUTI MODALER */
+    .modal-status-sub-bar {
+      background: rgba(15, 7, 32, 0.6); border: 1px solid var(--ai-purple); padding: 8px; border-radius: 8px;
+      display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-bottom: 12px;
+    }
+    .ai-key-link { color: var(--ai-purple); text-decoration: underline; font-weight: bold; cursor: pointer; }
+    
+    .modal-gold-sub-bar {
+      background: rgba(251, 191, 36, 0.1); border: 1px solid var(--gold-yellow); padding: 8px 12px; border-radius: 8px;
+      font-weight: bold; color: var(--gold-yellow); font-size: 13px; display: flex; align-items: center; gap: 6px; margin-bottom: 12px;
+    }
+
+    /* KOMPASS & INSTRUMENT */
     .compass-container {
       position: absolute; bottom: 120px; left: 20px; z-index: 1001; width: 80px; height: 80px;
       background: rgba(0, 21, 36, 0.85); border-radius: 50%; border: 2px solid var(--main-cyan);
@@ -99,7 +101,7 @@
     }
     .info-value { font-weight: 800; font-size: 15px; display: block; color: white; text-align: center; margin-top: 3px; }
 
-    /* NOTIFIERINGSPANELER PÅ HÖGERSIDAN */
+    /* PANELER OCH NOTIFIERINGAR PÅ HÖGERSIDAN */
     .fika-panel { position: absolute; top: 15px; right: 15px; z-index: 2000; background: rgba(0, 15, 30, 0.95); border: 2px solid var(--fika-pink); padding: 12px; border-radius: 12px; width: 190px; display: none; flex-direction: column; gap: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
     .mob-active-panel { position: absolute; top: 15px; right: 15px; z-index: 2050; background: rgba(40, 0, 0, 0.95); border: 2px solid var(--sos-red); padding: 12px; border-radius: 12px; width: 190px; display: none; flex-direction: column; gap: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
     .save-route-panel { position: absolute; top: 15px; right: 15px; z-index: 2000; background: var(--panel-bg); border: 1px solid var(--main-cyan); padding: 12px; border-radius: 12px; display: none; flex-direction: column; gap: 6px; width: 180px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
@@ -456,7 +458,7 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       updateRoutesDropdown(); initSpeechRecognition(); initRealLifeGPS();
-      appendChatMsg("Saga", "V81 Ultra Clean UI laddad. Alla mätare och guld-data gömda i smarta undermenyer! 🌊");
+      appendChatMsg("Saga", "V82 Anti-Overlap aktiv. Knappar flyttade nedåt för perfekt synlighet! 🌊");
     });
   </script>
 </body>
