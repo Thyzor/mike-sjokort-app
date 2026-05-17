@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Härtiga Skärgårdsutgåvan V59</title>
+  <title>Sagas Navigator - Auto-Routing Edition V60</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -51,7 +51,7 @@
       font-weight: bold; color: var(--gold-yellow); font-size: 13px; display: flex; align-items: center; gap: 6px;
     }
 
-    /* GOA EXTRA PANELER */
+    /* PANELER */
     .docking-pilot-panel, .ghost-radar-panel, .fika-panel, .nature-panel, .wave-panel {
       position: absolute; top: 15px; right: 15px; z-index: 2000;
       background: rgba(0, 15, 30, 0.95); border: 2px solid var(--main-cyan); padding: 15px; border-radius: 16px;
@@ -64,7 +64,6 @@
     .panel-vector { background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; font-size: 12px; }
     .panel-advice { font-size: 11px; color: #cbd5e1; line-height: 1.4; font-style: italic; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2); }
 
-    /* UNIKA STILAR FÖR NYA PANELER */
     .fika-panel { border-color: var(--fika-pink); box-shadow: 0 0 25px rgba(244, 114, 182, 0.4); }
     .nature-panel { border-color: var(--nature-teal); box-shadow: 0 0 25px rgba(45, 212, 191, 0.4); }
     .ghost-radar-panel { border-color: var(--ghost-green); box-shadow: 0 0 25px rgba(0, 255, 102, 0.4); }
@@ -75,7 +74,6 @@
     }
     @keyframes sonar-ping { 0% { transform: scale(0.3); opacity: 1; } 100% { transform: scale(1.2); opacity: 0; } }
 
-    /* VINKA-KNAPP (SJÖMANSHÄLSNING) */
     .wave-panel {
       top: auto; bottom: 150px; right: 15px; border-color: var(--ais-orange);
       box-shadow: 0 0 30px rgba(249, 115, 22, 0.6); background: rgba(30, 10, 0, 0.95);
@@ -88,7 +86,6 @@
     }
     @keyframes wave-pulse { from { transform: scale(1); } to { transform: scale(1.04); } }
 
-    /* MOB-PANEL */
     .mob-active-panel {
       position: absolute; top: 160px; right: 15px; z-index: 2050;
       background: rgba(40, 0, 0, 0.95); border: 3px solid var(--sos-red); padding: 15px; border-radius: 16px;
@@ -125,7 +122,7 @@
       transform-origin: 10px 20px; transition: transform 0.2s ease-out;
     }
 
-    .controls-left { position: absolute; top: 90px; left: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 6px; }
+    .controls-left { position: absolute; top: 90px; left: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 6px; height: calc(100% - 260px); overflow-y: auto; padding-right: 5px; }
     .btn { background: var(--panel-bg); color: white; border: 1px solid var(--main-cyan); padding: 10px; border-radius: 8px; font-size: 10px; font-weight: bold; cursor: pointer; min-width: 135px; text-align: left; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
     .btn-sos { border-color: var(--sos-red); color: var(--sos-red); text-align: center; }
     .btn-mob { background: #300; border: 2px solid var(--sos-red); color: #ff8080; text-align: center; font-size: 11px; letter-spacing: 0.5px; animation: slow-mob-pulse 2s infinite alternate; }
@@ -133,6 +130,7 @@
 
     .btn-ai { border-color: var(--ai-purple); color: #e9d5ff; }
     .btn-log { border-color: var(--log-gold); color: var(--log-gold); }
+    .btn-hinder { border-color: var(--sos-red); color: #fca5a5; }
     
     .route-select { background: #001524; color: var(--main-cyan); border: 1px solid var(--main-cyan); padding: 8px; border-radius: 8px; font-size: 10px; font-weight: bold; width: 135px; }
 
@@ -160,6 +158,8 @@
 
     .ai-modal { border-color: var(--ai-purple); }
     .chat-box { background: rgba(0,0,0,0.3); border: 1px solid #334155; border-radius: 10px; padding: 12px; height: 220px; overflow-y: auto; margin-bottom: 10px; font-size: 12px; }
+    .chat-box::-webkit-scrollbar { width: 4px; }
+    .chat-box::-webkit-scrollbar-thumb { background: var(--main-cyan); border-radius: 2px; }
     .chat-msg { margin-bottom: 8px; line-height: 1.4; }
     .msg-user { color: var(--main-cyan); font-weight: bold; }
     .msg-ai { color: #e9d5ff; }
@@ -176,30 +176,20 @@
     .log-modal { border-color: var(--log-gold); max-width: 450px; }
     .log-list { background: rgba(0,0,0,0.4); border: 1px solid #451a03; border-radius: 10px; padding: 10px; height: 260px; overflow-y: auto; font-size: 11px; }
     .log-item { background: rgba(251, 191, 36, 0.05); border-left: 3px solid var(--log-gold); padding: 8px; margin-bottom: 8px; border-radius: 0 6px 6px 0; }
-    .log-meta { display: flex; justify-content: space-between; font-weight: bold; color: var(--log-gold); margin-bottom: 3px; }
 
     /* BLINK-ANIMATIONER */
     @keyframes shallow-blink { 0% { border-color: var(--sos-red); box-shadow: 0 0 10px var(--sos-red); } 50% { border-color: #000; box-shadow: none; } 100% { border-color: var(--sos-red); box-shadow: 0 0 10px var(--sos-red); } }
     .shallow-warning-active { animation: shallow-blink 0.8s infinite; background: rgba(255, 0, 0, 0.2) !important; color: var(--sos-red) !important; }
     @keyframes ais-blink { 0% { border-color: var(--ais-orange); box-shadow: 0 0 12px var(--ais-orange); } 50% { border-color: #000; box-shadow: none; } 100% { border-color: var(--ais-orange); box-shadow: 0 0 12px var(--ais-orange); } }
     .ais-warning-active { animation: ais-blink 0.6s infinite; background: rgba(249, 115, 22, 0.25) !important; color: var(--ais-orange) !important; }
-    @keyframes treasure-blink { 0% { border-color: var(--gold-yellow); box-shadow: 0 0 15px var(--gold-yellow); } 50% { border-color: #000; box-shadow: none; } 100% { border-color: var(--gold-yellow); box-shadow: 0 0 15px var(--gold-yellow); } }
-    .treasure-warning-active { animation: treasure-blink 1s infinite; background: rgba(245, 158, 11, 0.25) !important; color: #fef08a !important; }
 
-    .ais-vessel-tooltip { background: #1e293b; border: 1px solid var(--ais-orange); color: #f8fafc; font-size: 9px; padding: 2px 5px; border-radius: 4px; }
-    
     .harbor-marker-container, .wreck-marker-container, .chest-marker-container, .nature-marker-container { pointer-events: auto !important; }
     .harbor-icon { font-size: 24px; text-shadow: 0 0 6px rgba(0,0,0,1); cursor: pointer; }
     .wreck-icon { font-size: 22px; text-shadow: 0 0 8px rgba(0, 255, 102, 0.8); cursor: pointer; animation: float-wreck 3s infinite ease-in-out; }
-    .chest-icon { font-size: 24px; text-shadow: 0 0 10px rgba(245, 158, 11, 0.8); cursor: pointer; animation: float-wreck 2.5s infinite ease-in-out; }
+    .chest-icon { font-size: 24px; text-shadow: 0 0 10px rgba(245, 158, 11, 0.8); cursor: pointer; }
     .nature-icon { font-size: 22px; text-shadow: 0 0 6px black; cursor: pointer; }
     .mob-icon-style { font-size: 32px; animation: mob-marker-pulse 0.8s infinite alternate; text-shadow: 0 0 10px red; cursor: pointer; }
     @keyframes float-wreck { 0% { transform: translateY(0px); } 50% { transform: translateY(-4px); } 100% { transform: translateY(0px); } }
-    @keyframes mob-marker-pulse { from { transform: scale(1); } to { transform: scale(1.3); } }
-
-    .harbor-popup-style .leaflet-popup-content-wrapper { background: #001f3f !important; color: white !important; border: 1px solid var(--harbor-blue) !important; }
-    .wreck-popup-style .leaflet-popup-content-wrapper { background: #001c0b !important; color: #e6ffe6 !important; border: 1.5px solid var(--ghost-green) !important; }
-    a.leaflet-popup-close-button { color: var(--main-cyan) !important; padding: 6px 4px 0 0; }
   </style>
 </head>
 <body>
@@ -282,7 +272,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>🔮 SAGAS NAVIGATOR V59 [HÄRTIG SKÄRGÅRDSUTGÅVA]</span>
+      <span>🔮 SAGAS NAVIGATOR V60 [AUTO-ROUTING EDITION]</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -304,6 +294,7 @@
   <div class="controls-left">
     <button class="btn btn-mob" onclick="triggerManOverboardManual()">🛟 MAN ÖVER BORD!</button>
     <button class="btn btn-sos" id="sos-main-btn" onclick="openSOS()">🆘 NÖD SOS</button>
+    <button class="btn btn-hinder" id="hinder-toggle-btn" onclick="toggleHinderLayers()">👁️ VISA HINDER</button>
     <button class="btn btn-ai" onclick="openModal('ai-chat-modal')">🔮 SAGA SKEPPARE</button>
     <button class="btn btn-log" onclick="openLogbookModal()">📜 LOGGBOK</button>
     
@@ -360,11 +351,11 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    let state = { isNightMode: false, currentHeading: 0, isMuted: false, hasCenteredOnStart: false, isRouteLoading: false, goldCoins: 0 };
+    let state = { isNightMode: false, currentHeading: 0, isMuted: false, hasCenteredOnStart: false, isRouteLoading: false, goldCoins: 0, showHinder: false };
     let recognition = null; let isListening = false;
     
     let plottedWaypoints = []; let plotterPolyline = null;
-    let currentBoatLatLng = L.latLng(57.6186, 11.9320);
+    let currentBoatLatLng = L.latLng(57.6590, 11.8320); // Start i Långedrag-området
 
     let simulationInterval = null; let isSimulating = false;
     let simWaypointIndex = 0; let lastRealLocation = null;
@@ -374,12 +365,13 @@
     let isMOBActive = false; let mobTargetLatLng = null; let mobMarker = null; let mobReturnPolyline = null;
     let activeNearVessel = null;
 
-    let currentRouteName = "Ospecificerad rutt";
-
-    const shallowHazards = [
-      { name: "Vinga Grund", lat: 57.6310, lng: 11.6020, radius: 450 },
-      { name: "Buskärsrevet", lat: 57.6362, lng: 11.6732, radius: 350 }
+    // DEFINIERADE HINDERZONER (LANDMASSOR & GRUND FÖR AUTOMATISK SVEPNING OCH ROUTING)
+    const landObstacles = [
+      { name: "Köpstadsö / Stora Förö-Blocket", lat: 57.6360, lng: 11.8150, radius: 800, waypointBypass: [57.6430, 11.8350] },
+      { name: "Saltholmen Landklack", lat: 57.6610, lng: 11.8410, radius: 450, waypointBypass: [57.6560, 11.8250] },
+      { name: "Vinga Grund", lat: 57.6310, lng: 11.6020, radius: 500, waypointBypass: [57.6390, 11.6020] }
     ];
+    let hinderLayers = [];
 
     let aisVessels = [
       { id: 1, name: "Stena Danica", lat: 57.6550, lng: 11.7800, heading: 110, speed: 14, marker: null, direction: 1 }
@@ -390,27 +382,21 @@
     ];
 
     const wreckDatabase = [
-      { name: "Ångbåten Thetis", lat: 57.6430, lng: 11.6410, depth: "22 meter", sunkYear: "1923", story: "Kolliderade i tät tjocka med tyska ångaren 'Samos'. Besättningen räddades mirakulöst av lotsbåten i sista sekunden." },
-      { name: "Ostindiefararen Götheborg (Originalet)", lat: 57.6852, lng: 11.8412, depth: "9 meter", sunkYear: "1745", story: "Gick på grundet Hunnebådan i fullt dagsljus, precis under hemseglingen från Kina med lasten full av porslin och te." }
+      { name: "Ångbåten Thetis", lat: 57.6430, lng: 11.6410, depth: "22 meter", sunkYear: "1923", story: "Kolliderade i tät tjocka med tyska ångaren 'Samos'. Besättningen räddades mirakulöst." },
+      { name: "Ostindiefararen Götheborg", lat: 57.6852, lng: 11.8412, depth: "9 meter", sunkYear: "1745", story: "Gick på grundet Hunnebådan i fullt dagsljus under hemseglingen." }
     ];
 
-    // NYA HÄRTIGA NATUR-OMRÅDEN
     const natureDatabase = [
-      { name: "Inre sälskyddsområdet", lat: 57.6250, lng: 11.6200, type: "🦭", desc: "Här ligger gråsälarna ofta och solar på skären! Fram med kikaren, Kapten!" },
-      { name: "Makrillgrundet", lat: 57.6520, lng: 11.7200, type: "🐟", desc: "Här doftar det färsk fisk lång väg! Perfekt ställe att kasta ut dörjen på." }
+      { name: "Inre sälskyddsområdet", lat: 57.6250, lng: 11.6200, type: "🦭", desc: "Här ligger gråsälarna ofta och solar på skären!" },
+      { name: "Makrillgrundet", lat: 57.6520, lng: 11.7200, type: "🐟", desc: "Perfekt ställe att kasta ut dörjen på." }
     ];
 
     const treasureChests = [
-      { id: "chest_1", name: "Sagas Gamla Flaskpost", lat: 57.6350, lng: 11.8000, answered: false }
+      { id: "chest_1", name: "Sagas Gamla Flaskpost", lat: 57.6350, lng: 11.7600, answered: false }
     ];
 
     const quizQuestions = [
-      {
-        q: "Vilket väderstreck visar en kompasskurs på 270 grader, Kapten?",
-        options: ["Ost (O)", "Syd (S)", "Väst (V)", "Nord (N)"],
-        correct: 2,
-        successMsg: "Helt rätt, Väst är det! Här har du 50 guldmynt! 🪙"
-      }
+      { q: "Vilket väderstreck visar en kompasskurs på 270 grader, Kapten?", options: ["Ost (O)", "Syd (S)", "Väst (V)", "Nord (N)"], correct: 2, successMsg: "Helt rätt! Väst är det. Här har du 50 guldmynt! 🪙" }
     ];
 
     const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([currentBoatLatLng.lat, currentBoatLatLng.lng], 12);
@@ -425,10 +411,50 @@
       document.getElementById("compass-arrow").style.transform = `rotate(${state.currentHeading}deg)`;
     }
 
-    map.on('click', function(e) { if (isSimulating) stopSimulation(); addWaypoint(e.latlng.lat, e.latlng.lng); });
+    // MAP CLICK MED AUTOMATISK SVEPNING OCH ROUTING RUNT LANDMASSA
+    map.on('click', function(e) { 
+      if (isSimulating) stopSimulation(); 
+      
+      let startLatLng = currentBoatLatLng;
+      if (plottedWaypoints.length > 0) {
+        startLatLng = plottedWaypoints[plottedWaypoints.length - 1].latlng;
+      }
 
-    function addWaypoint(lat, lng) {
-      if (isMOBActive) return;
+      let clickLatLng = e.latlng;
+      let targetLat = clickLatLng.lat;
+      let targetLng = clickLatLng.lng;
+
+      // KONTROLLERA OM LINJEN MELLAN START OCH SLUT KROCKAR MED NÅGOT LANDHINDER
+      let collisionObstacle = null;
+      for (let obstacle of landObstacles) {
+        let obsLatLng = L.latLng(obstacle.lat, obstacle.lng);
+        // Enkel geometrisk koll: Ligger hindret nära mittpunkten på det tänkta benet?
+        let midLat = (startLatLng.lat + targetLat) / 2;
+        let midLng = (startLatLng.lng + targetLng) / 2;
+        let midPoint = L.latLng(midLat, midLng);
+
+        if (midPoint.distanceTo(obsLatLng) <= obstacle.radius || startLatLng.distanceTo(obsLatLng) <= obstacle.radius || clickLatLng.distanceTo(obsLatLng) <= obstacle.radius) {
+          collisionObstacle = obstacle;
+          break;
+        }
+      }
+
+      // OM DET KROCKAR MED LAND: GENERERA AUTOMATISKT EN SKÄRGÅRDS-BYPASS RUNT ÖN!
+      if (collisionObstacle) {
+        let bypassLat = collisionObstacle.waypointBypass[0];
+        let bypassLng = collisionObstacle.waypointBypass[1];
+        
+        let msg = `Hoppsan Kapten! Där ligger ju ${collisionObstacle.name}. Sagas Autopilot lägger automatiskt en kursled runt hindret! 🔄⚓`;
+        appendChatMsg("Saga 🔮", msg);
+        speakCleanText("Hinder upptäckt. Beräknar säker kursled.");
+
+        executeAddWaypointVisual(bypassLat, bypassLng);
+      }
+
+      executeAddWaypointVisual(targetLat, targetLng);
+    });
+
+    function executeAddWaypointVisual(lat, lng) {
       const ptIndex = plottedWaypoints.length + 1;
       const wpMarker = L.circleMarker([lat, lng], { radius: 7, color: '#00d4ff', fillColor: '#001524', fillOpacity: 1, weight: 2 }).addTo(map);
       wpMarker.bindTooltip(String(ptIndex), { permanent: true, direction: 'center', className: 'wp-number-tooltip' });
@@ -448,6 +474,27 @@
       document.getElementById("cur-nm").textContent = totalNM.toFixed(1) + " M";
       document.getElementById("eta").textContent = Math.round((totalNM / 7) * 60) + " min";
       return totalNM;
+    }
+
+    function toggleHinderLayers() {
+      state.showHinder = !state.showHinder;
+      const btn = document.getElementById("hinder-toggle-btn");
+      
+      if (state.showHinder) {
+        btn.textContent = "🙈 GÖM HINDER";
+        btn.style.background = "rgba(220, 38, 38, 0.9)";
+        landObstacles.forEach(obs => {
+          let circle = L.circle([obs.lat, obs.lng], { radius: obs.radius, color: '#ff0055', fillColor: '#ff0000', fillOpacity: 0.25, weight: 2, dashArray: "4, 6" }).addTo(map);
+          circle.bindTooltip(`HINDER: ${obs.name}`, { sticky: true });
+          hinderLayers.push(circle);
+        });
+        speakCleanText("Visar digitala landhinder och polygoner på plottern.");
+      } else {
+        btn.textContent = "👁️ VISA HINDER";
+        btn.style.background = "var(--panel-bg)";
+        hinderLayers.forEach(layer => map.removeLayer(layer));
+        hinderLayers = [];
+      }
     }
 
     function calculateLiveWeather(latlng) {
@@ -476,21 +523,21 @@
     function initHarbors() {
       harborDatabase.forEach(h => {
         let harborIcon = L.divIcon({ className: 'harbor-marker-container', html: `<div class="harbor-icon">⚓</div>`, iconSize: [26, 26] });
-        L.marker([h.lat, h.lng], { icon: harborIcon }).addTo(map).bindPopup(`<b>⚓ ${h.name}</b>`, { className: 'harbor-popup-style' });
+        L.marker([h.lat, h.lng], { icon: harborIcon }).addTo(map).bindPopup(`<b>⚓ ${h.name}</b>`);
       });
     }
 
     function initWrecks() {
       wreckDatabase.forEach(w => {
         let wreckIcon = L.divIcon({ className: 'wreck-marker-container', html: `<div class="wreck-icon">👻</div>`, iconSize: [26, 26] });
-        L.marker([w.lat, w.lng], { icon: wreckIcon }).addTo(map).bindPopup(`<b>👻 ${w.name}</b><br>Djup: ${w.depth} (${w.sunkYear})`, { className: 'wreck-popup-style' });
+        L.marker([w.lat, w.lng], { icon: wreckIcon }).addTo(map).bindPopup(`<b>👻 ${w.name}</b>`);
       });
     }
 
     function initNature() {
       natureDatabase.forEach(n => {
         let natureIcon = L.divIcon({ className: 'nature-marker-container', html: `<div class="nature-icon">${n.type}</div>`, iconSize: [26, 26] });
-        L.marker([n.lat, n.lng], { icon: natureIcon }).addTo(map).bindPopup(`<b>${n.type} ${n.name}</b><br>${n.desc}`);
+        L.marker([n.lat, n.lng], { icon: natureIcon }).addTo(map).bindPopup(`<b>${n.type} ${n.name}</b>`);
       });
     }
 
@@ -503,67 +550,37 @@
 
     function checkAISCollisions() {
       if (isMOBActive) return;
-      let dangerousVessel = null;
-      let waveVessel = null;
-
+      let dangerousVessel = null; let waveVessel = null;
       aisVessels.forEach(v => {
         let dist = currentBoatLatLng.distanceTo(L.latLng(v.lat, v.lng));
         if (dist <= 800) dangerousVessel = v;
         if (dist <= 1200) waveVessel = v;
       });
-
-      // Kontrollera om vi ska visa Vinka-knappen
-      if (waveVessel) {
-        activeNearVessel = waveVessel;
-        document.getElementById("wave-vessel-text").textContent = `${waveVessel.name} passerar i närheten!`;
-        document.getElementById("wave-panel").style.display = "flex";
-      } else {
-        document.getElementById("wave-panel").style.display = "none";
-      }
-
+      if (waveVessel) { activeNearVessel = waveVessel; document.getElementById("wave-vessel-text").textContent = `${waveVessel.name} passerar nära!`; document.getElementById("wave-panel").style.display = "flex"; } else { document.getElementById("wave-panel").style.display = "none"; }
       const sosBtn = document.getElementById("sos-main-btn");
-      if (dangerousVessel && !sosBtn.classList.contains("shallow-warning-active") && !sosBtn.classList.contains("treasure-warning-active")) {
-        sosBtn.className = "btn btn-sos ais-warning-active"; sosBtn.textContent = `🚨 KOLLISION: ${dangerousVessel.name.toUpperCase()}`;
-      } else if (!dangerousVessel && sosBtn.classList.contains("ais-warning-active")) {
-        sosBtn.className = "btn btn-sos"; sosBtn.textContent = "🆘 NÖD SOS";
-      }
+      if (dangerousVessel && !sosBtn.classList.contains("shallow-warning-active")) { sosBtn.className = "btn btn-sos ais-warning-active"; sosBtn.textContent = `🚨 FARTYG: ${dangerousVessel.name.toUpperCase()}`; } 
+      else if (!dangerousVessel && sosBtn.classList.contains("ais-warning-active")) { sosBtn.className = "btn btn-sos"; sosBtn.textContent = "🆘 NÖD SOS"; }
     }
 
-    // UTÖKAD UTGÅVA V59: DIGITAL FARTYGSTUTA VIA AUDIO-API
     function performSjömanshälsning() {
       if (!activeNearVessel) return;
-      
       try {
-        let ctx = new (window.AudioContext || window.webkitAudioContext)();
-        let osc = ctx.createOscillator(); let gain = ctx.createGain();
-        osc.type = "sawtooth"; osc.frequency.value = 95; // Dovt, gött fartygstut
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.2);
-        osc.connect(gain); gain.connect(ctx.destination);
+        let ctx = new (window.AudioContext || window.webkitAudioContext)(); let osc = ctx.createOscillator(); let gain = ctx.createGain();
+        osc.type = "sawtooth"; osc.frequency.value = 95; gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.2); osc.connect(gain); gain.connect(ctx.destination);
         osc.start(); osc.stop(ctx.currentTime + 1.2);
-      } catch(e) { console.log("Ljud kunde inte spelas"); }
-
+      } catch(e) {}
       document.getElementById("wave-panel").style.display = "none";
-      let waveMsg = `Gött mos, Kapten! Du vinkade till ${activeNearVessel.name}. Alltid hålla på sjömansskicket, det gör en varm i hjärtat! 👋🚢`;
+      let waveMsg = `Gött mos, Kapten! Du vinkade till ${activeNearVessel.name}. Snyggt sjömansskick! 👋🚢`;
       appendChatMsg("Saga 👋", waveMsg); speakCleanText(waveMsg);
     }
 
     function triggerManOverboardManual() {
-      if (isMOBActive) return;
-      isMOBActive = true;
-      mobTargetLatLng = L.latLng(currentBoatLatLng.lat, currentBoatLatLng.lng);
-      
+      if (isMOBActive) return; isMOBActive = true; mobTargetLatLng = L.latLng(currentBoatLatLng.lat, currentBoatLatLng.lng);
       let mobIcon = L.divIcon({ className: 'mob-marker-container', html: `<div class="mob-icon-style">🛟</div>`, iconSize: [35, 35] });
       mobMarker = L.marker([mobTargetLatLng.lat, mobTargetLatLng.lng], { icon: mobIcon }).addTo(map);
-      mobReturnPolyline = L.polyline([currentBoatLatLng, mobTargetLatLng], { color: 'red', weight: 5, className: 'mob-line-style' }).addTo(map);
-
+      mobReturnPolyline = L.polyline([currentBoatLatLng, mobTargetLatLng], { color: 'red', weight: 5 }).addTo(map);
       document.getElementById("mob-active-panel").style.display = "flex";
-      document.getElementById("ghost-radar-panel").style.display = "none";
-      document.getElementById("fika-panel").style.display = "none";
-      
-      let initialMsg = "LARM! MAN ÖVER BORD! Fryser koordinaterna! Vänd båten omedelbart 180 grader!";
-      appendChatMsg("🚨 SAGA AKUT", initialMsg);
-      speakCleanText("Larm! Man över bord! Vänd båten direkt, Kapten!");
       runMOBTick();
     }
 
@@ -571,269 +588,73 @@
       if (!isMOBActive || !mobTargetLatLng) return;
       let dist = currentBoatLatLng.distanceTo(mobTargetLatLng);
       document.getElementById("mob-live-distance").textContent = `${Math.round(dist)} meter`;
-
       const lat1 = currentBoatLatLng.lat * Math.PI / 180; const lat2 = mobTargetLatLng.lat * Math.PI / 180;
       const dLng = (mobTargetLatLng.lng - currentBoatLatLng.lng) * Math.PI / 180;
       const y = Math.sin(dLng) * Math.cos(lat2); const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
       let targetBearing = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-
       document.getElementById("mob-live-bearing").textContent = `Styrkurs till MOB: ${Math.round(targetBearing)}°`;
-      if (mobReturnPolyline) { mobReturnPolyline.setLatLngs([currentBoatLatLng, mobTargetLatLng]); }
-
-      let now = Date.now();
-      if (now - lastMOBVoiceTime > 12000) {
-        lastMOBVoiceTime = now;
-        let voiceGuide = `Håll kurs ${Math.round(targetBearing)} grader. Det är ${Math.round(dist)} meter kvar till livbojen!`;
-        if (dist < 20) voiceGuide = "Sakta ner nu, Kapten! Haveristen är precis vid skrovsidan! Förbered båtshake!";
-        speakCleanText(voiceGuide);
-      }
+      if (mobReturnPolyline) mobReturnPolyline.setLatLngs([currentBoatLatLng, mobTargetLatLng]);
     }
 
-    function cancelMOBSystem() {
-      isMOBActive = false;
-      if (mobMarker) { map.removeLayer(mobMarker); mobMarker = null; }
-      if (mobReturnPolyline) { map.removeLayer(mobReturnPolyline); mobReturnPolyline = null; }
-      document.getElementById("mob-active-panel").style.display = "none";
-      speakCleanText("MOB-systemet avslutat. Allt under kontroll.");
-    }
+    function cancelMOBSystem() { isMOBActive = false; if (mobMarker) map.removeLayer(mobMarker); if (mobReturnPolyline) map.removeLayer(mobReturnPolyline); document.getElementById("mob-active-panel").style.display = "none"; }
 
     function checkAllTrackers(latlng) {
       if (isMOBActive) { runMOBTick(); return; }
+      let now = Date.now();
 
+      // KOLLISION MED DIGITALA HINDER (GRUND/LAND)
       let hazardDetected = false; let detectedName = "";
-      for (let hazard of shallowHazards) {
+      for (let hazard of landObstacles) {
         let dist = latlng.distanceTo(L.latLng(hazard.lat, hazard.lng));
         if (dist <= hazard.radius) { hazardDetected = true; detectedName = hazard.name; break; }
       }
 
-      // KONTROLLERA FIKA-KALKYLATORN UNDER SIMULERING
-      let now = Date.now();
-      if (isSimulating && now - lastFikaTime > 35000) {
-        lastFikaTime = now;
-        let waveHeight = parseFloat(document.getElementById("waves").textContent);
-        let fikaPanel = document.getElementById("fika-panel");
-        let statusTxt = ""; let adviceTxt = ""; let voiceTxt = "";
-
-        if (waveHeight > 0.4) {
-          statusTxt = `⚠️ GUPPIG FIKA (${waveHeight.toFixed(2)}m vågor)`;
-          adviceTxt = "Det häver en del på sjön nu! Håll hårt i termosen och rulla ut kanelbullarna innan de kanar i plurret!";
-          voiceTxt = "En go fika sitter fint nu, men håll i kaffekoppen Kapten, för det guppar allt en aning på havet!";
-        } else {
-          statusTxt = `☀️ PERFEKT SKEPPARFIKA (${waveHeight.toFixed(2)}m vågor)`;
-          adviceTxt = "Sjön ligger som en spegel, Kapten. Plocka fram kaffet, luta dig tillbaka och njut av skärgården!";
-          voiceTxt = "Du, Kapten? Visst är det allt dags för en fika nu? Sjön ligger ju helt spegelblank och go!";
-        }
-        document.getElementById("fika-status-text").textContent = statusTxt;
-        document.getElementById("fika-advice-text").textContent = adviceTxt;
-        fikaPanel.style.display = "flex";
-        speakCleanText(voiceTxt);
-        appendChatMsg("Saga ☕", voiceTxt);
-      }
-
-      // KONTROLLERA NATURLIVS-RADAR (SÄL & MAKRILL)
-      let closestNature = null; let minNatureDist = 999999;
-      natureDatabase.forEach(n => {
-        let dist = latlng.distanceTo(L.latLng(n.lat, n.lng));
-        if (dist < minNatureDist) { minNatureDist = dist; closestNature = n; }
-      });
-
-      if (minNatureDist <= 600 && closestNature) {
-        document.getElementById("nature-title").textContent = `${closestNature.type} ${closestNature.name.toUpperCase()}`;
-        document.getElementById("nature-desc").textContent = closestNature.desc;
-        document.getElementById("nature-panel").style.display = "flex";
-
-        if (now - lastNatureTime > 50000) {
-          lastNatureTime = now;
-          speakCleanText(`Kika över relingen Kapten! Vi är nära ${closestNature.name}. ${closestNature.desc}`);
-          appendChatMsg("Skärgårdsradar 🦭", `Nära ${closestNature.name}: ${closestNature.desc}`);
-        }
-      } else {
-        document.getElementById("nature-panel").style.display = "none";
-      }
-
-      // KONTROLLERA SPÖKRADAR
-      let closestWreck = null; let minWreckDist = 999999;
-      wreckDatabase.forEach(w => {
-        let dist = latlng.distanceTo(L.latLng(w.lat, w.lng));
-        if (dist < minWreckDist) { minWreckDist = dist; closestWreck = w; }
-      });
-
-      if (minWreckDist <= 600 && closestWreck) {
-        let gPanel = document.getElementById("ghost-radar-panel");
-        document.getElementById("ghost-wreck-name").textContent = `👻 ${closestWreck.name.toUpperCase()}`;
-        document.getElementById("ghost-wreck-depth").textContent = `Djup: ${closestWreck.depth} | Förlisning: ${closestWreck.sunkYear}`;
-        document.getElementById("ghost-wreck-story").textContent = closestWreck.story;
-        gPanel.style.display = "flex";
-
-        if (now - lastGhostRadarTime > 50000) {
-          lastGhostRadarTime = now;
-          let ghostVoice = `Kapten! Ekolodet ger utslag! Vi passerar precis vraket efter ${closestWreck.name} från år ${closestWreck.sunkYear}.`;
-          speakCleanText(ghostVoice);
-          appendChatMsg("Spökradar 📟", ghostVoice);
-        }
-      } else {
-        document.getElementById("ghost-radar-panel").style.display = "none";
-      }
-
-      let nearChest = null;
-      for (let tc of treasureChests) {
-        if (!tc.answered) {
-          let dist = latlng.distanceTo(L.latLng(tc.lat, tc.lng));
-          if (dist <= 500) { nearChest = tc; break; }
-        }
-      }
-
-      let closestHarbor = null; let minHarborDist = 999999;
-      harborDatabase.forEach(h => {
-        let dist = latlng.distanceTo(L.latLng(h.lat, h.lng));
-        if (dist < minHarborDist) { minHarborDist = dist; closestHarbor = h; }
-      });
-
-      if (minHarborDist <= 500 && closestHarbor) {
-        let currentWind = calculateLiveWeather(latlng);
-        let pilotPanel = document.getElementById("docking-pilot-panel");
-        document.getElementById("docking-harbor-name").textContent = closestHarbor.name;
-        document.getElementById("docking-distance").textContent = `Avstånd: ${Math.round(minHarborDist)} meter`;
-        
-        let isFrånlands = currentWind > 6; 
-        let vectorText = ""; let adviceText = ""; let voiceOutput = "";
-
-        if (isFrånlands) {
-          vectorText = `⚠️ FRÅNLANDSVIND (${currentWind.toFixed(1)} m/s)`;
-          adviceText = "Vinden trycker båten UTÅT från bryggan. Gå in med brant vinkel, sätt fören i bryggan och säkra ett förspring direkt!";
-          voiceOutput = "Kapten, vi har en go men luring frånlandsvind i " + closestHarbor.name + ". Gå in med lite vinkel!";
-        } else {
-          vectorText = `💨 PÅLANDSVIND (${currentWind.toFixed(1)} m/s)`;
-          adviceText = "Vinden trycker båten IN mot bryggan. Gå in helt parallellt med låg fart och låt vinden göra jobbet. Fram med fendrarna!";
-          voiceOutput = "Tilläggning på gång! Vi har pålandsvind, Kapten. Ta det lugnt och lägg dig parallellt.";
-        }
-
-        document.getElementById("docking-vector-text").textContent = vectorText;
-        document.getElementById("docking-advice-text").textContent = adviceText;
-        pilotPanel.style.display = "flex";
-
-        if (now - lastHarborPilotTime > 45000) {
-          lastHarborPilotTime = now;
-          speakCleanText(voiceOutput);
-          appendChatMsg("Saga ⚓", voiceOutput);
-        }
-      } else {
-        document.getElementById("docking-pilot-panel").style.display = "none";
-      }
-
       const sosBtn = document.getElementById("sos-main-btn");
       if (hazardDetected) {
-        sosBtn.className = "btn btn-sos shallow-warning-active"; sosBtn.textContent = `⚠️ GRUND: ${detectedName.toUpperCase()}`;
-      } else if (nearChest) {
-        sosBtn.className = "btn btn-sos treasure-warning-active"; sosBtn.textContent = `🪙 SKATT I SIKTE!`;
-        if (now - lastTreasureTime > 30000) { lastTreasureTime = now; triggerSagaQuiz(nearChest); }
-      } else {
-        sosBtn.className = "btn btn-sos";
-        if (!document.querySelector(".ais-warning-active")) sosBtn.textContent = "🆘 NÖD SOS";
+        sosBtn.className = "btn btn-sos shallow-warning-active"; sosBtn.textContent = `⚠️ LANDKROCK: ${detectedName.toUpperCase()}`;
+      } else if (!document.querySelector(".ais-warning-active")) {
+        sosBtn.className = "btn btn-sos"; sosBtn.textContent = "🆘 NÖD SOS";
       }
-    }
 
-    function triggerSagaQuiz(chest) {
-      if(isSimulating) { clearInterval(simulationInterval); }
-      let qObj = quizQuestions[0];
-      document.getElementById("quiz-question-text").textContent = `[Saga]: "Ohoj Kapten! Du har hittat min flaskpost! Svara rätt så delar jag med mig av guldskatten: \n\n${qObj.q}"`;
-      const container = document.getElementById("quiz-options-container"); container.innerHTML = "";
-      qObj.options.forEach((opt, idx) => {
-        let b = document.createElement("button"); b.className = "quiz-btn"; b.textContent = `${idx + 1}. ${opt}`;
-        b.onclick = () => evaluateQuizAnswer(idx, qObj, chest); container.appendChild(b);
-      });
-      openModal("quiz-modal"); speakCleanText("Ohoj Kapten! Svara på min fråga för att vinna guldet!");
-    }
-
-    function evaluateQuizAnswer(selectedIdx, qObj, chest) {
-      closeModal("quiz-modal");
-      if (selectedIdx === qObj.correct) {
-        state.goldCoins += 50; document.getElementById("gold-amount").textContent = state.goldCoins; chest.answered = true;
-        if(chest.marker) map.removeLayer(chest.marker); appendChatMsg("Saga 🪙", qObj.successMsg); speakCleanText(qObj.successMsg);
-      } else {
-        let failText = "Ajdå, det var helt åt styrbord! Försök igen sen!"; appendChatMsg("Saga 🌊", failText); speakCleanText(failText);
+      // FIKA, NATURLIV, VRAK OCH HAMNPLUGEINS
+      if (isSimulating && now - lastFikaTime > 35000) {
+        lastFikaTime = now; let waveHeight = parseFloat(document.getElementById("waves").textContent);
+        document.getElementById("fika-status-text").textContent = waveHeight > 0.4 ? "⚠️ GUPPIG FIKA" : "☀️ SKEPPARFIKA";
+        document.getElementById("fika-panel").style.display = "flex";
       }
-      if (isSimulating) { isSimulating = false; startRouteSimulation(); }
-    }
 
-    if (navigator.geolocation) {
-      navigator.geolocation.watchPosition((pos) => {
-        const realLoc = L.latLng(pos.coords.latitude, pos.coords.longitude); lastRealLocation = realLoc;
-        if (!isSimulating) { currentBoatLatLng = realLoc; boatMarker.setLatLng(currentBoatLatLng); checkAllTrackers(currentBoatLatLng); }
-      });
+      // NATURLIVS-DETEKTION
+      let closestNature = null; let minNatureDist = 999999;
+      natureDatabase.forEach(n => { let dist = latlng.distanceTo(L.latLng(n.lat, n.lng)); if (dist < minNatureDist) { minNatureDist = dist; closestNature = n; } });
+      if (minNatureDist <= 600 && closestNature) { document.getElementById("nature-panel").style.display = "flex"; } else { document.getElementById("nature-panel").style.display = "none"; }
     }
 
     function startRouteSimulation() {
-      if (plottedWaypoints.length < 2) return "Det finns ingen rutt utlagd att simulera än, Kapten.";
+      if (plottedWaypoints.length < 2) return "Det finns ingen rutt utlagd än, Kapten.";
       isSimulating = true; document.getElementById("ai-status").textContent = "🔵 Simulerar rutt (7.0 knop)"; document.getElementById("speed").textContent = "7.0";
-      currentBoatLatLng = plottedWaypoints[simWaypointIndex].latlng;
-      lastFikaTime = Date.now(); // Starta fikatimern direkt vid start
-
+      currentBoatLatLng = plottedWaypoints[simWaypointIndex].latlng; lastFikaTime = Date.now();
       simulationInterval = setInterval(() => {
         if (!isSimulating || simWaypointIndex >= plottedWaypoints.length - 1) { stopSimulation(); return; }
         const currentTarget = plottedWaypoints[simWaypointIndex + 1].latlng;
         const distToTarget = currentBoatLatLng.distanceTo(currentTarget);
         if (distToTarget < 25) { simWaypointIndex++; if (simWaypointIndex >= plottedWaypoints.length - 1) { stopSimulation(); return; } }
-        
         const lat1 = currentBoatLatLng.lat * Math.PI / 180; const lat2 = currentTarget.lat * Math.PI / 180;
         const dLng = (currentTarget.lng - currentBoatLatLng.lng) * Math.PI / 180;
         const y = Math.sin(dLng) * Math.cos(lat2); const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
         updateHeading((Math.atan2(y, x) * 180 / Math.PI + 360) % 360);
-
-        currentBoatLatLng = L.latLng(
-          currentBoatLatLng.lat + (currentTarget.lat - currentBoatLatLng.lat) * 0.015,
-          currentBoatLatLng.lng + (currentTarget.lng - currentBoatLatLng.lng) * 0.015
-        );
+        currentBoatLatLng = L.latLng(currentBoatLatLng.lat + (currentTarget.lat - currentBoatLatLng.lat) * 0.02, currentBoatLatLng.lng + (currentTarget.lng - currentBoatLatLng.lng) * 0.02);
         boatMarker.setLatLng(currentBoatLatLng); checkAllTrackers(currentBoatLatLng);
       }, 250);
-      return "Då går vi för fulla segel! Håll utkik efter både fika, sälar och spökvrak längs vägen! ☕🦭👻";
+      return "Sätt igång autopilot och maskiner! Vi styr efter Sagas beräknade spår. ☕🦭";
     }
 
     function stopSimulation() { if (simulationInterval) { clearInterval(simulationInterval); simulationInterval = null; } isSimulating = false; document.getElementById("ai-status").textContent = "🟢 GPS Position Låst"; }
-
-    function openLogbookModal() {
-      const container = document.getElementById("log-list-container");
-      let logs = JSON.parse(localStorage.getItem("sagas_logbook")) || [];
-      if (logs.length === 0) container.innerHTML = `<div style="text-align:center; color:#64748b; margin-top:40px;">Inga loggade resor ännu.</div>`;
-      else container.innerHTML = logs.map(l => `<div class="log-item"><b>📍 ${l.name}</b><br>${l.note}</div>`).join('');
-      openModal("logbook-modal");
-    }
-
-    function clearAllLogs() { localStorage.removeItem("sagas_logbook"); openLogbookModal(); }
-    function saveCurrentRouteToArray() {
-      const nameInput = document.getElementById("route-name-input"); const name = nameInput.value.trim(); if (!name) return;
-      let savedRoutes = JSON.parse(localStorage.getItem("sagas_saved_routes")) || {};
-      savedRoutes[name] = plottedWaypoints.map(wp => ({ lat: wp.latlng.lat, lng: wp.latlng.lng }));
-      localStorage.setItem("sagas_saved_routes", JSON.stringify(savedRoutes)); updateDropdownMenu(); document.getElementById("save-route-panel").style.display = "none";
-    }
-
-    function updateDropdownMenu() {
-      const dropdown = document.getElementById("saved-routes-dropdown"); dropdown.innerHTML = '<option value="">📂 Hämta rutt...</option>';
-      let savedRoutes = JSON.parse(localStorage.getItem("sagas_saved_routes")) || {};
-      for (const routeName in savedRoutes) { const opt = document.createElement("option"); opt.value = routeName; opt.textContent = routeName; dropdown.appendChild(opt); }
-    }
-
-    function loadSelectedRoute(routeName) {
-      if (!routeName) return; clearRouteDisplay(); state.isRouteLoading = true;
-      let savedRoutes = JSON.parse(localStorage.getItem("sagas_saved_routes")) || {}; const targetCoords = savedRoutes[routeName];
-      if (targetCoords) targetCoords.forEach(pt => addWaypoint(pt.lat, pt.lng));
-      state.isRouteLoading = false;
-    }
-
-    function deleteActiveRoute() {
-      const dropdown = document.getElementById("saved-routes-dropdown"); const activeName = dropdown.value; if (!activeName) return;
-      let savedRoutes = JSON.parse(localStorage.getItem("sagas_saved_routes")) || {}; delete savedRoutes[activeName];
-      localStorage.setItem("sagas_saved_routes", JSON.stringify(savedRoutes)); clearRouteDisplay(); updateDropdownMenu();
-    }
-
     function clearRouteDisplay() { stopSimulation(); plottedWaypoints.forEach(wp => map.removeLayer(wp.marker)); plottedWaypoints = []; simWaypointIndex = 0; if (plotterPolyline) { map.removeLayer(plotterPolyline); plotterPolyline = null; } }
     function centerMap() { stopSimulation(); map.setView(boatMarker.getLatLng(), 13); }
-
-    window.addEventListener('DOMContentLoaded', () => { 
-      updateDropdownMenu(); initAndAnimateAIS(); initHarbors(); initWrecks(); initNature(); initTreasureChests(); 
-      document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! Version 59 är live och redo! Hela skärgården är laddad med go fika, vilda sälar och sjömanshälsningar. Starta en simulering ut mot Vinga så tar vi en kaffe och kikar efter gråsälar! ☕🦭❤️</div>`;
-    });
-
+    function toggleNight() { state.isNightMode = !state.isNightMode; document.body.classList.toggle("night-mode", state.isNightMode); }
+    function openSOS() { const c = map.getCenter(); document.getElementById("sos-coords").textContent = `${c.lat.toFixed(4)}N, ${c.lng.toFixed(4)}O`; openModal("sos-modal"); }
+    function openModal(id) { document.getElementById(id).style.display = "block"; }
+    function closeModal(id) { document.getElementById(id).style.display = "none"; }
     function promptApiKey() { const key = prompt("API-nyckel:"); if (key) localStorage.setItem("gemini_api_key", key.trim()); }
     function clearSavedKey() { localStorage.removeItem("gemini_api_key"); }
     function toggleMute() { state.isMuted = !state.isMuted; document.getElementById("ai-mute-btn").textContent = state.isMuted ? "🔇" : "🔊"; }
@@ -841,51 +662,27 @@
 
     function sendCustomAIMsg() {
       const input = document.getElementById("ai-user-input"); let text = input.value.trim(); if (!text) return;
-      appendChatMsg("Du", text); input.value = ""; 
-      const lower = text.toLowerCase();
-      
-      if (lower.includes("man över bord") || lower.includes("man over board") || lower.includes("ramlat i") || lower.includes("gubb i vattnet")) {
-        triggerManOverboardManual();
-      } else if (lower.includes("avbryt mob") || lower.includes("stäng av mob") || lower.includes("allt under kontroll")) {
-        cancelMOBSystem();
-      } else if (lower.includes("starta simul") || lower.includes("kör igång rutt") || lower.includes("starta resan") || lower.includes("aktivera rutt")) {
-        let simRes = startRouteSimulation(); appendChatMsg("Saga 🧭", simRes); speakCleanText(simRes);
-      } else if (lower.includes("stoppa") || lower.includes("avbryt") || lower.includes("stäng av simul")) {
-        stopSimulation(); let stopRes = "Gubbgott, då avbryter vi och slår om till vanlig GPS-mottagning, Kapten!"; appendChatMsg("Saga 🛑", stopRes); speakCleanText(stopRes);
-      } else if (lower.includes("nöd") || lower.includes("sos") || lower.includes("hjälp") || lower.includes("skicka sos")) {
-        openSOS(); let sosRes = "Larmar systemet! Jag har öppnat SOS-panelen med dina koordinater nu direkt, Kapten!"; appendChatMsg("Saga 🚨", sosRes); speakCleanText(sosRes);
-      } else if (lower.includes("fika") || lower.includes("kaffe") || lower.includes("bulle")) {
-        lastFikaTime = 0; checkAllTrackers(currentBoatLatLng); // Tvinga fram fikalarmet direkt
-      } else { callGeminiLiveAPI(text); }
+      appendChatMsg("Du", text); input.value = ""; const lower = text.toLowerCase();
+      if (lower.includes("starta") || lower.includes("simul")) { let res = startRouteSimulation(); appendChatMsg("Saga", res); speakCleanText(res); }
+      else if (lower.includes("stoppa") || lower.includes("avbryt")) { stopSimulation(); appendChatMsg("Saga", "Simulering avbruten."); }
+      else { callGeminiLiveAPI(text); }
     }
 
     async function callGeminiLiveAPI(promptText) {
       let apiKey = localStorage.getItem("gemini_api_key"); if (!apiKey) return;
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`;
       try {
-        const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: "Du är skipperskan Saga på en båtplotter. Svara jättekort (1-2 meningar) på bred, go göteborgska med mycket värme och sjölivskärlek. Kalla användaren Kapten: " + promptText }] }] }) });
+        const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: "Du är skipperskan Saga på en båtplotter. Svara jättekort på göteborgska: " + promptText }] }] }) });
         const data = await response.json(); let res = data.candidates[0].content.parts[0].text; appendChatMsg("Saga", res); speakCleanText(res);
       } catch (e) {}
     }
 
     function speakCleanText(t) { if (state.isMuted || !('speechSynthesis' in window)) return; window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = 'sv-SE'; window.speechSynthesis.speak(u); }
-    
-    function toggleVoiceRecognition() { 
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; 
-      if (!SpeechRecognition) { alert("Röststyrning stöds tyvärr inte i denna webbläsare."); return; } 
-      if (!recognition) { 
-        recognition = new SpeechRecognition(); recognition.lang = "sv-SE"; recognition.continuous = false;
-        recognition.onstart = () => { isListening = true; document.getElementById("ai-mic-btn").classList.add("listening"); }; 
-        recognition.onend = () => { isListening = false; document.getElementById("ai-mic-btn").classList.remove("listening"); }; 
-        recognition.onresult = (e) => { document.getElementById("ai-user-input").value = e.results[0][0].transcript; sendCustomAIMsg(); }; 
-      } 
-      if (isListening) { recognition.stop(); } else { recognition.start(); } 
-    }
-    
-    function toggleNight() { state.isNightMode = !state.isNightMode; document.body.classList.toggle("night-mode", state.isNightMode); }
-    function openSOS() { const c = map.getCenter(); document.getElementById("sos-coords").textContent = `${c.lat.toFixed(4)}N, ${c.lng.toFixed(4)}O`; openModal("sos-modal"); }
-    function openModal(id) { document.getElementById(id).style.display = "block"; }
-    function closeModal(id) { document.getElementById(id).style.display = "none"; }
+
+    window.addEventListener('DOMContentLoaded', () => { 
+      initAndAnimateAIS(); initHarbors(); initWrecks(); initNature(); initTreasureChests(); 
+      document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! Version 60 är laddad med automatisk land-hinder-routing! Tryck på knappen <b>"👁️ VISA HINDER"</b> till vänster för att se Sagas digitala landmasker, och testa sedan att lägga en rutt förbi Köpstadsö så ska du få se på magi! 🔄🔮⚓</div>`;
+    });
   </script>
 </body>
 </html>
