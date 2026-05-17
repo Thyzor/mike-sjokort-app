@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Free Pan V70</title>
+  <title>Sagas Navigator - Full Features V72</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -136,6 +136,12 @@
     .chat-input-row { display: flex; gap: 6px; align-items: center; }
     .chat-input { flex: 1; background: #0f172a; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; padding: 10px; font-size: 12px; box-sizing: border-box; height: 38px; }
     
+    /* MIKROFON STYLING */
+    .btn-mic { background: #1e1b4b; border: 1px solid var(--ai-purple); border-radius: 6px; color: #c084fc; height: 38px; width: 42px; display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; }
+    .btn-mic.listening { background: var(--sos-red); color: white; border-color: var(--sos-red); animation: mic-pulse 1s infinite; }
+    
+    @keyframes mic-pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); opacity: 0.8; } 100% { transform: scale(1); } }
+
     .log-modal { border-color: var(--log-gold); max-width: 450px; }
     .log-list { background: rgba(0,0,0,0.4); border: 1px solid #451a03; border-radius: 10px; padding: 10px; height: 260px; overflow-y: auto; font-size: 11px; }
     .log-item { background: rgba(251, 191, 36, 0.05); border-left: 3px solid var(--log-gold); padding: 8px; margin-bottom: 8px; border-radius: 0 6px 6px 0; }
@@ -172,7 +178,7 @@
   <div class="mob-active-panel" id="mob-active-panel">
     <div style="font-size:11px; font-weight:bold; color:white; letter-spacing:1px; display:flex; justify-content:space-between;">
       <span>🚨 MOB AKTIV RADAR</span>
-      <span style="cursor:pointer; color:white; font-weight:bold;" onclick="cancelMOBSystem()">STÄNG ×</span>
+      <span style="cursor:pointer; color:white; font-weight:bold; text-decoration:underline;" onclick="cancelMOBSystem()">STÄNG ×</span>
     </div>
     <div style="font-size:22px; font-weight:900; color:white; margin:4px 0; text-align:center;" id="mob-live-distance">--- m</div>
   </div>
@@ -185,7 +191,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>🔮 SAGAS NAVIGATOR V70 [FREE PAN ACTIVE]</span>
+      <span>🔮 SAGAS NAVIGATOR V72 [ALL FEATURES RESTORED]</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -253,6 +259,7 @@
 
     <div class="chat-input-row">
       <input type="text" id="ai-user-input" class="chat-input" placeholder="Skriv något till Saga..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
+      <button class="btn-mic" id="saga-mic-btn" onclick="toggleVoiceRecognition()" title="Röststyrning">🎙️</button>
       <button class="btn" style="min-width:50px; height:38px; border-color:var(--ai-purple);" onclick="sendCustomAIMsg()">Sänd</button>
     </div>
   </div>
@@ -273,11 +280,13 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    let state = { isNightMode: false, currentHeading: 0, isRouteLoading: false, showHinder: false, isMuted: false, autoCenterLocked: true };
+    let state = { isNightMode: false, currentHeading: 0, isRouteLoading: false, showHinder: false, isMuted: false, autoCenterLocked: true, isListening: false };
     let plottedWaypoints = []; let plotterPolyline = null;
     let currentBoatLatLng = L.latLng(57.6152, 11.8322); 
     let homePortData = null; let homePortMarker = null;
     let hinderLayers = []; let watchId = null;
+    let activeMobMarker = null;
+    let recognition = null;
 
     const landObstacles = [
       { name: "Marholmen (Marh) Grundklack - 0.5m", lat: 57.6205, lng: 11.8405, radius: 180, waypointBypass: [57.6190, 11.8350] },
@@ -287,20 +296,18 @@
     ];
 
     const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([currentBoatLatLng.lat, currentBoatLatLng.lng], 14);
-    L.tileLayer('https://{s}.tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apiKey=b57492c10dbb44589d13e015ee6b2b62', { maxZoom: 18 }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
     const boatMarker = L.circleMarker([currentBoatLatLng.lat, currentBoatLatLng.lng], {
       radius: 11, color: '#00d4ff', fillColor: '#ff0055', fillOpacity: 0.9, weight: 3
     }).addTo(map).bindTooltip("DIN POSITION", { permanent: false });
 
-    // NY FUNKTION: AVAKTIVERA LOCK OM ANVÄNDAREN DRAR ELLER ZOOMAR KARTAN MANUELLT
     map.on('movestart', function(e) {
       if (map._manualInteraction) {
         disableAutoTracking();
       }
     });
     
-    // Aktiveras av Leaflets inbyggda händelser när fingrar/mus rör kartan
     map.on('dragstart zoomstart', function() {
       disableAutoTracking();
     });
@@ -324,6 +331,59 @@
       btn.textContent = "📍 CENTRERA";
       map.setView(boatMarker.getLatLng(), map.getZoom());
       appendChatMsg("System", "Kartan låst till din position igen. 🔒");
+    }
+
+    // SPEECH RECOGNITION (RÖSTSTYRNING)
+    function initSpeechRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        console.log("Röststyrning stöds inte i denna webbläsare.");
+        return;
+      }
+      recognition = new SpeechRecognition();
+      recognition.lang = 'sv-SE';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        state.isListening = true;
+        const micBtn = document.getElementById("saga-mic-btn");
+        micBtn.classList.add("listening");
+        micBtn.textContent = "🛑";
+      };
+
+      recognition.onend = () => {
+        state.isListening = false;
+        const micBtn = document.getElementById("saga-mic-btn");
+        micBtn.classList.remove("listening");
+        micBtn.textContent = "🎙️";
+      };
+
+      recognition.onresult = (event) => {
+        const resultText = event.results[0][0].transcript;
+        document.getElementById("ai-user-input").value = resultText;
+        appendChatMsg("Du (Röst)", resultText);
+        sendCustomAIMsg(resultText);
+      };
+
+      recognition.onerror = () => {
+        state.isListening = false;
+        const micBtn = document.getElementById("saga-mic-btn");
+        micBtn.classList.remove("listening");
+        micBtn.textContent = "🎙️";
+      };
+    }
+
+    function toggleVoiceRecognition() {
+      if (!recognition) {
+        alert("Röststyrning stöds tyvärr inte i din nuvarande webbläsare.");
+        return;
+      }
+      if (state.isListening) {
+        recognition.stop();
+      } else {
+        recognition.start();
+      }
     }
 
     function triggerFileUpload() {
@@ -381,10 +441,14 @@
           currentBoatLatLng = L.latLng(lat, lng);
           boatMarker.setLatLng(currentBoatLatLng);
           
-          // UPPDATERAD LOGIK: Flytta bara kartan om vi är i låst läge
           if (state.autoCenterLocked) {
             map._manualInteraction = false; 
             map.panTo(currentBoatLatLng);
+          }
+
+          if (activeMobMarker) {
+            const dist = currentBoatLatLng.distanceTo(activeMobMarker.getLatLng());
+            document.getElementById("mob-live-distance").textContent = `${Math.round(dist)} m`;
           }
 
           document.getElementById("ai-status").textContent = `🛰️ GPS Aktiv (±${Math.round(accuracy)}m)`;
@@ -397,7 +461,6 @@
       );
     }
 
-    // Flagga för att spåra om det är användaren eller systemet som flyttar kartan
     map.on('mousedown touchstart', function() {
       map._manualInteraction = true;
     });
@@ -574,24 +637,56 @@
     }
     
     function triggerManOverboardManual() {
+      if (activeMobMarker) map.removeLayer(activeMobMarker);
+      
       let mobTargetLatLng = boatMarker.getLatLng();
-      L.marker([mobTargetLatLng.lat, mobTargetLatLng.lng], { icon: L.divIcon({ className:'home-marker-container', html:'<div class="mob-icon-style">🛟</div>', iconSize:[35,35] }) }).addTo(map);
+      activeMobMarker = L.marker([mobTargetLatLng.lat, mobTargetLatLng.lng], { 
+        icon: L.divIcon({ className:'home-marker-container', html:'<div class="mob-icon-style">🛟</div>', iconSize:[35,35] }) 
+      }).addTo(map);
+      
       document.getElementById("mob-active-panel").style.display = "flex";
+      document.getElementById("mob-live-distance").textContent = "0 m";
       logToBook("🛟 Man över bord-markör utplacerad");
     }
 
+    function cancelMOBSystem() {
+      if (activeMobMarker) {
+        map.removeLayer(activeMobMarker);
+        activeMobMarker = null;
+      }
+      document.getElementById("mob-active-panel").style.display = "none";
+      logToBook("🚨 MOB-systemet avaktiverat manuellt");
+      appendChatMsg("System", "Man över bord-läget har avslutats. ⛑️");
+    }
+
+    // FIXAD OCH KORRIGERAD LAYER-HANTERING FÖR HINDERKARTA
     function toggleHinderLayers() {
       state.showHinder = !state.showHinder;
       const btn = document.getElementById("hinder-toggle-btn");
       if (state.showHinder) {
-        btn.textContent = "🙈 GÖM HINDER"; btn.style.background = "rgba(220, 38, 38, 0.9)";
+        btn.textContent = "🙈 GÖM HINDER"; 
+        btn.style.background = "rgba(220, 38, 38, 0.9)";
+        btn.style.color = "white";
+        
         landObstacles.forEach(obs => {
-          let c = L.circle([obs.lat, obs.lng], { radius: obs.radius, color: '#ff0055', fillColor: '#ff0000', fillOpacity: 0.2 }).addTo(map);
+          let c = L.circle([obs.lat, obs.lng], { 
+            radius: obs.radius, 
+            color: '#ff0055', 
+            fillColor: '#ff0000', 
+            fillOpacity: 0.3,
+            weight: 3
+          }).addTo(map).bindTooltip(obs.name, { permanent: false });
           hinderLayers.push(c);
         });
+        appendChatMsg("System", "Visar navigationshinder på kartan. 🛑");
       } else {
-        btn.textContent = "👁️ VISA HINDER"; btn.style.background = "var(--panel-bg)";
-        hinderLayers.forEach(l => map.removeLayer(l)); hinderLayers = [];
+        btn.textContent = "👁️ VISA HINDER"; 
+        btn.style.background = "var(--panel-bg)";
+        btn.style.color = "#fca5a5";
+        
+        hinderLayers.forEach(l => map.removeLayer(l)); 
+        hinderLayers = [];
+        appendChatMsg("System", "Döljer navigationshinder. 🌊");
       }
     }
 
@@ -602,14 +697,25 @@
     
     function appendChatMsg(sender, text) { 
       const box = document.getElementById("ai-chat-box"); 
-      box.innerHTML += `<div class="chat-msg"><span style="color:var(--main-cyan)">${sender}:</span> ${text}</div>`; 
-      box.scrollTop = box.scrollHeight; 
+      if (box) {
+        box.innerHTML += `<div class="chat-msg"><span style="color:var(--main-cyan)">${sender}:</span> ${text}</div>`; 
+        box.scrollTop = box.scrollHeight; 
+      }
     }
 
-    function sendCustomAIMsg() {
-      const input = document.getElementById("ai-user-input"); let text = input.value.trim(); if (!text) return;
-      appendChatMsg("Du", text); input.value = "";
-      appendChatMsg("Saga", "Mottaget! Jag övervakar din rutt kontinuerligt. 📡");
+    function sendCustomAIMsg(forcedText) {
+      const input = document.getElementById("ai-user-input"); 
+      let text = forcedText || input.value.trim(); 
+      if (!forcedText && !text) return;
+      
+      if(!forcedText) {
+        appendChatMsg("Du", text); 
+        input.value = "";
+      }
+      
+      setTimeout(() => {
+        appendChatMsg("Saga", "Jag hör dig klart och tydligt! Spara rutter, kolla hinder eller navigera säkert. Säg till om du behöver något specifikt på sjön. ⚓");
+      }, 800);
     }
 
     window.addEventListener('DOMContentLoaded', () => { 
@@ -621,7 +727,8 @@
         document.getElementById("home-port-btn").textContent = `🏠 ${homePortData.name.toUpperCase()}`;
       }
       updateRoutesDropdown();
-      document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg"><b>Saga:</b> V70 är redo! Kartan är nu fri att flytta runt på. Vill du fixera den på båten igen trycker du på 📍 CENTRERA. ⚓</div>`;
+      initSpeechRecognition();
+      document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg"><b>Saga:</b> V72 är igång! Röststyrningen 🎙️ är återställd och "Visa Hinder"-knappen ritar nu ut farorna korrekt på kartan. Skepparn hälsar! ⚓</div>`;
       initRealLifeGPS();
     });
   </script>
