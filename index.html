@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Button Styling Fix V66</title>
+  <title>Sagas Navigator - Depth Filter Ready V67</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -81,10 +81,9 @@
       transform-origin: 10px 20px; transition: transform 0.2s ease-out;
     }
 
-    /* KONTROLLER VÄNSTER - ENHETLIG DESIGN */
+    /* KONTROLLER VÄNSTER */
     .controls-left { position: absolute; top: 90px; left: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 6px; height: calc(100% - 260px); overflow-y: auto; padding-right: 5px; }
     
-    /* Basstil för alla knappar */
     .btn { 
       background: var(--panel-bg); 
       color: white; 
@@ -100,15 +99,11 @@
       box-sizing: border-box;
     }
     
-    /* FIX: Solid bakgrund för nödknapparna så de inte blir genomskinliga */
     .btn-mob { background: #300; border: 2px solid var(--sos-red); color: #ff8080; text-align: center; font-size: 11px; }
     .btn-sos { background: var(--panel-bg); border: 1px solid var(--sos-red); color: var(--sos-red); text-align: center; }
-
     .btn-ai { border-color: var(--ai-purple); color: #e9d5ff; }
     .btn-log { border-color: var(--log-gold); color: var(--log-gold); }
     .btn-hinder { border-color: var(--sos-red); color: #fca5a5; }
-    
-    /* FIX: Säkrat att hemmahamnsknapparna använder den fasta mörka bakgrundspanelen */
     .btn-home { background: var(--panel-bg); border: 1px solid var(--eco-green); color: #a7f3d0; }
     
     .route-select { background: #001524; color: var(--main-cyan); border: 1px solid var(--main-cyan); padding: 8px; border-radius: 8px; font-size: 10px; font-weight: bold; width: 135px; box-sizing: border-box; }
@@ -185,7 +180,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>🔮 SAGAS NAVIGATOR V66 [STYLING KORRIGERAD]</span>
+      <span>🔮 SAGAS NAVIGATOR V67 [DJUPFILTER REDO]</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -270,9 +265,11 @@
     let homePortData = null; let homePortMarker = null;
     let hinderLayers = []; let watchId = null;
 
+    // HÄR KAN DU LÄGGA TILL DINA NYA DJUPHINDER FRÅN KARTVISAREN FYREN:
     const landObstacles = [
       { name: "Köpstadsö / Stora Förö-Blocket", lat: 57.6360, lng: 11.8150, radius: 800, waypointBypass: [57.6430, 11.8350] },
-      { name: "Saltholmen Landklack", lat: 57.6610, lng: 11.8410, radius: 450, waypointBypass: [57.6560, 11.8250] }
+      { name: "Saltholmen Landklack", lat: 57.6610, lng: 11.8410, radius: 450, waypointBypass: [57.6560, 11.8250] },
+      { name: "Djupfilter Grund - GFA", lat: 57.6520, lng: 11.8120, radius: 250, waypointBypass: [57.6550, 11.8200] } 
     ];
 
     const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([currentBoatLatLng.lat, currentBoatLatLng.lng], 13);
@@ -535,7 +532,7 @@
         document.getElementById("home-port-btn").textContent = `🏠 ${homePortData.name.toUpperCase()}`;
       }
       updateRoutesDropdown();
-      document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg"><b>Saga:</b> Gränssnittet uppdaterat! SOS-knappen och radbrytningarna har nu exakt samma enhetliga marina bakgrundsfärg. 📡⚓</div>`;
+      document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg"><b>Saga:</b> V67 är aktiv. Systemet är nu helt förberett för att rita ut och varna för de röda djupzonerna du hittar i Sjöfartsverkets kartvisare. 📡⚓</div>`;
       initRealLifeGPS();
     });
   </script>
