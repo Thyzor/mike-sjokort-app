@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - MOB Tactical Pilot V57</title>
+  <title>Sagas Navigator - Ghost Radar Echo V58</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -19,6 +19,7 @@
       --harbor-blue: #3b82f6;
       --wreck-purple: #c084fc;
       --gold-yellow: #f59e0b;
+      --ghost-green: #00ff66;
     }
     body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: var(--bg-dark); font-family: sans-serif; color: white; }
     #map { height: 100%; width: 100%; z-index: 1; background: #0a1e32; }
@@ -61,7 +62,7 @@
     .docking-vector { background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; border-left: 4px solid var(--wind-blue); font-size: 12px; }
     .docking-advice { font-size: 11px; color: #cbd5e1; line-height: 1.4; font-style: italic; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px; border: 1px dashed rgba(0, 212, 255, 0.2); }
 
-    /* NYTT I V57: DEDIKERAD TAKTISK MOB-PANEL */
+    /* MOB-PANEL */
     .mob-active-panel {
       position: absolute; top: 160px; right: 15px; z-index: 2050;
       background: rgba(40, 0, 0, 0.95); border: 3px solid var(--sos-red); padding: 15px; border-radius: 16px;
@@ -69,6 +70,20 @@
       display: none; flex-direction: column; gap: 8px; animation: mob-flash-panel 1.5s infinite alternate;
     }
     @keyframes mob-flash-panel { from { border-color: var(--sos-red); } to { border-color: #500; } }
+
+    /* NYTT I V58: SPÖKRADAR / HISTORISK VRAKDETEKTOR PANEL */
+    .ghost-radar-panel {
+      position: absolute; top: 15px; right: 15px; z-index: 2040;
+      background: rgba(0, 25, 10, 0.95); border: 2px solid var(--ghost-green); padding: 15px; border-radius: 16px;
+      width: 245px; box-shadow: 0 0 25px rgba(0, 255, 102, 0.4); backdrop-filter: blur(10px);
+      display: none; flex-direction: column; gap: 8px; animation: ghost-pulse-border 2s infinite alternate;
+    }
+    @keyframes ghost-pulse-border { from { border-color: var(--ghost-green); } to { border-color: #004411; } }
+    .ghost-sonar-circle {
+      width: 50px; height: 50px; border: 2px solid var(--ghost-green); border-radius: 50%; margin: 5px auto;
+      position: relative; animation: sonar-ping 1.5s infinite ease-out;
+    }
+    @keyframes sonar-ping { 0% { transform: scale(0.3); opacity: 1; } 100% { transform: scale(1.2); opacity: 0; } }
 
     .ai-panel {
       position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 2000;
@@ -101,8 +116,6 @@
     .controls-left { position: absolute; top: 90px; left: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 6px; }
     .btn { background: var(--panel-bg); color: white; border: 1px solid var(--main-cyan); padding: 10px; border-radius: 8px; font-size: 10px; font-weight: bold; cursor: pointer; min-width: 135px; text-align: left; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
     .btn-sos { border-color: var(--sos-red); color: var(--sos-red); text-align: center; }
-    
-    /* NYTT I V57: STOR STRIDSKLART MOB-KNAPP I MENYN */
     .btn-mob { background: #300; border: 2px solid var(--sos-red); color: #ff8080; text-align: center; font-size: 11px; letter-spacing: 0.5px; animation: slow-mob-pulse 2s infinite alternate; }
     @keyframes slow-mob-pulse { from { box-shadow: 0 0 2px #f00; } to { box-shadow: 0 0 8px #f00; } }
 
@@ -165,15 +178,13 @@
     
     .harbor-marker-container, .wreck-marker-container, .chest-marker-container { pointer-events: auto !important; }
     .harbor-icon { font-size: 24px; text-shadow: 0 0 6px rgba(0,0,0,1); cursor: pointer; }
-    .wreck-icon { font-size: 22px; text-shadow: 0 0 8px rgba(168, 85, 247, 0.8); cursor: pointer; animation: float-wreck 3s infinite ease-in-out; }
+    .wreck-icon { font-size: 22px; text-shadow: 0 0 8px rgba(0, 255, 102, 0.8); cursor: pointer; animation: float-wreck 3s infinite ease-in-out; }
     .chest-icon { font-size: 24px; text-shadow: 0 0 10px rgba(245, 158, 11, 0.8); cursor: pointer; animation: float-wreck 2.5s infinite ease-in-out; }
-    
-    /* NYTT I V57: PULSERANDE MOB-MARKÖR PÅ KARTAN */
     .mob-icon-style { font-size: 32px; animation: mob-marker-pulse 0.8s infinite alternate; text-shadow: 0 0 10px red; cursor: pointer; }
     @keyframes mob-marker-pulse { from { transform: scale(1); } to { transform: scale(1.3); } }
 
     .harbor-popup-style .leaflet-popup-content-wrapper { background: #001f3f !important; color: white !important; border: 1px solid var(--harbor-blue) !important; }
-    .wreck-popup-style .leaflet-popup-content-wrapper { background: #13072e !important; color: #f3e8ff !important; border: 1.5px solid var(--wreck-purple) !important; }
+    .wreck-popup-style .leaflet-popup-content-wrapper { background: #001c0b !important; color: #e6ffe6 !important; border: 1.5px solid var(--ghost-green) !important; }
     a.leaflet-popup-close-button { color: var(--main-cyan) !important; padding: 6px 4px 0 0; }
   </style>
 </head>
@@ -211,6 +222,17 @@
     <div class="docking-advice" style="background:#ff000030; color:white; border-color:white;" id="mob-live-advice">SLÅ OM OCH FÖLJ RUTTEN!</div>
   </div>
 
+  <div class="ghost-radar-panel" id="ghost-radar-panel">
+    <div style="font-size:10px; font-weight:bold; color:var(--ghost-green); letter-spacing:1px; display:flex; justify-content:space-between;">
+      <span>📟 SPÖKRADAR (EKOLOD)</span>
+      <span style="cursor:pointer; color:var(--sos-red); font-weight:bold;" onclick="document.getElementById('ghost-radar-panel').style.display='none'">×</span>
+    </div>
+    <div class="ghost-sonar-circle"></div>
+    <div class="docking-title" id="ghost-wreck-name" style="color:var(--ghost-green); font-size:14px; text-align:center;">---</div>
+    <div style="font-size:11px; color:#a3e635; text-align:center;" id="ghost-wreck-depth">Djup: -- | År: --</div>
+    <div class="docking-advice" id="ghost-wreck-story" style="background:rgba(0,0,0,0.5); border-color:#004411; color:#c1f2d2; font-size:11px;">Anomalier upptäckta under kölen...</div>
+  </div>
+
   <div class="save-route-panel" id="save-route-panel">
     <span style="font-size:10px; font-weight:bold; color:var(--main-cyan);">SPARA AKTUELL RUTT</span>
     <input type="text" id="route-name-input" class="save-input" placeholder="Ruttens namn...">
@@ -219,7 +241,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>🔮 SAGAS NAVIGATOR V57 [MAN OVERBOARD SENSOR]</span>
+      <span>🔮 SAGAS NAVIGATOR V58 [GHOST RADAR ECHO ENGAGED]</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -305,9 +327,8 @@
 
     let simulationInterval = null; let isSimulating = false;
     let simWaypointIndex = 0; let lastRealLocation = null;
-    let lastTreasureTime = 0; let lastHarborPilotTime = 0; let lastMOBVoiceTime = 0;
+    let lastTreasureTime = 0; let lastHarborPilotTime = 0; let lastMOBVoiceTime = 0; let lastGhostRadarTime = 0;
     
-    // NYTT I V57: VARIABLER FÖR MOB-LARMET
     let isMOBActive = false; let mobTargetLatLng = null; let mobMarker = null; let mobReturnPolyline = null;
 
     let currentRouteName = "Ospecificerad rutt";
@@ -325,8 +346,10 @@
       { name: "Långedrags Gästhamn", lat: 57.6695, lng: 11.8615, spots: "Ca 40 platser", facilities: "🚿 Dusch, 🔌 El", lineHeading: 90 }
     ];
 
+    // UTÖKAD UTGÅVA V58: HISTORISKA SKEPPSVRAK I GÖTEBORG
     const wreckDatabase = [
-      { name: "Ångbåten Thetis", lat: 57.6430, lng: 11.6410, depth: "22 meter", sunkYear: "1923", story: "Sjönk i tät tjocka." }
+      { name: "Ångbåten Thetis", lat: 57.6430, lng: 11.6410, depth: "22 meter", sunkYear: "1923", story: "Kolliderade i tät tjocka med tyska ångaren 'Samos'. Besättningen räddades mirakulöst av lotsbåten i sista sekunden." },
+      { name: "Ostindiefararen Götheborg (Originalet)", lat: 57.6852, lng: 11.8412, depth: "9 meter", sunkYear: "1745", story: "Gick på grundet Hunnebådan i fullt dagsljus, precis under hemseglingen från Kina med lasten full av porslin och te." }
     ];
 
     const treasureChests = [
@@ -357,7 +380,7 @@
     map.on('click', function(e) { if (isSimulating) stopSimulation(); addWaypoint(e.latlng.lat, e.latlng.lng); });
 
     function addWaypoint(lat, lng) {
-      if (isMOBActive) return; // Blockera plotter-klick om akut MOB pågår
+      if (isMOBActive) return;
       const ptIndex = plottedWaypoints.length + 1;
       const wpMarker = L.circleMarker([lat, lng], { radius: 7, color: '#00d4ff', fillColor: '#001524', fillOpacity: 1, weight: 2 }).addTo(map);
       wpMarker.bindTooltip(String(ptIndex), { permanent: true, direction: 'center', className: 'wp-number-tooltip' });
@@ -411,8 +434,8 @@
 
     function initWrecks() {
       wreckDatabase.forEach(w => {
-        let wreckIcon = L.divIcon({ className: 'wreck-marker-container', html: `<div class="wreck-icon">🏴‍☠️</div>`, iconSize: [26, 26] });
-        L.marker([w.lat, w.lng], { icon: wreckIcon }).addTo(map).bindPopup(`<b>🏴‍☠️ ${w.name}</b>`, { className: 'wreck-popup-style' });
+        let wreckIcon = L.divIcon({ className: 'wreck-marker-container', html: `<div class="wreck-icon">👻</div>`, iconSize: [26, 26] });
+        L.marker([w.lat, w.lng], { icon: wreckIcon }).addTo(map).bindPopup(`<b>👻 ${w.name}</b><br>Djup: ${w.depth} (${w.sunkYear})`, { className: 'wreck-popup-style' });
       });
     }
 
@@ -424,7 +447,7 @@
     }
 
     function checkAISCollisions() {
-      if (isMOBActive) return; // Slå inte ut MOB-larmet i knappsatsen om det körs
+      if (isMOBActive) return;
       let dangerousVessel = null;
       aisVessels.forEach(v => {
         let dist = currentBoatLatLng.distanceTo(L.latLng(v.lat, v.lng));
@@ -438,26 +461,21 @@
       }
     }
 
-    // NYTT I V57: TACTICAL ENGINE FOR MAN OVERBOARD DETECTION
     function triggerManOverboardManual() {
       if (isMOBActive) return;
       isMOBActive = true;
       mobTargetLatLng = L.latLng(currentBoatLatLng.lat, currentBoatLatLng.lng);
       
-      // Rita ut en lysande livboj på kartan
       let mobIcon = L.divIcon({ className: 'mob-marker-container', html: `<div class="mob-icon-style">🛟</div>`, iconSize: [35, 35] });
       mobMarker = L.marker([mobTargetLatLng.lat, mobTargetLatLng.lng], { icon: mobIcon }).addTo(map);
-
-      // Skapa en rät röd linje direkt från båten till haveristen
       mobReturnPolyline = L.polyline([currentBoatLatLng, mobTargetLatLng], { color: 'red', weight: 5, className: 'mob-line-style' }).addTo(map);
 
       document.getElementById("mob-active-panel").style.display = "flex";
+      document.getElementById("ghost-radar-panel").style.display = "none"; // Stäng av spökradar om akut kris pågår
       
       let initialMsg = "LARM! MAN ÖVER BORD! Fryser koordinaterna! Vänd båten omedelbart 180 grader!";
       appendChatMsg("🚨 SAGA AKUT", initialMsg);
       speakCleanText("Larm! Man över bord! Vänd båten direkt, Kapten!");
-      
-      // Tvinga uppdatering av systemet direkt
       runMOBTick();
     }
 
@@ -466,23 +484,19 @@
       let dist = currentBoatLatLng.distanceTo(mobTargetLatLng);
       document.getElementById("mob-live-distance").textContent = `${Math.round(dist)} meter`;
 
-      // Räkna ut kompasskurs (bearing) till gubben i vattnet
       const lat1 = currentBoatLatLng.lat * Math.PI / 180; const lat2 = mobTargetLatLng.lat * Math.PI / 180;
       const dLng = (mobTargetLatLng.lng - currentBoatLatLng.lng) * Math.PI / 180;
       const y = Math.sin(dLng) * Math.cos(lat2); const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
       let targetBearing = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
 
       document.getElementById("mob-live-bearing").textContent = `Styrkurs till MOB: ${Math.round(targetBearing)}°`;
-      
       if (mobReturnPolyline) { mobReturnPolyline.setLatLngs([currentBoatLatLng, mobTargetLatLng]); }
 
       let now = Date.now();
       if (now - lastMOBVoiceTime > 12000) {
         lastMOBVoiceTime = now;
         let voiceGuide = `Håll kurs ${Math.round(targetBearing)} grader. Det är ${Math.round(dist)} meter kvar till livbojen!`;
-        if (dist < 20) {
-          voiceGuide = "Sakta ner nu, Kapten! Haveristen är precis vid skrovsidan! Förbered båtshake!";
-        }
+        if (dist < 20) voiceGuide = "Sakta ner nu, Kapten! Haveristen är precis vid skrovsidan! Förbered båtshake!";
         speakCleanText(voiceGuide);
       }
     }
@@ -495,8 +509,8 @@
       speakCleanText("MOB-systemet avslutat. Allt under kontroll.");
     }
 
+    // NYTT I V58: KÄRN-MOTOR FÖR DETEKTERING AV BÅDE CRASH-LARM, LOTS OCH SPÖKRADAR
     function checkAllTrackers(latlng) {
-      // Om akut MOB körs, prioritera det taktiska systemet framför allt annat
       if (isMOBActive) {
         runMOBTick();
         return;
@@ -506,6 +520,31 @@
       for (let hazard of shallowHazards) {
         let dist = latlng.distanceTo(L.latLng(hazard.lat, hazard.lng));
         if (dist <= hazard.radius) { hazardDetected = true; detectedName = hazard.name; break; }
+      }
+
+      // KONTROLLERA SPÖKRADAR (VRAKDETEKTOR)
+      let closestWreck = null; let minWreckDist = 999999;
+      wreckDatabase.forEach(w => {
+        let dist = latlng.distanceTo(L.latLng(w.lat, w.lng));
+        if (dist < minWreckDist) { minWreckDist = dist; closestWreck = w; }
+      });
+
+      if (minWreckDist <= 600 && closestWreck) {
+        let gPanel = document.getElementById("ghost-radar-panel");
+        document.getElementById("ghost-wreck-name").textContent = `👻 ${closestWreck.name.toUpperCase()}`;
+        document.getElementById("ghost-wreck-depth").textContent = `Djup: ${closestWreck.depth} | Förlisning: ${closestWreck.sunkYear}`;
+        document.getElementById("ghost-wreck-story").textContent = closestWreck.story;
+        gPanel.style.display = "flex";
+
+        let now = Date.now();
+        if (now - lastGhostRadarTime > 50000) {
+          lastGhostRadarTime = now;
+          let ghostVoice = `Kapten! Ekolodet ger utslag! Vi passerar precis vraket efter ${closestWreck.name} som sjönk år ${closestWreck.sunkYear}. Hör på detta: ${closestWreck.story}`;
+          speakCleanText(ghostVoice);
+          appendChatMsg("Spökradar 📟", ghostVoice);
+        }
+      } else {
+        document.getElementById("ghost-radar-panel").style.display = "none";
       }
 
       let nearChest = null;
@@ -534,11 +573,11 @@
         if (isFrånlands) {
           vectorText = `⚠️ FRÅNLANDSVIND (${currentWind.toFixed(1)} m/s)`;
           adviceText = "Vinden trycker båten UTÅT från bryggan. Gå in med brant vinkel, sätt fören i bryggan och säkra ett förspring direkt!";
-          voiceOutput = "Kapten, vi har en go men luring frånlandsvind i " + closestHarbor.name + ". Gå in med lite vinkel och ta fören först, annars driver vi te havs!";
+          voiceOutput = "Kapten, vi har en go men luring frånlandsvind i " + closestHarbor.name + ". Gå in med lite vinkel och ta fören först!";
         } else {
           vectorText = `💨 PÅLANDSVIND (${currentWind.toFixed(1)} m/s)`;
           adviceText = "Vinden trycker båten IN mot bryggan. Gå in helt parallellt med låg fart och låt vinden göra jobbet. Fram med fendrarna!";
-          voiceOutput = "Tilläggning på gång! Vi har pålandsvind, Kapten. Ta det lugnt och lägg dig parallellt så fixar vinden resten. Ut med fendrarna!";
+          voiceOutput = "Tilläggning på gång! Vi har pålandsvind, Kapten. Ta det lugnt och lägg dig parallellt så fixar vinden resten.";
         }
 
         document.getElementById("docking-vector-text").textContent = vectorText;
@@ -665,7 +704,7 @@
     window.addEventListener('DOMContentLoaded', () => { 
       updateDropdownMenu(); initAndAnimateAIS(); initHarbors(); initWrecks(); initTreasureChests(); 
       let savedKey = localStorage.getItem("gemini_api_key");
-      if(savedKey) document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! Nu har vi rullat ut Sagas Taktiska MOB-larm i V57! Om krisen är framme, tryck på den röda bojen till vänster eller vrålade direkt till mig: 'Man över bord!' så löser jag räddningsrutten! 🛟⚡</div>`;
+      if(savedKey) document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! Version 58 är säkrad. Spökradarn är installerad och kalibrerad mot havets botten. Prova att lägga en rutt nära Hunnebådan eller strax söder om Vinga för att väcka ekolodet till liv! 👻📟</div>`;
     });
 
     function promptApiKey() { const key = prompt("API-nyckel:"); if (key) localStorage.setItem("gemini_api_key", key.trim()); }
@@ -678,7 +717,6 @@
       appendChatMsg("Du", text); input.value = ""; 
       const lower = text.toLowerCase();
       
-      // KONTROLLERA RÖSTSTYRT MOB-LARM
       if (lower.includes("man över bord") || lower.includes("man over board") || lower.includes("ramlat i") || lower.includes("gubb i vattnet")) {
         triggerManOverboardManual();
       } else if (lower.includes("avbryt mob") || lower.includes("stäng av mob") || lower.includes("allt under kontroll")) {
