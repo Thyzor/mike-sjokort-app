@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Button Fix V65</title>
+  <title>Sagas Navigator - Button Styling Fix V66</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -41,9 +41,9 @@
       font-weight: bold; color: var(--gold-yellow); font-size: 13px; display: flex; align-items: center; gap: 6px;
     }
 
-    .fika-panel, .nature-panel {
+    .fika-panel {
       position: absolute; top: 15px; right: 15px; z-index: 2000;
-      background: rgba(0, 15, 30, 0.95); border: 2px solid var(--main-cyan); padding: 15px; border-radius: 16px;
+      background: rgba(0, 15, 30, 0.95); border: 2px solid var(--fika-pink); padding: 15px; border-radius: 16px;
       width: 240px; display: none; flex-direction: column; gap: 8px;
     }
     .panel-header { font-size: 10px; font-weight: bold; letter-spacing: 1px; display: flex; justify-content: space-between; }
@@ -81,19 +81,37 @@
       transform-origin: 10px 20px; transition: transform 0.2s ease-out;
     }
 
+    /* KONTROLLER VÄNSTER - ENHETLIG DESIGN */
     .controls-left { position: absolute; top: 90px; left: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 6px; height: calc(100% - 260px); overflow-y: auto; padding-right: 5px; }
-    .btn { background: var(--panel-bg); color: white; border: 1px solid var(--main-cyan); padding: 10px; border-radius: 8px; font-size: 10px; font-weight: bold; cursor: pointer; min-width: 135px; text-align: left; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
     
-    /* FIX: Tydliga färgkopplingar för nöd och säkerhet */
-    .btn-sos { border-color: var(--sos-red); color: var(--sos-red); text-align: center; background: rgba(255, 0, 0, 0.05); }
+    /* Basstil för alla knappar */
+    .btn { 
+      background: var(--panel-bg); 
+      color: white; 
+      border: 1px solid var(--main-cyan); 
+      padding: 10px; 
+      border-radius: 8px; 
+      font-size: 10px; 
+      font-weight: bold; 
+      cursor: pointer; 
+      min-width: 135px; 
+      text-align: left; 
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      box-sizing: border-box;
+    }
+    
+    /* FIX: Solid bakgrund för nödknapparna så de inte blir genomskinliga */
     .btn-mob { background: #300; border: 2px solid var(--sos-red); color: #ff8080; text-align: center; font-size: 11px; }
+    .btn-sos { background: var(--panel-bg); border: 1px solid var(--sos-red); color: var(--sos-red); text-align: center; }
 
     .btn-ai { border-color: var(--ai-purple); color: #e9d5ff; }
     .btn-log { border-color: var(--log-gold); color: var(--log-gold); }
     .btn-hinder { border-color: var(--sos-red); color: #fca5a5; }
-    .btn-home { border-color: var(--eco-green); color: #a7f3d0; }
     
-    .route-select { background: #001524; color: var(--main-cyan); border: 1px solid var(--main-cyan); padding: 8px; border-radius: 8px; font-size: 10px; font-weight: bold; width: 135px; }
+    /* FIX: Säkrat att hemmahamnsknapparna använder den fasta mörka bakgrundspanelen */
+    .btn-home { background: var(--panel-bg); border: 1px solid var(--eco-green); color: #a7f3d0; }
+    
+    .route-select { background: #001524; color: var(--main-cyan); border: 1px solid var(--main-cyan); padding: 8px; border-radius: 8px; font-size: 10px; font-weight: bold; width: 135px; box-sizing: border-box; }
 
     .save-route-panel {
       position: absolute; top: 140px; right: 15px; z-index: 2000;
@@ -123,7 +141,7 @@
     .log-item { background: rgba(251, 191, 36, 0.05); border-left: 3px solid var(--log-gold); padding: 8px; margin-bottom: 8px; border-radius: 0 6px 6px 0; }
 
     @keyframes shallow-blink { 0% { border-color: var(--sos-red); box-shadow: 0 0 10px var(--sos-red); } 50% { border-color: #000; box-shadow: none; } 100% { border-color: var(--sos-red); box-shadow: 0 0 10px var(--sos-red); } }
-    .shallow-warning-active { animation: shallow-blink 0.8s infinite; background: rgba(255, 0, 0, 0.2) !important; color: var(--sos-red) !important; }
+    .shallow-warning-active { animation: shallow-blink 0.8s infinite; background: rgba(255, 0, 0, 0.3) !important; color: var(--sos-red) !important; }
 
     .home-marker-container { pointer-events: auto !important; }
     .home-icon { font-size: 26px; text-shadow: 0 0 8px var(--eco-green); cursor: pointer; }
@@ -167,7 +185,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>🔮 SAGAS NAVIGATOR V65 [KOPPLING FIXAD]</span>
+      <span>🔮 SAGAS NAVIGATOR V66 [STYLING KORRIGERAD]</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -187,7 +205,7 @@
     <button class="btn btn-mob" onclick="triggerManOverboardManual()">🛟 MAN ÖVER BORD!</button>
     <button class="btn btn-sos" id="sos-main-btn" onclick="openSOS()">🆘 NÖD SOS</button>
     <button class="btn btn-home" id="home-port-btn" onclick="openModal('home-port-modal')">🏠 STÄLL HEMMAHAMN</button>
-    <button class="btn btn-home" id="route-home-btn" style="display:none; background:rgba(16,185,129,0.15);" onclick="routeToHomePort()">🧭 RUTA HEM</button>
+    <button class="btn btn-home" id="route-home-btn" style="display:none; border-color:var(--main-cyan); color:var(--main-cyan);" onclick="routeToHomePort()">🧭 RUTA HEM</button>
     <button class="btn btn-hinder" id="hinder-toggle-btn" onclick="toggleHinderLayers()">👁️ VISA HINDER</button>
     <button class="btn btn-ai" onclick="openModal('ai-chat-modal')">🔮 SAGA SKEPPARE</button>
     <button class="btn btn-log" onclick="openLogbookModal()">📜 LOGGBOK</button>
@@ -449,19 +467,24 @@
       for (let hazard of landObstacles) {
         if (latlng.distanceTo(L.latLng(hazard.lat, hazard.lng)) <= hazard.radius) { hazardDetected = true; break; }
       }
-      document.getElementById("sos-main-btn").className = hazardDetected ? "btn btn-sos shallow-warning-active" : "btn btn-sos";
+      
+      const sosBtn = document.getElementById("sos-main-btn");
+      if (hazardDetected) {
+        sosBtn.className = "btn btn-sos shallow-warning-active";
+      } else {
+        sosBtn.className = "btn btn-sos";
+      }
     }
 
     function clearRouteDisplay() { plottedWaypoints.forEach(wp => map.removeLayer(wp.marker)); plottedWaypoints = []; if (plotterPolyline) map.removeLayer(plotterPolyline); plotterPolyline = null; document.getElementById("save-route-panel").style.display = "none"; calculateGlobalRoute(); }
     function centerMap() { map.setView(boatMarker.getLatLng(), 14); }
     function toggleNight() { state.isNightMode = !state.isNightMode; document.body.classList.toggle("night-mode", state.isNightMode); }
     
-    /* 🆘 FIXAD SOS-FUNKTION */
     function openSOS() { 
       const c = boatMarker.getLatLng(); 
       document.getElementById("sos-coords").textContent = `${c.lat.toFixed(5)}°N, ${c.lng.toFixed(5)}°O`; 
       openModal("sos-modal"); 
-      logToBook(`🆘 AKTUERAT NÖD-ANROP vid position: ${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}`); 
+      logToBook(`🆘 AKTIVERAT NÖD-ANROP vid position: ${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}`); 
     }
     
     function triggerManOverboardManual() {
@@ -512,7 +535,7 @@
         document.getElementById("home-port-btn").textContent = `🏠 ${homePortData.name.toUpperCase()}`;
       }
       updateRoutesDropdown();
-      document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg"><b>Saga:</b> Systemet är korrigerat och säkrat. SOS och alla snabbfunktioner svarar direkt nu! 📡⚓</div>`;
+      document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg"><b>Saga:</b> Gränssnittet uppdaterat! SOS-knappen och radbrytningarna har nu exakt samma enhetliga marina bakgrundsfärg. 📡⚓</div>`;
       initRealLifeGPS();
     });
   </script>
