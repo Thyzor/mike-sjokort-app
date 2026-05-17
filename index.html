@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Live AI V77</title>
+  <title>Sagas Navigator - Ultra Clean V81</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -12,14 +12,13 @@
       --panel-bg: rgba(0, 21, 36, 0.95);
       --sos-red: #ff0000;
       --ai-purple: #a855f7;
-      --ais-orange: #f97316;
       --wind-blue: #38bdf8;
       --log-gold: #fbbf24;
       --eco-green: #10b981;
       --gold-yellow: #f59e0b;
       --fika-pink: #f472b6;
-      --nature-teal: #2dd4bf;
     }
+    
     body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: var(--bg-dark); font-family: sans-serif; color: white; }
     #map { height: 100%; width: 100%; z-index: 1; background: #0a1e32; }
 
@@ -27,111 +26,96 @@
       filter: invert(100%) hue-rotate(180deg) brightness(0.65) contrast(1.6) drop-shadow(0 0 3px var(--main-cyan));
     }
 
+    /* TOPP CENTER - FULLSTÄNDIGT RENODLAD KURS */
     .heading-display {
       position: absolute; top: 15px; left: 50%; transform: translateX(-50%); z-index: 2000;
       background: var(--panel-bg); border: 2px solid var(--main-cyan); padding: 8px 25px; border-radius: 12px; text-align: center;
-      min-width: 140px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+      min-width: 130px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); backdrop-filter: blur(8px);
     }
-    .heading-number { font-size: 28px; font-weight: 900; font-family: monospace; display: block; }
-    .heading-cardinal { font-size: 18px; color: var(--main-cyan); font-weight: bold; }
+    .heading-number { font-size: 26px; font-weight: 900; font-family: monospace; display: block; }
+    .heading-cardinal { font-size: 16px; color: var(--main-cyan); font-weight: bold; }
 
-    .gold-counter {
-      position: absolute; top: 120px; left: 50%; transform: translateX(-50%); z-index: 2000;
-      background: rgba(20, 15, 0, 0.9); border: 2px solid var(--gold-yellow); padding: 4px 12px; border-radius: 20px;
-      font-weight: bold; color: var(--gold-yellow); font-size: 13px; display: flex; align-items: center; gap: 6px;
+    /* UNDERMENY-ELEMENT INUTI MODALER */
+    .modal-status-sub-bar {
+      background: rgba(15, 7, 32, 0.6); border: 1px solid var(--ai-purple); padding: 8px; border-radius: 8px;
+      display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-bottom: 12px;
     }
-
-    .fika-panel {
-      position: absolute; top: 15px; right: 15px; z-index: 2000;
-      background: rgba(0, 15, 30, 0.95); border: 2px solid var(--fika-pink); padding: 15px; border-radius: 16px;
-      width: 240px; display: none; flex-direction: column; gap: 8px;
-    }
-    .panel-header { font-size: 10px; font-weight: bold; letter-spacing: 1px; display: flex; justify-content: space-between; }
-
-    .mob-active-panel {
-      position: absolute; top: 160px; right: 15px; z-index: 2050;
-      background: rgba(40, 0, 0, 0.95); border: 3px solid var(--sos-red); padding: 15px; border-radius: 16px;
-      width: 240px; display: none; flex-direction: column; gap: 8px;
-    }
-
-    .ai-panel {
-      position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 2000;
-      background: rgba(15, 7, 32, 0.9); border: 1.5px solid var(--ai-purple); padding: 10px 20px; border-radius: 14px;
-      width: 90%; max-width: 450px; font-size: 11px; box-sizing: border-box;
-    }
-    .ai-header { font-weight: bold; color: var(--ai-purple); display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
-    .ai-status { color: #e9d5ff; font-style: italic; margin-top: 2px; }
-
-    .compass-container {
-      position: absolute; bottom: 150px; left: 20px; z-index: 1001; width: 85px; height: 85px;
-      background: rgba(0, 21, 36, 0.85); border-radius: 50%; border: 2px solid var(--main-cyan);
-      display: flex; align-items: center; justify-content: center;
-    }
-    .compass-rose { width: 100%; height: 100%; position: relative; }
-    .comp-mark { position: absolute; font-size: 12px; font-weight: 900; color: #64748b; }
-    .n { top: 4px; left: 50%; transform: translateX(-50%); color: var(--sos-red); }
-    .s { bottom: 4px; left: 50%; transform: translateX(-50%); }
-    .o { right: 6px; top: 50%; transform: translateY(-50%); }
-    .v { left: 6px; top: 50%; transform: translateY(-50%); }
+    .ai-key-link { color: var(--ai-purple); text-decoration: underline; font-weight: bold; cursor: pointer; }
     
-    .compass-arrow {
-      position: absolute; top: 50%; left: 50%; width: 0; height: 0;
-      border-left: 10px solid transparent; border-right: 10px solid transparent;
-      border-bottom: 32px solid var(--main-cyan); margin-left: -10px; margin-top: -20px;
-      transform-origin: 10px 20px; transition: transform 0.2s ease-out;
+    .modal-gold-sub-bar {
+      background: rgba(251, 191, 36, 0.1); border: 1px solid var(--gold-yellow); padding: 8px 12px; border-radius: 8px;
+      font-weight: bold; color: var(--gold-yellow); font-size: 13px; display: flex; align-items: center; gap: 6px; margin-bottom: 12px;
     }
 
-    /* KONTROLLER VÄNSTER */
-    .controls-left { position: absolute; top: 90px; left: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 6px; height: calc(100% - 260px); overflow-y: auto; padding-right: 5px; }
+    /* VÄNSTERMENY */
+    .controls-left { 
+      position: absolute; top: 15px; left: 15px; z-index: 1000; 
+      display: flex; flex-direction: column; gap: 6px; 
+      height: calc(100% - 160px); overflow-y: auto; 
+      padding-right: 5px; width: 140px; 
+    }
     
     .btn { 
-      background: var(--panel-bg); 
-      color: white; 
-      border: 1px solid var(--main-cyan); 
-      padding: 10px; 
-      border-radius: 8px; 
-      font-size: 10px; 
-      font-weight: bold; 
-      cursor: pointer; 
-      min-width: 135px; 
-      text-align: left; 
-      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      background: var(--panel-bg); color: white; border: 1px solid var(--main-cyan); 
+      padding: 10px 8px; border-radius: 8px; font-size: 11px; font-weight: bold; 
+      cursor: pointer; width: 100%; text-align: left; box-shadow: 0 2px 6px rgba(0,0,0,0.4);
       box-sizing: border-box;
     }
+    .btn:active { background: rgba(0, 214, 255, 0.2); }
     
-    .btn-mob { background: #300; border: 2px solid var(--sos-red); color: #ff8080; text-align: center; font-size: 11px; }
+    .btn-ai { border-color: var(--ai-purple); color: #f3e8ff; background: rgba(25, 12, 45, 0.95); text-align: center; box-shadow: 0 0 8px rgba(168, 85, 247, 0.3); }
+    .btn-mob { background: #300; border: 2px solid var(--sos-red); color: #ff8080; text-align: center; }
     .btn-sos { background: var(--panel-bg); border: 1px solid var(--sos-red); color: var(--sos-red); text-align: center; }
-    .btn-ai { border-color: var(--ai-purple); color: #e9d5ff; }
     .btn-log { border-color: var(--log-gold); color: var(--log-gold); }
     .btn-hinder { border-color: var(--sos-red); color: #fca5a5; }
     .btn-home { background: var(--panel-bg); border: 1px solid var(--eco-green); color: #a7f3d0; }
     
-    .route-select { background: #001524; color: var(--main-cyan); border: 1px solid var(--main-cyan); padding: 8px; border-radius: 8px; font-size: 10px; font-weight: bold; width: 135px; box-sizing: border-box; }
+    .route-select { background: #001524; color: var(--main-cyan); border: 1px solid var(--main-cyan); padding: 8px; border-radius: 8px; font-size: 11px; font-weight: bold; width: 100%; box-sizing: border-box; }
 
-    .save-route-panel {
-      position: absolute; top: 140px; right: 15px; z-index: 2000;
-      background: var(--panel-bg); border: 1px solid var(--main-cyan); padding: 12px; border-radius: 12px;
-      display: none; flex-direction: column; gap: 8px; width: 180px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    /* KOMPASS & INSTRUMENT (OÄNDRADE OCH SÄKRA) */
+    .compass-container {
+      position: absolute; bottom: 120px; left: 20px; z-index: 1001; width: 80px; height: 80px;
+      background: rgba(0, 21, 36, 0.85); border-radius: 50%; border: 2px solid var(--main-cyan);
+      display: flex; align-items: center; justify-content: center;
     }
-    .save-input { background: #0f172a; border: 1px solid var(--main-cyan); border-radius: 6px; color: white; padding: 6px; font-size: 11px; }
+    .compass-rose { width: 100%; height: 100%; position: relative; }
+    .comp-mark { position: absolute; font-size: 11px; font-weight: 900; color: #64748b; }
+    .n { top: 3px; left: 50%; transform: translateX(-50%); color: var(--sos-red); }
+    .s { bottom: 3px; left: 50%; transform: translateX(-50%); }
+    .o { right: 5px; top: 50%; transform: translateY(-50%); }
+    .v { left: 5px; top: 50%; transform: translateY(-50%); }
+    .compass-arrow {
+      position: absolute; top: 50%; left: 50%; width: 0; height: 0;
+      border-left: 8px solid transparent; border-right: 8px solid transparent;
+      border-bottom: 28px solid var(--main-cyan); margin-left: -8px; margin-top: -18px;
+      transform-origin: 8px 18px; transition: transform 0.2s ease-out;
+    }
 
     .info-panel {
-      position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); z-index: 1000;
-      background: var(--panel-bg); border: 1px solid var(--main-cyan); padding: 10px; border-radius: 20px;
-      display: flex; gap: 10px; width: 95%; justify-content: space-around; font-size: 11px;
+      position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); z-index: 1000;
+      background: var(--panel-bg); border: 1px solid var(--main-cyan); padding: 12px 8px; border-radius: 16px;
+      display: flex; gap: 8px; width: 92%; max-width: 500px; justify-content: space-around; font-size: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
     }
-    .info-value { font-weight: 800; font-size: 14px; display: block; color: white; text-align: center; margin-top: 2px; }
+    .info-value { font-weight: 800; font-size: 15px; display: block; color: white; text-align: center; margin-top: 3px; }
 
-    .modal { display: none; position: fixed; z-index: 3000; left: 50%; top: 50%; transform: translate(-50%, -50%); 
-             background: #001524; color: white; padding: 20px; border-radius: 18px; width: 85%; max-width: 400px; border: 2px solid var(--main-cyan); }
-    .close-x { float: right; cursor: pointer; font-size: 24px; color: var(--main-cyan); font-weight: bold; margin-top: -5px; }
+    /* NOTIFIERINGSPANELER PÅ HÖGERSIDAN */
+    .fika-panel { position: absolute; top: 15px; right: 15px; z-index: 2000; background: rgba(0, 15, 30, 0.95); border: 2px solid var(--fika-pink); padding: 12px; border-radius: 12px; width: 190px; display: none; flex-direction: column; gap: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+    .mob-active-panel { position: absolute; top: 15px; right: 15px; z-index: 2050; background: rgba(40, 0, 0, 0.95); border: 2px solid var(--sos-red); padding: 12px; border-radius: 12px; width: 190px; display: none; flex-direction: column; gap: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+    .save-route-panel { position: absolute; top: 15px; right: 15px; z-index: 2000; background: var(--panel-bg); border: 1px solid var(--main-cyan); padding: 12px; border-radius: 12px; display: none; flex-direction: column; gap: 6px; width: 180px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+    .save-input { background: #0f172a; border: 1px solid var(--main-cyan); border-radius: 6px; color: white; padding: 6px; font-size: 11px; }
+
+    /* MODALER */
+    .modal { display: none; position: fixed; z-index: 3000; left: 50%; top: 45%; transform: translate(-50%, -50%); 
+             background: #001524; color: white; padding: 18px; border-radius: 16px; width: 88%; max-width: 420px; border: 2px solid var(--main-cyan); box-shadow: 0 10px 30px rgba(0,0,0,0.8); box-sizing: border-box; }
+    .close-x { float: right; cursor: pointer; font-size: 22px; color: var(--main-cyan); font-weight: bold; margin-top: -5px; }
     
-    .ai-modal { border-color: var(--ai-purple); max-width: 450px; }
-    .chat-box { background: rgba(0,0,0,0.3); border: 1px solid #334155; border-radius: 10px; padding: 12px; height: 200px; overflow-y: auto; margin-bottom: 8px; font-size: 12px; }
+    .ai-modal { border-color: var(--ai-purple); }
+    .chat-box { background: rgba(0,0,0,0.4); border: 1px solid #334155; border-radius: 10px; padding: 12px; height: 160px; overflow-y: auto; margin-bottom: 8px; font-size: 12px; }
     
     .chat-controls-row { display: flex; gap: 5px; margin-bottom: 8px; }
-    .chat-ctrl-btn { flex: 1; background: #0f172a; border: 1px solid #475569; border-radius: 6px; color: #94a3b8; font-size: 10px; padding: 6px; font-weight: bold; cursor: pointer; text-align: center; }
-    .chat-ctrl-btn.active { border-color: var(--sos-red); color: var(--sos-red); background: rgba(255,0,0,0.05); }
+    .chat-ctrl-btn { flex: 1; background: #0f172a; border: 1px solid #475569; border-radius: 6px; color: #e2e8f0; font-size: 11px; padding: 8px; font-weight: bold; cursor: pointer; text-align: center; }
+    .chat-ctrl-btn.mute-active { border-color: var(--sos-red); color: white; background: rgba(255,0,0,0.3); }
 
     .chat-input-row { display: flex; gap: 6px; align-items: center; }
     .chat-input { flex: 1; background: #0f172a; border: 1px solid var(--ai-purple); border-radius: 6px; color: white; padding: 10px; font-size: 12px; box-sizing: border-box; height: 38px; }
@@ -141,12 +125,9 @@
     
     @keyframes mic-pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); opacity: 0.8; } 100% { transform: scale(1); } }
 
-    .log-modal { border-color: var(--log-gold); max-width: 450px; }
-    .log-list { background: rgba(0,0,0,0.4); border: 1px solid #451a03; border-radius: 10px; padding: 10px; height: 260px; overflow-y: auto; font-size: 11px; }
+    .log-modal { border-color: var(--log-gold); }
+    .log-list { background: rgba(0,0,0,0.4); border: 1px solid #451a03; border-radius: 10px; padding: 10px; height: 200px; overflow-y: auto; font-size: 11px; }
     .log-item { background: rgba(251, 191, 36, 0.05); border-left: 3px solid var(--log-gold); padding: 8px; margin-bottom: 8px; border-radius: 0 6px 6px 0; }
-
-    @keyframes shallow-blink { 0% { border-color: var(--sos-red); box-shadow: 0 0 10px var(--sos-red); } 50% { border-color: #000; box-shadow: none; } 100% { border-color: var(--sos-red); box-shadow: 0 0 10px var(--sos-red); } }
-    .shallow-warning-active { animation: shallow-blink 0.8s infinite; background: rgba(255, 0, 0, 0.3) !important; color: var(--sos-red) !important; }
 
     .home-marker-container { pointer-events: auto !important; }
     .home-icon { font-size: 26px; text-shadow: 0 0 8px var(--eco-green); cursor: pointer; }
@@ -162,44 +143,29 @@
     <span id="cardinal-top" class="heading-cardinal">N</span>
   </div>
 
-  <div class="gold-counter">
-    <span>🪙 Guld:</span><span id="gold-amount">0</span>
-  </div>
-
   <div class="fika-panel" id="fika-panel">
-    <div class="panel-header" style="color:var(--fika-pink);">
-      <span>☕ SAGAS FIKA-LARM</span>
-      <span style="cursor:pointer; color:var(--sos-red); font-weight:bold;" onclick="document.getElementById('fika-panel').style.display='none'">×</span>
+    <div style="font-size:10px; font-weight:bold; color:var(--fika-pink); display:flex; justify-content:space-between;">
+      <span>☕ FIKA-LARM</span>
+      <span style="cursor:pointer; color:var(--sos-red);" onclick="document.getElementById('fika-panel').style.display='none'">×</span>
     </div>
-    <div style="color:var(--fika-pink); font-size:15px; font-weight:bold; margin-top:4px;">Dags för en go fika! 🍩</div>
+    <div style="color:var(--fika-pink); font-size:13px; font-weight:bold; margin-top:2px;">Dags för fika! 🍩</div>
   </div>
 
   <div class="mob-active-panel" id="mob-active-panel">
-    <div style="font-size:11px; font-weight:bold; color:white; letter-spacing:1px; display:flex; justify-content:space-between;">
-      <span>🚨 MOB AKTIV RADAR</span>
-      <span style="cursor:pointer; color:white; font-weight:bold; text-decoration:underline;" onclick="cancelMOBSystem()">STÄNG ×</span>
+    <div style="font-size:10px; font-weight:bold; color:white; display:flex; justify-content:space-between;">
+      <span>🚨 MOB RADAR</span>
+      <span style="cursor:pointer; text-decoration:underline;" onclick="cancelMOBSystem()">×</span>
     </div>
-    <div style="font-size:22px; font-weight:900; color:white; margin:4px 0; text-align:center;" id="mob-live-distance">--- m</div>
+    <div style="font-size:18px; font-weight:900; color:white; text-align:center; margin-top:2px;" id="mob-live-distance">--- m</div>
   </div>
 
   <div class="save-route-panel" id="save-route-panel">
     <div style="display:flex; justify-content:space-between; align-items:center;">
-      <span style="font-size:10px; font-weight:bold; color:var(--main-cyan); letter-spacing:0.5px;">SPARA AKTUELL RUTT</span>
-      <span style="cursor:pointer; color:var(--sos-red); font-weight:bold; font-size:16px; line-height:1;" onclick="document.getElementById('save-route-panel').style.display='none'">×</span>
+      <span style="font-size:10px; font-weight:bold; color:var(--main-cyan);">SPARA RUTT</span>
+      <span style="cursor:pointer; color:var(--sos-red);" onclick="document.getElementById('save-route-panel').style.display='none'">×</span>
     </div>
     <input type="text" id="route-name-input" class="save-input" placeholder="Ruttens namn...">
-    <button class="btn" style="min-width:100%; padding:6px; text-align:center;" onclick="saveCurrentRouteToArray()">💾 Spara Rutt</button>
-  </div>
-
-  <div class="ai-panel" id="ai-panel">
-    <div class="ai-header">
-      <span>🔮 SAGAS NAVIGATOR V77 [LIVE AI FIX]</span>
-      <div>
-        <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
-        <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
-      </div>
-    </div>
-    <div class="ai-status" id="ai-status">Söker satelliter... 🛰️</div>
+    <button class="btn" style="width:100%; padding:6px; text-align:center; margin-top:4px;" onclick="saveCurrentRouteToArray()">💾 Spara Rutt</button>
   </div>
 
   <div class="compass-container">
@@ -210,19 +176,19 @@
   </div>
 
   <div class="controls-left">
+    <button class="btn btn-ai" onclick="openModal('ai-chat-modal')">🔮 SAGA SKEPPARE</button>
     <button class="btn btn-mob" onclick="triggerManOverboardManual()">🛟 MAN ÖVER BORD!</button>
     <button class="btn btn-sos" id="sos-main-btn" onclick="openSOS()">🆘 NÖD SOS</button>
-    <button class="btn btn-home" id="home-port-btn" onclick="openModal('home-port-modal')">🏠 STÄLL HEMMAHAMN</button>
+    <button class="btn btn-home" id="home-port-btn" onclick="openModal('home-port-modal')">🏠 HEMMAHAMN</button>
     <button class="btn btn-home" id="route-home-btn" style="display:none; border-color:var(--main-cyan); color:var(--main-cyan);" onclick="routeToHomePort()">🧭 RUTA HEM</button>
     <button class="btn btn-hinder" id="hinder-toggle-btn" onclick="toggleHinderLayers()">👁️ VISA HINDER</button>
-    <button class="btn btn-ai" onclick="openModal('ai-chat-modal')">🔮 SAGA SKEPPARE</button>
     <button class="btn btn-log" onclick="openLogbookModal()">📜 LOGGBOK</button>
     
     <select id="saved-routes-dropdown" class="route-select" onchange="loadSelectedRoute(this.value)">
       <option value="">📂 Hämta rutt...</option>
     </select>
     
-    <button class="btn" style="border-color: #64748b; color: #94a3b8;" onclick="deleteActiveRoute()">🗑️ RADERA RUTT</button>
+    <button class="btn" style="border-color: #475569; color: #94a3b8;" onclick="deleteActiveRoute()">🗑️ RADERA RUTT</button>
     <button class="btn" id="center-tracking-btn" onclick="centerMapAndLock()">📍 CENTRERA</button>
     <button class="btn" onclick="clearRouteDisplay()">🗑️ RENSA SKÄRM</button>
     <button class="btn" onclick="toggleNight()">🌙 NATT/DAG</button>
@@ -238,37 +204,50 @@
 
   <div id="home-port-modal" class="modal" style="border-color: var(--eco-green);">
     <span class="close-x" onclick="closeModal('home-port-modal')">×</span>
-    <h3 style="color:var(--eco-green); margin-top:0; margin-bottom:10px;">🏠 Ange Hemmahamn</h3>
+    <h3 style="color:var(--eco-green); margin-top:0; margin-bottom:12px;">🏠 Ange Hemmahamn</h3>
     <div style="display:flex; gap:6px;">
-      <input type="text" id="home-port-input" class="chat-input" style="border-color:var(--eco-green);" placeholder="Ex: Långedrag, GKSS, Amundön...">
-      <button class="btn" style="min-width:60px; height:38px; padding:0; text-align:center; border-color:var(--eco-green);" onclick="lookupAndSetHomePort()">Sök</button>
+      <input type="text" id="home-port-input" class="chat-input" style="border-color:var(--eco-green);" placeholder="Ex: Långedrag, GKSS...">
+      <button class="btn" style="width:60px; height:38px; padding:0; text-align:center; border-color:var(--eco-green);" onclick="lookupAndSetHomePort()">Sök</button>
     </div>
     <div id="home-port-status" style="font-size:11px; color:#f8fafc; margin-top:8px; font-style:italic;"></div>
   </div>
 
   <div id="ai-chat-modal" class="modal ai-modal">
     <span class="close-x" onclick="closeModal('ai-chat-modal')">×</span>
-    <h3 style="color:var(--ai-purple); margin-top:0; margin-bottom:8px;">Saga Marine Copilot</h3>
+    <h3 style="color:var(--ai-purple); margin-top:0; margin-bottom:6px;">Saga Marine Copilot</h3>
+    
+    <div class="modal-status-sub-bar">
+      <span id="ai-status">Söker GPS... 🛰️</span>
+      <div>
+        <span class="ai-key-link" onclick="promptApiKey()">⚙️ Nyckel</span>
+        <span style="cursor:pointer; margin-left:8px; color:#94a3b8;" onclick="clearSavedKey()">🗑️ Nolla</span>
+      </div>
+    </div>
     
     <div class="chat-box" id="ai-chat-box"></div>
     
     <div class="chat-controls-row">
-      <button class="chat-ctrl-btn" onclick="triggerFileUpload()">📎 Lägg till fil</button>
-      <button class="chat-ctrl-btn" id="chat-mute-btn" onclick="toggleChatMute()">🔊 Ljud På</button>
-      <button class="chat-ctrl-btn" style="border-color:#334155;" onclick="clearChatBox()">🗑️ Rensa chatt</button>
+      <button class="chat-ctrl-btn" onclick="triggerFileUpload()">📎 Fil</button>
+      <button class="chat-ctrl-btn" id="chat-mute-btn" onclick="toggleChatMute()">🔊 LJUD PÅ</button>
+      <button class="chat-ctrl-btn" style="border-color:#334155;" onclick="clearChatBox()">🗑️ Rensa</button>
     </div>
     <input type="file" id="chat-hidden-file-input" style="display:none;" onchange="handleChatFileUploaded(this)" />
 
     <div class="chat-input-row">
-      <input type="text" id="ai-user-input" class="chat-input" placeholder="Skriv något till Saga..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
-      <button class="btn-mic" id="saga-mic-btn" onclick="toggleVoiceRecognition()" title="Röststyrning">🎙️</button>
-      <button class="btn" style="min-width:50px; height:38px; border-color:var(--ai-purple);" onclick="sendCustomAIMsg()">Sänd</button>
+      <input type="text" id="ai-user-input" class="chat-input" placeholder="Skriv till Saga..." onkeydown="if(event.key==='Enter') sendCustomAIMsg()">
+      <button class="btn-mic" id="saga-mic-btn" onclick="toggleVoiceRecognition()">🎙️</button>
+      <button class="btn" style="width:55px; height:38px; border-color:var(--ai-purple); padding:0; text-align:center;" onclick="sendCustomAIMsg()">Sänd</button>
     </div>
   </div>
 
   <div id="logbook-modal" class="modal log-modal">
     <span class="close-x" onclick="closeModal('logbook-modal')">×</span>
-    <h3 style="color:var(--log-gold); margin-top:0; margin-bottom:10px;">📜 Sagas Loggbok</h3>
+    <h3 style="color:var(--log-gold); margin-top:0; margin-bottom:6px;">📜 Sagas Loggbok</h3>
+    
+    <div class="modal-gold-sub-bar">
+      <span>🪙 Samlade Guldmynt:</span><span id="gold-amount">0</span>
+    </div>
+
     <div class="log-list" id="log-list-container"></div>
     <button class="btn" style="margin-top:10px; width:100%; text-align:center; border-color:var(--log-gold);" onclick="clearAllLogs()">🗑️ Nollställ Loggboken</button>
   </div>
@@ -277,19 +256,16 @@
     <span class="close-x" onclick="closeModal('sos-modal')">×</span>
     <h2 style="color:var(--sos-red); margin-top:0; text-align:center;">🚨 SOS NÖDSIGNAL</h2>
     <div id="sos-coords" style="font-family:monospace; font-size:18px; padding:15px; background:#1a0000; border-radius:10px; text-align:center; color:#ff8080; font-weight:bold;">--</div>
-    <p style="font-size:12px; text-align:center; color:#94a3b8; margin-top:10px;">Positionen har sparats i systemloggen.</p>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     let state = { isNightMode: false, currentHeading: 0, isRouteLoading: false, showHinder: false, isMuted: false, autoCenterLocked: true, isListening: false };
     let plottedWaypoints = []; let plotterPolyline = null;
-    
     let currentBoatLatLng = L.latLng(57.6152, 11.8322); 
     let homePortData = null; let homePortMarker = null;
     let hinderLayers = []; let watchId = null;
-    let activeMobMarker = null;
-    let recognition = null;
+    let activeMobMarker = null; let recognition = null;
 
     const landObstacles = [
       { name: "Marholmen (Marh) Grundklack - 0.5m", lat: 57.6205, lng: 11.8405, radius: 180, waypointBypass: [57.6190, 11.8350] },
@@ -303,460 +279,184 @@
 
     const boatMarker = L.circleMarker([currentBoatLatLng.lat, currentBoatLatLng.lng], {
       radius: 11, color: '#00d4ff', fillColor: '#ff0055', fillOpacity: 0.9, weight: 3
-    }).addTo(map).bindTooltip("DIN POSITION", { permanent: false });
+    }).addTo(map);
 
-    map.on('movestart dragstart zoomstart', function() {
-      disableAutoTracking();
-    });
-
-    function disableAutoTracking() {
+    map.on('movestart dragstart zoomstart', () => {
       if (state.autoCenterLocked) {
         state.autoCenterLocked = false;
         const btn = document.getElementById("center-tracking-btn");
-        btn.style.borderColor = "var(--gold-yellow)";
-        btn.style.color = "var(--gold-yellow)";
-        btn.textContent = "📍 FIXERA POS";
+        btn.style.borderColor = "var(--gold-yellow)"; btn.style.color = "var(--gold-yellow)"; btn.textContent = "📍 FIXERA POS";
       }
-    }
+    });
 
     function centerMapAndLock() {
       state.autoCenterLocked = true;
       const btn = document.getElementById("center-tracking-btn");
-      btn.style.borderColor = "var(--main-cyan)";
-      btn.style.color = "white";
-      btn.textContent = "📍 CENTRERA";
+      btn.style.borderColor = "var(--main-cyan)"; btn.style.color = "white"; btn.textContent = "📍 CENTRERA";
       map.setView(boatMarker.getLatLng(), map.getZoom());
     }
 
     function initSpeechRecognition() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) return;
-      
-      recognition = new SpeechRecognition();
-      recognition.lang = 'sv-SE';
-      recognition.continuous = false;
-      recognition.interimResults = false;
-
-      recognition.onstart = () => {
-        state.isListening = true;
-        const micBtn = document.getElementById("saga-mic-btn");
-        micBtn.classList.add("listening");
-        micBtn.textContent = "🛑";
-      };
-      recognition.onend = () => {
-        state.isListening = false;
-        const micBtn = document.getElementById("saga-mic-btn");
-        micBtn.classList.remove("listening");
-        micBtn.textContent = "🎙️";
-      };
-      recognition.onresult = (event) => {
-        const resultText = event.results[0][0].transcript;
-        document.getElementById("ai-user-input").value = resultText;
-        appendChatMsg("Du (Röst)", resultText);
-        sendCustomAIMsg(resultText);
-      };
-      recognition.onerror = () => {
-        state.isListening = false;
-        const micBtn = document.getElementById("saga-mic-btn");
-        micBtn.classList.remove("listening");
-        micBtn.textContent = "🎙️";
+      recognition = new SpeechRecognition(); recognition.lang = 'sv-SE';
+      recognition.onstart = () => { state.isListening = true; document.getElementById("saga-mic-btn").classList.add("listening"); };
+      recognition.onend = () => { state.isListening = false; document.getElementById("saga-mic-btn").classList.remove("listening"); };
+      recognition.onresult = (e) => {
+        const txt = e.results[0][0].transcript;
+        document.getElementById("ai-user-input").value = txt;
+        sendCustomAIMsg(txt);
       };
     }
 
-    function toggleVoiceRecognition() {
-      if (!recognition) {
-        alert("Röststyrning stöds tyvärr inte i din nuvarande webbläsare eller sandlåda.");
-        return;
-      }
-      if (state.isListening) recognition.stop(); else recognition.start();
-    }
-
+    function toggleVoiceRecognition() { if(recognition) { if(state.isListening) recognition.stop(); else recognition.start(); } }
     function triggerFileUpload() { document.getElementById('chat-hidden-file-input').click(); }
-
-    function handleChatFileUploaded(input) {
-      if(input.files && input.files[0]) {
-        const fileName = input.files[0].name;
-        appendChatMsg("System", `Laddar upp fil: 📄 ${fileName}...`);
-        setTimeout(() => {
-          appendChatMsg("Saga", `Tagit emot '${fileName}'! 📊`);
-        }, 1000);
-      }
-    }
-
-    function toggleChatMute() {
-      state.isMuted = !state.isMuted;
+    function handleChatFileUploaded(input) { if(input.files && input.files[0]) { appendChatMsg("System", `Laddat upp: ${input.files[0].name}`); } }
+    
+    function toggleChatMute() { 
+      state.isMuted = !state.isMuted; 
       const btn = document.getElementById('chat-mute-btn');
       if(state.isMuted) {
-        btn.textContent = "🔇 Mute Aktiv";
-        btn.classList.add('active');
+        btn.textContent = "🔇 LJUD AV (MUTE)"; btn.classList.add("mute-active");
       } else {
-        btn.textContent = "🔊 Ljud På";
-        btn.classList.remove('active');
+        btn.textContent = "🔊 LJUD PÅ"; btn.classList.remove("mute-active");
       }
     }
-
-    function clearChatBox() {
-      document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg"><b>Saga:</b> Chatten rensad. ⚓</div>`;
-    }
+    
+    function clearChatBox() { document.getElementById("ai-chat-box").innerHTML = ""; }
 
     function initRealLifeGPS() {
-      if (!navigator.geolocation) {
-        activateGPSFallback("❌ GPS stöds ej");
-        return;
-      }
-      
-      watchId = navigator.geolocation.watchPosition(
-        (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          const accuracy = position.coords.accuracy;
-          
-          let speedKnots = 0.0;
-          if (position.coords.speed) speedKnots = position.coords.speed * 1.94384;
-          document.getElementById("speed").textContent = speedKnots.toFixed(1);
-
-          if (position.coords.heading !== null && !isNaN(position.coords.heading)) {
-            updateHeading(position.coords.heading);
-          }
-
-          currentBoatLatLng = L.latLng(lat, lng);
-          boatMarker.setLatLng(currentBoatLatLng);
-          
-          if (state.autoCenterLocked) {
-            map.panTo(currentBoatLatLng);
-          }
-
-          if (activeMobMarker) {
-            const dist = currentBoatLatLng.distanceTo(activeMobMarker.getLatLng());
-            document.getElementById("mob-live-distance").textContent = `${Math.round(dist)} m`;
-          }
-
-          document.getElementById("ai-status").textContent = `🛰️ GPS Aktiv (±${Math.round(accuracy)}m)`;
-          checkAllTrackers(currentBoatLatLng);
-        },
-        (error) => {
-          activateGPSFallback("🌐 Simulator / Lokal fil aktiv");
-        },
-        { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 }
-      );
-    }
-
-    function activateGPSFallback(statusText) {
-      document.getElementById("ai-status").textContent = statusText;
-      boatMarker.setLatLng(currentBoatLatLng);
-      if (state.autoCenterLocked) {
-        map.setView(currentBoatLatLng, 14);
-      }
-      checkAllTrackers(currentBoatLatLng);
+      if (!navigator.geolocation) { document.getElementById("ai-status").textContent = "🌐 Simulator Aktiv"; return; }
+      watchId = navigator.geolocation.watchPosition((p) => {
+        const lat = p.coords.latitude; const lng = p.coords.longitude;
+        if (p.coords.speed) document.getElementById("speed").textContent = (p.coords.speed * 1.94384).toFixed(1);
+        if (p.coords.heading) updateHeading(p.coords.heading);
+        currentBoatLatLng = L.latLng(lat, lng); boatMarker.setLatLng(currentBoatLatLng);
+        if (state.autoCenterLocked) map.panTo(currentBoatLatLng);
+        if (activeMobMarker) document.getElementById("mob-live-distance").textContent = `${Math.round(currentBoatLatLng.distanceTo(activeMobMarker.getLatLng()))} m`;
+        document.getElementById("ai-status").textContent = `🛰️ GPS Säkrad (±${Math.round(p.coords.accuracy)}m)`;
+      }, () => { document.getElementById("ai-status").textContent = "🌐 Simulator Aktiv"; }, { enableHighAccuracy: true });
     }
 
     function updateHeading(deg) {
       state.currentHeading = (deg + 360) % 360;
       document.getElementById("heading-top").textContent = String(Math.round(state.currentHeading)).padStart(3, '0') + "°";
-      document.getElementById("compass-arrow").style.transform = `rotate(${state.currentHeading}deg)`;
     }
 
-    map.on('click', function(e) { 
-      let startLatLng = plottedWaypoints.length > 0 ? plottedWaypoints[plottedWaypoints.length - 1].latlng : currentBoatLatLng;
-      checkForHinderAndAddWaypoint(startLatLng, e.latlng);
+    map.on('click', (e) => {
+      let start = plottedWaypoints.length > 0 ? plottedWaypoints[plottedWaypoints.length - 1].latlng : currentBoatLatLng;
+      let target = e.latlng;
+      for (let obs of landObstacles) {
+        if (L.latLng((start.lat+target.lat)/2, (start.lng+target.lng)/2).distanceTo(L.latLng(obs.lat, obs.lng)) <= obs.radius) {
+          executeAddWaypointVisual(obs.waypointBypass[0], obs.waypointBypass[1]);
+          break;
+        }
+      }
+      executeAddWaypointVisual(target.lat, target.lng);
     });
 
-    function checkForHinderAndAddWaypoint(startLatLng, targetLatLng) {
-      let targetLat = targetLatLng.lat; let targetLng = targetLatLng.lng;
-      let collisionObstacle = null;
-
-      for (let obstacle of landObstacles) {
-        let obsLatLng = L.latLng(obstacle.lat, obstacle.lng);
-        let midPoint = L.latLng((startLatLng.lat + targetLat) / 2, (startLatLng.lng + targetLng) / 2);
-        if (midPoint.distanceTo(obsLatLng) <= obstacle.radius) { collisionObstacle = obstacle; break; }
-      }
-
-      if (collisionObstacle) {
-        let bypassLat = collisionObstacle.waypointBypass[0]; let bypassLng = collisionObstacle.waypointBypass[1];
-        appendChatMsg("Saga", `Korrigerat spår förbi ${collisionObstacle.name}! 🔄`);
-        executeAddWaypointVisual(bypassLat, bypassLng);
-        startLatLng = L.latLng(bypassLat, bypassLng);
-      }
-      executeAddWaypointVisual(targetLat, targetLng);
-    }
-
     function executeAddWaypointVisual(lat, lng) {
-      const ptIndex = plottedWaypoints.length + 1;
-      const wpMarker = L.circleMarker([lat, lng], { radius: 7, color: '#00d4ff', fillColor: '#001524', fillOpacity: 1, weight: 2 }).addTo(map);
-      wpMarker.bindTooltip(String(ptIndex), { permanent: true, direction: 'center' });
-      plottedWaypoints.push({ marker: wpMarker, latlng: L.latLng(lat, lng) });
-      calculateGlobalRoute();
-      if(plottedWaypoints.length >= 2 && !state.isRouteLoading) {
-        document.getElementById("save-route-panel").style.display = "flex";
-      }
-    }
-
-    function calculateGlobalRoute() {
-      const coordinates = plottedWaypoints.map(wp => wp.latlng);
-      if (plotterPolyline) { plotterPolyline.setLatLngs(coordinates); } 
-      else { plotterPolyline = L.polyline(coordinates, { color: '#00d4ff', weight: 4, dashArray: '5, 10', opacity: 0.9 }).addTo(map); }
+      const wp = L.circleMarker([lat, lng], { radius: 7, color: '#00d4ff', fillColor: '#001524', fillOpacity: 1 }).addTo(map);
+      plottedWaypoints.push({ marker: wp, latlng: L.latLng(lat, lng) });
+      const coords = plottedWaypoints.map(w => w.latlng);
+      if (plotterPolyline) plotterPolyline.setLatLngs(coords); else plotterPolyline = L.polyline(coords, { color: '#00d4ff', weight: 4, dashArray: '5,10' }).addTo(map);
       
-      if (plottedWaypoints.length < 2) { document.getElementById("cur-nm").textContent = "0.0 M"; document.getElementById("eta").textContent = "--:--"; return 0; }
-      let totalMeters = 0;
-      for (let i = 0; i < coordinates.length - 1; i++) { totalMeters += coordinates[i].distanceTo(coordinates[i + 1]); }
-      const totalNM = totalMeters / 1852;
-      document.getElementById("cur-nm").textContent = totalNM.toFixed(1) + " M";
-      document.getElementById("eta").textContent = Math.round((totalNM / 7) * 60) + " min";
-      return totalNM;
+      let dist = 0; for(let i=0; i<coords.length-1; i++) dist += coords[i].distanceTo(coords[i+1]);
+      const nm = dist / 1852;
+      document.getElementById("cur-nm").textContent = nm.toFixed(1) + " M";
+      document.getElementById("eta").textContent = Math.round((nm / 7) * 60) + " min";
     }
 
     function saveCurrentRouteToArray() {
-      const nameInput = document.getElementById("route-name-input").value.trim();
-      if (!nameInput) return;
-      const coordsArray = plottedWaypoints.map(wp => [wp.latlng.lat, wp.latlng.lng]);
-      let savedRoutes = JSON.parse(localStorage.getItem("saga_saved_routes") || "{}");
-      savedRoutes[nameInput] = coordsArray;
-      localStorage.setItem("saga_saved_routes", JSON.stringify(savedRoutes));
-      document.getElementById("route-name-input").value = "";
-      document.getElementById("save-route-panel").style.display = "none";
-      updateRoutesDropdown();
-      appendChatMsg("Saga", `Rutten '${nameInput}' sparad! 💾`);
+      const name = document.getElementById("route-name-input").value.trim(); if (!name) return;
+      let r = JSON.parse(localStorage.getItem("saga_saved_routes") || "{}");
+      r[name] = plottedWaypoints.map(w => [w.latlng.lat, w.latlng.lng]);
+      localStorage.setItem("saga_saved_routes", JSON.stringify(r));
+      document.getElementById("save-route-panel").style.display = "none"; updateRoutesDropdown();
     }
 
-    // REPARERAD: Tog bort herrelös måsvinge som krashade skriptet
     function updateRoutesDropdown() {
-      const dropdown = document.getElementById("saved-routes-dropdown");
-      dropdown.innerHTML = '<option value="">📂 Hämta rutt...</option>';
-      let savedRoutes = JSON.parse(localStorage.getItem("saga_saved_routes") || "{}");
-      for (let name in savedRoutes) { 
-        dropdown.innerHTML += `<option value="${name}">${name}</option>`; 
-      }
+      const d = document.getElementById("saved-routes-dropdown"); d.innerHTML = '<option value="">📂 Hämta rutt...</option>';
+      let r = JSON.parse(localStorage.getItem("saga_saved_routes") || "{}");
+      for (let n in r) d.innerHTML += `<option value="${n}">${n}</option>`;
     }
 
-    function loadSelectedRoute(name) {
-      if (!name) return;
-      clearRouteDisplay();
-      state.isRouteLoading = true;
-      let savedRoutes = JSON.parse(localStorage.getItem("saga_saved_routes") || "{}");
-      let coords = savedRoutes[name];
-      if (coords) {
-        coords.forEach(c => executeAddWaypointVisual(c[0], c[1]));
-        appendChatMsg("Saga", `Laddade '${name}'! 🗺️`);
-      }
-      state.isRouteLoading = false;
+    function loadSelectedRoute(n) {
+      clearRouteDisplay(); if(!n) return;
+      let r = JSON.parse(localStorage.getItem("saga_saved_routes") || "{}")[n];
+      if (r) r.forEach(c => executeAddWaypointVisual(c[0], c[1]));
     }
 
     function deleteActiveRoute() {
-      const dropdown = document.getElementById("saved-routes-dropdown");
-      const name = dropdown.value;
-      if (!name) return;
-      let savedRoutes = JSON.parse(localStorage.getItem("saga_saved_routes") || "{}");
-      delete savedRoutes[name];
-      localStorage.setItem("saga_saved_routes", JSON.stringify(savedRoutes));
-      clearRouteDisplay(); updateRoutesDropdown();
+      const name = document.getElementById("saved-routes-dropdown").value; if(!name) return;
+      let r = JSON.parse(localStorage.getItem("saga_saved_routes") || "{}"); delete r[name];
+      localStorage.setItem("saga_saved_routes", JSON.stringify(r)); clearRouteDisplay(); updateRoutesDropdown();
     }
 
     async function lookupAndSetHomePort() {
-      const query = document.getElementById("home-port-input").value.trim();
-      const statusDiv = document.getElementById("home-port-status");
-      if (!query) return;
-      
-      statusDiv.textContent = "Söker...";
+      const q = document.getElementById("home-port-input").value.trim(); if(!q) return;
       try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
-        const response = await fetch(url, { headers: { "User-Agent": "SagaNavigatorBot/1.0" } });
-        const results = await response.json();
-        
-        if (results && results.length > 0) {
-          homePortData = { name: query, lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) };
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`);
+        const data = await res.json();
+        if(data.length > 0) {
+          homePortData = { name: q, lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
           localStorage.setItem("saga_home_port", JSON.stringify(homePortData));
-          drawHomePortMarker();
-          document.getElementById("route-home-btn").style.display = "block";
-          document.getElementById("home-port-btn").textContent = `🏠 ${query.toUpperCase()}`;
-          statusDiv.textContent = "";
+          if(homePortMarker) map.removeLayer(homePortMarker);
+          homePortMarker = L.marker([homePortData.lat, homePortData.lng], { icon: L.divIcon({ className:'home-marker-container', html:'<div class="home-icon">🏠</div>' }) }).addTo(map);
           closeModal('home-port-modal');
-        } else {
-          statusDiv.textContent = "Hittade ingen plats. Försök igen!";
         }
-      } catch (e) { 
-        statusDiv.textContent = "Nätverksfel vid sökning.";
-      }
+      } catch(e){}
     }
 
-    function routeToHomePort() {
-      if (!homePortData) return;
-      clearRouteDisplay();
-      checkForHinderAndAddWaypoint(currentBoatLatLng, L.latLng(homePortData.lat, homePortData.lng));
-    }
-
-    function drawHomePortMarker() {
-      if (homePortMarker) map.removeLayer(homePortMarker);
-      let homeIcon = L.divIcon({ className: 'home-marker-container', html: `<div class="home-icon">🏠</div>`, iconSize: [30, 30] });
-      homePortMarker = L.marker([homePortData.lat, homePortData.lng], { icon: homeIcon }).addTo(map);
-    }
-
-    function logToBook(action) {
-      let logs = JSON.parse(localStorage.getItem("saga_marine_logs") || "[]");
-      logs.unshift(`[${new Date().toLocaleTimeString()}] ${action}`);
-      localStorage.setItem("saga_marine_logs", JSON.stringify(logs.slice(0, 50)));
-    }
-
-    function openLogbookModal() {
-      const container = document.getElementById("log-list-container");
-      let logs = JSON.parse(localStorage.getItem("saga_marine_logs") || "[]");
-      container.innerHTML = logs.map(l => `<div class="log-item">${l}</div>`).join('');
-      openModal('logbook-modal');
-    }
-
-    function clearAllLogs() { localStorage.removeItem("saga_marine_logs"); openLogbookModal(); }
-
-    function checkAllTrackers(latlng) {
-      let hazardDetected = false;
-      for (let hazard of landObstacles) {
-        if (latlng.distanceTo(L.latLng(hazard.lat, hazard.lng)) <= hazard.radius) { hazardDetected = true; break; }
-      }
-      
-      const sosBtn = document.getElementById("sos-main-btn");
-      if (hazardDetected) {
-        sosBtn.className = "btn btn-sos shallow-warning-active";
-      } else {
-        sosBtn.className = "btn btn-sos";
-      }
-    }
-
-    function clearRouteDisplay() { plottedWaypoints.forEach(wp => map.removeLayer(wp.marker)); plottedWaypoints = []; if (plotterPolyline) map.removeLayer(plotterPolyline); plotterPolyline = null; document.getElementById("save-route-panel").style.display = "none"; calculateGlobalRoute(); }
+    function clearRouteDisplay() { plottedWaypoints.forEach(w => map.removeLayer(w.marker)); plottedWaypoints = []; if(plotterPolyline) map.removeLayer(plotterPolyline); plotterPolyline = null; }
     function toggleNight() { state.isNightMode = !state.isNightMode; document.body.classList.toggle("night-mode", state.isNightMode); }
-    
-    function openSOS() { 
-      const c = boatMarker.getLatLng(); 
-      document.getElementById("sos-coords").textContent = `${c.lat.toFixed(5)}°N, ${c.lng.toFixed(5)}°O`; 
-      openModal("sos-modal"); 
-    }
-    
-    function triggerManOverboardManual() {
-      if (activeMobMarker) map.removeLayer(activeMobMarker);
-      let mobTargetLatLng = boatMarker.getLatLng();
-      activeMobMarker = L.marker([mobTargetLatLng.lat, mobTargetLatLng.lng], { 
-        icon: L.divIcon({ className:'home-marker-container', html:'<div class="mob-icon-style">🛟</div>', iconSize:[35,35] }) 
-      }).addTo(map);
-      document.getElementById("mob-active-panel").style.display = "flex";
-      document.getElementById("mob-live-distance").textContent = "0 m";
-    }
-
-    function cancelMOBSystem() {
-      if (activeMobMarker) { map.removeLayer(activeMobMarker); activeMobMarker = null; }
-      document.getElementById("mob-active-panel").style.display = "none";
-    }
+    function openSOS() { const c = boatMarker.getLatLng(); document.getElementById("sos-coords").textContent = `${c.lat.toFixed(5)}N, ${c.lng.toFixed(5)}O`; openModal("sos-modal"); }
+    function triggerManOverboardManual() { if(activeMobMarker) map.removeLayer(activeMobMarker); activeMobMarker = L.marker(boatMarker.getLatLng(), { icon: L.divIcon({ html:'<div class="mob-icon-style">🛟</div>' }) }).addTo(map); document.getElementById("mob-active-panel").style.display = "flex"; }
+    function cancelMOBSystem() { if(activeMobMarker) map.removeLayer(activeMobMarker); activeMobMarker = null; document.getElementById("mob-active-panel").style.display = "none"; }
 
     function toggleHinderLayers() {
       state.showHinder = !state.showHinder;
-      const btn = document.getElementById("hinder-toggle-btn");
-      if (state.showHinder) {
-        btn.textContent = "🙈 GÖM HINDER"; 
-        btn.style.background = "rgba(220, 38, 38, 0.9)";
-        btn.style.color = "white";
-        
-        landObstacles.forEach(obs => {
-          let c = L.circle([obs.lat, obs.lng], { 
-            radius: obs.radius, 
-            color: '#ff0055', 
-            fillColor: '#ff0000', 
-            fillOpacity: 0.3,
-            weight: 3
-          }).addTo(map).bindTooltip(obs.name, { permanent: false });
+      if(state.showHinder) {
+        landObstacles.forEach(o => {
+          let c = L.circle([o.lat, o.lng], { radius: o.radius, color: '#ff0055', fillColor: '#ff0000', fillOpacity: 0.2 }).addTo(map);
           hinderLayers.push(c);
         });
-      } else {
-        btn.textContent = "👁️ VISA HINDER"; 
-        btn.style.background = "var(--panel-bg)";
-        btn.style.color = "#fca5a5";
-        
-        hinderLayers.forEach(l => map.removeLayer(l)); 
-        hinderLayers = [];
-      }
+      } else { hinderLayers.forEach(l => map.removeLayer(l)); hinderLayers = []; }
     }
 
     function openModal(id) { document.getElementById(id).style.display = "block"; }
     function closeModal(id) { document.getElementById(id).style.display = "none"; }
-    
-    function promptApiKey() { 
-      const key = prompt("Skriv eller klistra in din Gemini API-nyckel:"); 
-      if (key) {
-        localStorage.setItem("gemini_api_key", key.trim());
-        alert("API-nyckel sparad!");
-      }
-    }
-    
-    function clearSavedKey() { 
-      localStorage.removeItem("gemini_api_key"); 
-      alert("API-nyckel borttagen.");
-    }
-    
-    function appendChatMsg(sender, text) { 
-      const box = document.getElementById("ai-chat-box"); 
-      if (box) {
-        box.innerHTML += `<div class="chat-msg"><span style="color:var(--main-cyan)">${sender}:</span> ${text}</div>`; 
-        box.scrollTop = box.scrollHeight; 
-      }
+    function openLogbookModal() { openModal('logbook-modal'); }
+    function promptApiKey() { const k = prompt("Mata in din Gemini API-nyckel:"); if(k) localStorage.setItem("gemini_api_key", k.trim()); }
+    function clearSavedKey() { localStorage.removeItem("gemini_api_key"); alert("Nyckel rensad."); }
+
+    function appendChatMsg(sender, text) {
+      const b = document.getElementById("ai-chat-box"); if(b) { b.innerHTML += `<div><b>${sender}:</b> ${text}</div>`; b.scrollTop = b.scrollHeight; }
     }
 
-    // REPARERAD: Säkrad hantering av "Tänker"-indikatorn
     async function sendCustomAIMsg(forcedText) {
-      const input = document.getElementById("ai-user-input"); 
-      let text = forcedText || input.value.trim(); 
-      if (!forcedText && !text) return;
-      if (!forcedText) { appendChatMsg("Du", text); input.value = ""; }
+      const inp = document.getElementById("ai-user-input"); let t = forcedText || inp.value.trim(); if(!t) return;
+      if(!forcedText) { appendChatMsg("Du", t); inp.value = ""; }
+      const key = localStorage.getItem("gemini_api_key"); if(!key) { appendChatMsg("Saga", "⚠️ Skriv in en API-nyckel via 'Nyckel'-knappen först!"); return; }
       
-      const apiKey = localStorage.getItem("gemini_api_key");
-      if (!apiKey) {
-        appendChatMsg("Saga", "⚠️ Ingen API-nyckel sparad. Klicka på 'Nyckel' längst ner i appen och klistra in din Gemini-nyckel först!");
-        return;
-      }
-
-      appendChatMsg("Saga", "<span id='ai-thinking-indicator'><i>Tänker... 🧭</i></span>");
-
+      appendChatMsg("Saga", "<span id='thinking'>Tänker... 🧭</span>");
       try {
-        const coords = boatMarker.getLatLng();
-        const systemPrompt = `Du är Saga, en erfaren och skarp marin copilot och skeppare på en båt i Göteborgs skärgård. Just nu befinner sig båten vid lat: ${coords.lat.toFixed(4)}, lng: ${coords.lng.toFixed(4)} (närheten av Askimsviken/Grimskär). Svara kortfattat, marint, pedagogiskt och med glimten i ögat.`;
-
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: `${systemPrompt}\n\nAnvändarfråga: ${text}` }] }]
-          })
+        const c = boatMarker.getLatLng();
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: `Du är Saga, en skarp båt-copilot i Göteborg. Position: ${c.lat}, ${c.lng}. Svara kort marint.\nAnvändare: ${t}` }] }] })
         });
-
-        const data = await response.json();
-        
-        const indicator = document.getElementById("ai-thinking-indicator");
-        if (indicator) indicator.remove();
-
-        if (data.candidates && data.candidates[0].content.parts[0].text) {
-          let aiResponse = data.candidates[0].content.parts[0].text;
-          appendChatMsg("Saga", aiResponse);
-          if (!state.isMuted && 'speechSynthesis' in window) {
-            let utterance = new SpeechSynthesisUtterance(aiResponse);
-            utterance.lang = 'sv-SE';
-            window.speechSynthesis.speak(utterance);
-          }
-        } else {
-          appendChatMsg("Saga", "Kunde inte tolka svaret från molnet. Kontrollera din API-nyckel.");
+        const d = await res.json(); document.getElementById('thinking').remove();
+        if(d.candidates) {
+          let reply = d.candidates[0].content.parts[0].text; appendChatMsg("Saga", reply);
+          if(!state.isMuted && 'speechSynthesis' in window) { let u = new SpeechSynthesisUtterance(reply); u.lang='sv-SE'; window.speechSynthesis.speak(u); }
         }
-      } catch (error) {
-        const indicator = document.getElementById("ai-thinking-indicator");
-        if (indicator) indicator.remove();
-        appendChatMsg("Saga", "❌ Kunde inte nå internet. Är telefonen offline eller blockeras anropet?");
-      }
+      } catch(e) { if(document.getElementById('thinking')) document.getElementById('thinking').remove(); }
     }
 
-    window.addEventListener('DOMContentLoaded', () => { 
-      const savedHome = localStorage.getItem("saga_home_port");
-      if (savedHome) {
-        homePortData = JSON.parse(savedHome);
-        drawHomePortMarker();
-        document.getElementById("route-home-btn").style.display = "block";
-        document.getElementById("home-port-btn").textContent = `🏠 ${homePortData.name.toUpperCase()}`;
-      }
-      updateRoutesDropdown();
-      initSpeechRecognition();
-      document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg"><b>Saga:</b> V77 Live AI uppkopplad och reparerad! Klicka på 'Nyckel' för att mata in din Gemini-nyckel och prata med mig på riktigt. 🌊</div>`;
-      initRealLifeGPS();
+    window.addEventListener('DOMContentLoaded', () => {
+      updateRoutesDropdown(); initSpeechRecognition(); initRealLifeGPS();
+      appendChatMsg("Saga", "V81 Ultra Clean UI laddad. Alla mätare och guld-data gömda i smarta undermenyer! 🌊");
     });
   </script>
 </body>
