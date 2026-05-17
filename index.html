@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Harbor Docking Pilot V56</title>
+  <title>Sagas Navigator - MOB Tactical Pilot V57</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -48,7 +48,7 @@
       font-weight: bold; color: var(--gold-yellow); font-size: 13px; display: flex; align-items: center; gap: 6px;
     }
 
-    /* NYTT I V56: DYNAMISK HAMN-LOTS / FÖRTÖJNINGSGUIDE */
+    /* HAMN-LOTS PANEL */
     .docking-pilot-panel {
       position: absolute; top: 15px; right: 15px; z-index: 2000;
       background: rgba(0, 15, 30, 0.95); border: 2px solid var(--main-cyan); padding: 15px; border-radius: 16px;
@@ -60,6 +60,15 @@
     .docking-title { font-size: 16px; font-weight: 900; color: white; margin: 2px 0; }
     .docking-vector { background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; border-left: 4px solid var(--wind-blue); font-size: 12px; }
     .docking-advice { font-size: 11px; color: #cbd5e1; line-height: 1.4; font-style: italic; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px; border: 1px dashed rgba(0, 212, 255, 0.2); }
+
+    /* NYTT I V57: DEDIKERAD TAKTISK MOB-PANEL */
+    .mob-active-panel {
+      position: absolute; top: 160px; right: 15px; z-index: 2050;
+      background: rgba(40, 0, 0, 0.95); border: 3px solid var(--sos-red); padding: 15px; border-radius: 16px;
+      width: 240px; box-shadow: 0 0 35px var(--sos-red); backdrop-filter: blur(10px);
+      display: none; flex-direction: column; gap: 8px; animation: mob-flash-panel 1.5s infinite alternate;
+    }
+    @keyframes mob-flash-panel { from { border-color: var(--sos-red); } to { border-color: #500; } }
 
     .ai-panel {
       position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 2000;
@@ -92,6 +101,11 @@
     .controls-left { position: absolute; top: 90px; left: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 6px; }
     .btn { background: var(--panel-bg); color: white; border: 1px solid var(--main-cyan); padding: 10px; border-radius: 8px; font-size: 10px; font-weight: bold; cursor: pointer; min-width: 135px; text-align: left; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
     .btn-sos { border-color: var(--sos-red); color: var(--sos-red); text-align: center; }
+    
+    /* NYTT I V57: STOR STRIDSKLART MOB-KNAPP I MENYN */
+    .btn-mob { background: #300; border: 2px solid var(--sos-red); color: #ff8080; text-align: center; font-size: 11px; letter-spacing: 0.5px; animation: slow-mob-pulse 2s infinite alternate; }
+    @keyframes slow-mob-pulse { from { box-shadow: 0 0 2px #f00; } to { box-shadow: 0 0 8px #f00; } }
+
     .btn-ai { border-color: var(--ai-purple); color: #e9d5ff; }
     .btn-log { border-color: var(--log-gold); color: var(--log-gold); }
     
@@ -153,7 +167,10 @@
     .harbor-icon { font-size: 24px; text-shadow: 0 0 6px rgba(0,0,0,1); cursor: pointer; }
     .wreck-icon { font-size: 22px; text-shadow: 0 0 8px rgba(168, 85, 247, 0.8); cursor: pointer; animation: float-wreck 3s infinite ease-in-out; }
     .chest-icon { font-size: 24px; text-shadow: 0 0 10px rgba(245, 158, 11, 0.8); cursor: pointer; animation: float-wreck 2.5s infinite ease-in-out; }
-    @keyframes float-wreck { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+    
+    /* NYTT I V57: PULSERANDE MOB-MARKÖR PÅ KARTAN */
+    .mob-icon-style { font-size: 32px; animation: mob-marker-pulse 0.8s infinite alternate; text-shadow: 0 0 10px red; cursor: pointer; }
+    @keyframes mob-marker-pulse { from { transform: scale(1); } to { transform: scale(1.3); } }
 
     .harbor-popup-style .leaflet-popup-content-wrapper { background: #001f3f !important; color: white !important; border: 1px solid var(--harbor-blue) !important; }
     .wreck-popup-style .leaflet-popup-content-wrapper { background: #13072e !important; color: #f3e8ff !important; border: 1.5px solid var(--wreck-purple) !important; }
@@ -184,6 +201,16 @@
     <div class="docking-advice" id="docking-advice-text">Förbereder angöringstips...</div>
   </div>
 
+  <div class="mob-active-panel" id="mob-active-panel">
+    <div style="font-size:11px; font-weight:bold; color:white; letter-spacing:1px; display:flex; justify-content:between;">
+      <span>🚨 MOB TAKTISK RUTT</span>
+      <span style="cursor:pointer; color:white; font-weight:bold;" onclick="cancelMOBSystem()">STÄNG X</span>
+    </div>
+    <div style="font-size:22px; font-weight:900; color:white; margin:4px 0; text-align:center;" id="mob-live-distance">--- m</div>
+    <div class="docking-vector" style="border-color:white; background:rgba(0,0,0,0.4);" id="mob-live-bearing">Styrkurs till MOB: ---°</div>
+    <div class="docking-advice" style="background:#ff000030; color:white; border-color:white;" id="mob-live-advice">SLÅ OM OCH FÖLJ RUTTEN!</div>
+  </div>
+
   <div class="save-route-panel" id="save-route-panel">
     <span style="font-size:10px; font-weight:bold; color:var(--main-cyan);">SPARA AKTUELL RUTT</span>
     <input type="text" id="route-name-input" class="save-input" placeholder="Ruttens namn...">
@@ -192,7 +219,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>🔮 SAGAS NAVIGATOR V56 [DOCKING PILOT]</span>
+      <span>🔮 SAGAS NAVIGATOR V57 [MAN OVERBOARD SENSOR]</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -212,6 +239,7 @@
   </div>
 
   <div class="controls-left">
+    <button class="btn btn-mob" onclick="triggerManOverboardManual()">🛟 MAN ÖVER BORD!</button>
     <button class="btn btn-sos" id="sos-main-btn" onclick="openSOS()">🆘 NÖD SOS</button>
     <button class="btn btn-ai" onclick="openModal('ai-chat-modal')">🔮 SAGA SKEPPARE</button>
     <button class="btn btn-log" onclick="openLogbookModal()">📜 LOGGBOK</button>
@@ -277,8 +305,11 @@
 
     let simulationInterval = null; let isSimulating = false;
     let simWaypointIndex = 0; let lastRealLocation = null;
-    let lastTreasureTime = 0; let lastHarborPilotTime = 0;
+    let lastTreasureTime = 0; let lastHarborPilotTime = 0; let lastMOBVoiceTime = 0;
     
+    // NYTT I V57: VARIABLER FÖR MOB-LARMET
+    let isMOBActive = false; let mobTargetLatLng = null; let mobMarker = null; let mobReturnPolyline = null;
+
     let currentRouteName = "Ospecificerad rutt";
 
     const shallowHazards = [
@@ -291,7 +322,7 @@
     ];
 
     const harborDatabase = [
-      { name: "Långedrags Gästhamn", lat: 57.6695, lng: 11.8615, spots: "Ca 40 platser", facilities: "🚿 Dusch, 🔌 El", lineHeading: 90 } // lineHeading = bryggans vinkel i grader
+      { name: "Långedrags Gästhamn", lat: 57.6695, lng: 11.8615, spots: "Ca 40 platser", facilities: "🚿 Dusch, 🔌 El", lineHeading: 90 }
     ];
 
     const wreckDatabase = [
@@ -326,6 +357,7 @@
     map.on('click', function(e) { if (isSimulating) stopSimulation(); addWaypoint(e.latlng.lat, e.latlng.lng); });
 
     function addWaypoint(lat, lng) {
+      if (isMOBActive) return; // Blockera plotter-klick om akut MOB pågår
       const ptIndex = plottedWaypoints.length + 1;
       const wpMarker = L.circleMarker([lat, lng], { radius: 7, color: '#00d4ff', fillColor: '#001524', fillOpacity: 1, weight: 2 }).addTo(map);
       wpMarker.bindTooltip(String(ptIndex), { permanent: true, direction: 'center', className: 'wp-number-tooltip' });
@@ -392,6 +424,7 @@
     }
 
     function checkAISCollisions() {
+      if (isMOBActive) return; // Slå inte ut MOB-larmet i knappsatsen om det körs
       let dangerousVessel = null;
       aisVessels.forEach(v => {
         let dist = currentBoatLatLng.distanceTo(L.latLng(v.lat, v.lng));
@@ -405,8 +438,70 @@
       }
     }
 
-    // NYTT I V56: BERÄKNINGSKÄRNA FÖR HAMN-LOTSEN (AVANCERAD VEKTORANALYS)
+    // NYTT I V57: TACTICAL ENGINE FOR MAN OVERBOARD DETECTION
+    function triggerManOverboardManual() {
+      if (isMOBActive) return;
+      isMOBActive = true;
+      mobTargetLatLng = L.latLng(currentBoatLatLng.lat, currentBoatLatLng.lng);
+      
+      // Rita ut en lysande livboj på kartan
+      let mobIcon = L.divIcon({ className: 'mob-marker-container', html: `<div class="mob-icon-style">🛟</div>`, iconSize: [35, 35] });
+      mobMarker = L.marker([mobTargetLatLng.lat, mobTargetLatLng.lng], { icon: mobIcon }).addTo(map);
+
+      // Skapa en rät röd linje direkt från båten till haveristen
+      mobReturnPolyline = L.polyline([currentBoatLatLng, mobTargetLatLng], { color: 'red', weight: 5, className: 'mob-line-style' }).addTo(map);
+
+      document.getElementById("mob-active-panel").style.display = "flex";
+      
+      let initialMsg = "LARM! MAN ÖVER BORD! Fryser koordinaterna! Vänd båten omedelbart 180 grader!";
+      appendChatMsg("🚨 SAGA AKUT", initialMsg);
+      speakCleanText("Larm! Man över bord! Vänd båten direkt, Kapten!");
+      
+      // Tvinga uppdatering av systemet direkt
+      runMOBTick();
+    }
+
+    function runMOBTick() {
+      if (!isMOBActive || !mobTargetLatLng) return;
+      let dist = currentBoatLatLng.distanceTo(mobTargetLatLng);
+      document.getElementById("mob-live-distance").textContent = `${Math.round(dist)} meter`;
+
+      // Räkna ut kompasskurs (bearing) till gubben i vattnet
+      const lat1 = currentBoatLatLng.lat * Math.PI / 180; const lat2 = mobTargetLatLng.lat * Math.PI / 180;
+      const dLng = (mobTargetLatLng.lng - currentBoatLatLng.lng) * Math.PI / 180;
+      const y = Math.sin(dLng) * Math.cos(lat2); const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+      let targetBearing = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+
+      document.getElementById("mob-live-bearing").textContent = `Styrkurs till MOB: ${Math.round(targetBearing)}°`;
+      
+      if (mobReturnPolyline) { mobReturnPolyline.setLatLngs([currentBoatLatLng, mobTargetLatLng]); }
+
+      let now = Date.now();
+      if (now - lastMOBVoiceTime > 12000) {
+        lastMOBVoiceTime = now;
+        let voiceGuide = `Håll kurs ${Math.round(targetBearing)} grader. Det är ${Math.round(dist)} meter kvar till livbojen!`;
+        if (dist < 20) {
+          voiceGuide = "Sakta ner nu, Kapten! Haveristen är precis vid skrovsidan! Förbered båtshake!";
+        }
+        speakCleanText(voiceGuide);
+      }
+    }
+
+    function cancelMOBSystem() {
+      isMOBActive = false;
+      if (mobMarker) { map.removeLayer(mobMarker); mobMarker = null; }
+      if (mobReturnPolyline) { map.removeLayer(mobReturnPolyline); mobReturnPolyline = null; }
+      document.getElementById("mob-active-panel").style.display = "none";
+      speakCleanText("MOB-systemet avslutat. Allt under kontroll.");
+    }
+
     function checkAllTrackers(latlng) {
+      // Om akut MOB körs, prioritera det taktiska systemet framför allt annat
+      if (isMOBActive) {
+        runMOBTick();
+        return;
+      }
+
       let hazardDetected = false; let detectedName = "";
       for (let hazard of shallowHazards) {
         let dist = latlng.distanceTo(L.latLng(hazard.lat, hazard.lng));
@@ -421,22 +516,18 @@
         }
       }
 
-      // Sök efter närmsta hamn för röstlotsen
       let closestHarbor = null; let minHarborDist = 999999;
       harborDatabase.forEach(h => {
         let dist = latlng.distanceTo(L.latLng(h.lat, h.lng));
         if (dist < minHarborDist) { minHarborDist = dist; closestHarbor = h; }
       });
 
-      // AKTIVERA HAMN-LOTS OM VI ÄR INOM 500 METER
       if (minHarborDist <= 500 && closestHarbor) {
         let currentWind = calculateLiveWeather(latlng);
         let pilotPanel = document.getElementById("docking-pilot-panel");
-        
         document.getElementById("docking-harbor-name").textContent = closestHarbor.name;
         document.getElementById("docking-distance").textContent = `Avstånd: ${Math.round(minHarborDist)} meter`;
         
-        // Simulera/beräkna vindförhållande baserat på fasta bryggvinkeln
         let isFrånlands = currentWind > 6; 
         let vectorText = ""; let adviceText = ""; let voiceOutput = "";
 
@@ -455,7 +546,7 @@
         pilotPanel.style.display = "flex";
 
         let now = Date.now();
-        if (now - lastHarborPilotTime > 45000) { // Säg bara till var 45:e sekund
+        if (now - lastHarborPilotTime > 45000) {
           lastHarborPilotTime = now;
           speakCleanText(voiceOutput);
           appendChatMsg("Saga ⚓", voiceOutput);
@@ -485,7 +576,7 @@
         let b = document.createElement("button"); b.className = "quiz-btn"; b.textContent = `${idx + 1}. ${opt}`;
         b.onclick = () => evaluateQuizAnswer(idx, qObj, chest); container.appendChild(b);
       });
-      openModal("quiz-modal"); speakCleanText("Ohoj Kapten! Svara på min fråga för att vinna guldet!");
+      openModal("quiz-modal"); speakCleanText("Ohoj Kapten! Svara på min fråga för att winna guldet!");
     }
 
     function evaluateQuizAnswer(selectedIdx, qObj, chest) {
@@ -574,7 +665,7 @@
     window.addEventListener('DOMContentLoaded', () => { 
       updateDropdownMenu(); initAndAnimateAIS(); initHarbors(); initWrecks(); initTreasureChests(); 
       let savedKey = localStorage.getItem("gemini_api_key");
-      if(savedKey) document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! Nu har vi rullat ut Sagas Hamn-lots i V56! Testa att lägga en rutt nära Långedrags gästhamn och kör igång, så ska du se att jag kliver in och läser av vinden åt dig! ⚓💨</div>`;
+      if(savedKey) document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg msg-ai"><b>Saga:</b> Ohoj Kapten! Nu har vi rullat ut Sagas Taktiska MOB-larm i V57! Om krisen är framme, tryck på den röda bojen till vänster eller vrålade direkt till mig: 'Man över bord!' så löser jag räddningsrutten! 🛟⚡</div>`;
     });
 
     function promptApiKey() { const key = prompt("API-nyckel:"); if (key) localStorage.setItem("gemini_api_key", key.trim()); }
@@ -587,7 +678,12 @@
       appendChatMsg("Du", text); input.value = ""; 
       const lower = text.toLowerCase();
       
-      if (lower.includes("starta simul") || lower.includes("kör igång rutt") || lower.includes("starta resan") || lower.includes("aktivera rutt")) {
+      // KONTROLLERA RÖSTSTYRT MOB-LARM
+      if (lower.includes("man över bord") || lower.includes("man over board") || lower.includes("ramlat i") || lower.includes("gubb i vattnet")) {
+        triggerManOverboardManual();
+      } else if (lower.includes("avbryt mob") || lower.includes("stäng av mob") || lower.includes("allt under kontroll")) {
+        cancelMOBSystem();
+      } else if (lower.includes("starta simul") || lower.includes("kör igång rutt") || lower.includes("starta resan") || lower.includes("aktivera rutt")) {
         let simRes = startRouteSimulation(); appendChatMsg("Saga 🧭", simRes); speakCleanText(simRes);
       } else if (lower.includes("stoppa") || lower.includes("avbryt") || lower.includes("stäng av simul")) {
         stopSimulation(); let stopRes = "Gubbgott, då avbryter vi och slår om till vanlig GPS-mottagning, Kapten!"; appendChatMsg("Saga 🛑", stopRes); speakCleanText(stopRes);
