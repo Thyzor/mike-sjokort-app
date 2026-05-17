@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Live AI V76</title>
+  <title>Sagas Navigator - Live AI V77</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -193,7 +193,7 @@
 
   <div class="ai-panel" id="ai-panel">
     <div class="ai-header">
-      <span>🔮 SAGAS NAVIGATOR V76 [LIVE AI INTEGRATION]</span>
+      <span>🔮 SAGAS NAVIGATOR V77 [LIVE AI FIX]</span>
       <div>
         <span style="cursor:pointer; text-decoration: underline; margin-right: 10px;" onclick="promptApiKey()">⚙️ Nyckel</span>
         <span style="cursor:pointer; text-decoration: underline; color: var(--sos-red);" onclick="clearSavedKey()">🗑️ Nolla</span>
@@ -518,11 +518,14 @@
       appendChatMsg("Saga", `Rutten '${nameInput}' sparad! 💾`);
     }
 
+    // REPARERAD: Tog bort herrelös måsvinge som krashade skriptet
     function updateRoutesDropdown() {
       const dropdown = document.getElementById("saved-routes-dropdown");
       dropdown.innerHTML = '<option value="">📂 Hämta rutt...</option>';
       let savedRoutes = JSON.parse(localStorage.getItem("saga_saved_routes") || "{}");
-      for (let name in savedRoutes) { dropdown.innerHTML += `<option value="${name}">${name}</option>'; }
+      for (let name in savedRoutes) { 
+        dropdown.innerHTML += `<option value="${name}">${name}</option>`; 
+      }
     }
 
     function loadSelectedRoute(name) {
@@ -670,8 +673,19 @@
 
     function openModal(id) { document.getElementById(id).style.display = "block"; }
     function closeModal(id) { document.getElementById(id).style.display = "none"; }
-    function promptApiKey() { const key = prompt("Skriv eller klistra in din Gemini API-nyckel:"); if (key) localStorage.setItem("gemini_api_key", key.trim()); }
-    function clearSavedKey() { localStorage.removeItem("gemini_api_key"); }
+    
+    function promptApiKey() { 
+      const key = prompt("Skriv eller klistra in din Gemini API-nyckel:"); 
+      if (key) {
+        localStorage.setItem("gemini_api_key", key.trim());
+        alert("API-nyckel sparad!");
+      }
+    }
+    
+    function clearSavedKey() { 
+      localStorage.removeItem("gemini_api_key"); 
+      alert("API-nyckel borttagen.");
+    }
     
     function appendChatMsg(sender, text) { 
       const box = document.getElementById("ai-chat-box"); 
@@ -681,7 +695,7 @@
       }
     }
 
-    // NY FUNKTION: RIKTIGA ANROP TILL AI VIA INTERNET!
+    // REPARERAD: Säkrad hantering av "Tänker"-indikatorn
     async function sendCustomAIMsg(forcedText) {
       const input = document.getElementById("ai-user-input"); 
       let text = forcedText || input.value.trim(); 
@@ -694,12 +708,10 @@
         return;
       }
 
-      appendChatMsg("Saga", "<i>Tänker... 🧭</i>");
-      const lastMsgIndex = document.getElementById("ai-chat-box").lastChild;
+      appendChatMsg("Saga", "<span id='ai-thinking-indicator'><i>Tänker... 🧭</i></span>");
 
       try {
         const coords = boatMarker.getLatLng();
-        // Saga får reda på exakt var din båt befinner sig i Askimsviken i sitt systemmeddelande
         const systemPrompt = `Du är Saga, en erfaren och skarp marin copilot och skeppare på en båt i Göteborgs skärgård. Just nu befinner sig båten vid lat: ${coords.lat.toFixed(4)}, lng: ${coords.lng.toFixed(4)} (närheten av Askimsviken/Grimskär). Svara kortfattat, marint, pedagogiskt och med glimten i ögat.`;
 
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
@@ -711,7 +723,9 @@
         });
 
         const data = await response.json();
-        if (lastMsgIndex) lastMsgIndex.remove(); // Ta bort "Tänker..."
+        
+        const indicator = document.getElementById("ai-thinking-indicator");
+        if (indicator) indicator.remove();
 
         if (data.candidates && data.candidates[0].content.parts[0].text) {
           let aiResponse = data.candidates[0].content.parts[0].text;
@@ -725,7 +739,8 @@
           appendChatMsg("Saga", "Kunde inte tolka svaret från molnet. Kontrollera din API-nyckel.");
         }
       } catch (error) {
-        if (lastMsgIndex) lastMsgIndex.remove();
+        const indicator = document.getElementById("ai-thinking-indicator");
+        if (indicator) indicator.remove();
         appendChatMsg("Saga", "❌ Kunde inte nå internet. Är telefonen offline eller blockeras anropet?");
       }
     }
@@ -740,7 +755,7 @@
       }
       updateRoutesDropdown();
       initSpeechRecognition();
-      document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg"><b>Saga:</b> V76 Live AI uppkopplad! Klicka på 'Nyckel' för att mata in din Gemini-nyckel och prata med mig på riktigt. 🌊</div>`;
+      document.getElementById("ai-chat-box").innerHTML = `<div class="chat-msg"><b>Saga:</b> V77 Live AI uppkopplad och reparerad! Klicka på 'Nyckel' för att mata in din Gemini-nyckel och prata med mig på riktigt. 🌊</div>`;
       initRealLifeGPS();
     });
   </script>
