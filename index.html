@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no" />
-  <title>Sagas Navigator - Universal V88</title>
+  <title>Sagas Navigator - Universal V89</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -26,8 +26,9 @@
     }
     #map { height: 100%; width: 100%; z-index: 1; background: #0a1e32; }
 
+    /* NÄR NATT-LÄGE ÄR AKTIVT: Illuminerar öar, konturer och kustremsor */
     .night-mode #map { 
-      filter: invert(100%) hue-rotate(180deg) brightness(0.65) contrast(1.6) drop-shadow(0 0 3px var(--main-cyan));
+      filter: invert(100%) hue-rotate(180deg) brightness(0.55) contrast(1.7) saturate(1.8) drop-shadow(0 0 4px var(--main-cyan));
     }
 
     /* TOPP CENTER - KURSDISPLAY */
@@ -302,13 +303,9 @@
       radius: 11, color: '#00d4ff', fillColor: '#ff0055', fillOpacity: 0.9, weight: 3
     }).addTo(map);
 
-    // FIXERAD PRESET: Sätter GFA Askim som standard hemmahamn direkt i initieringen
     function initHomePortPreset() {
-      // Koordinater för Askims racerbåtshamn (GFA)
       homePortData = { name: "GFA Askim", lat: 57.6433, lng: 11.9365 };
       localStorage.setItem("saga_home_port", JSON.stringify(homePortData));
-      
-      // Rita ut ikonen på kartan direkt
       homePortMarker = L.marker([homePortData.lat, homePortData.lng], { 
         icon: L.divIcon({ className:'home-marker-container', html:'<div class="home-icon">🏠</div>' }) 
       }).addTo(map);
@@ -460,7 +457,7 @@
         const c = boatMarker.getLatLng();
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts: [{ text: `Du är Saga, en marin copilot i Göteborgs skärgård. Koordinater: Lat ${c.lat}, Lng ${c.lng}. Din hemmahamn är inlagd som GFA Askim (Askims racerbåtshamn).\n\nVIKTIGT: Svara alltid trevligt, kortfattat och marint. Användare: ${t}` }] }] })
+          body: JSON.stringify({ contents: [{ parts: [{ text: `Du är Saga, en marin copilot i Göteborgs skärgård. Koordinater: Lat ${c.lat}, Lng ${c.lng}. Din hemmahamn är inlagd som GFA Askim.\n\nVIKTIGT: Svara alltid trevligt, kortfattat och marint. Användare: ${t}` }] }] })
         });
         const d = await res.json(); const placeholder = document.getElementById("saga-thinking-placeholder"); if(placeholder) placeholder.remove();
         if(d.candidates && d.candidates[0].content.parts[0].text) {
@@ -472,10 +469,9 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       updateRoutesDropdown(); initSpeechRecognition(); initRealLifeGPS();
-      // Kör preset-laddningen för hemmahamn
       initHomePortPreset();
       checkProximityToHazards(currentBoatLatLng);
-      appendChatMsg("Saga", "Version 88 laddad! GFA Askim (Askims racerbåtshamn) är nu inställd som din permanenta hemmahamn på kartan och i mitt system! 🏠🌊");
+      appendChatMsg("Saga", "Version 89 sjösatt! Den skarpa illumineringen av öar och kustremsor i nattläget är nu tillbaka och fullt aktiv. All annan kod är säkrad! 🌙✨");
     });
   </script>
 </body>
