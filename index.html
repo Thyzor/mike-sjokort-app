@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Sagas Navigator - Anti-Overlap V82</title>
+  <title>Sagas Navigator - AI Fix V83</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -35,10 +35,10 @@
     .heading-number { font-size: 26px; font-weight: 900; font-family: monospace; display: block; }
     .heading-cardinal { font-size: 16px; color: var(--main-cyan); font-weight: bold; }
 
-    /* VÄNSTERMENY - NU SÄNKT FÖR ATT UNDVIKA KROCK MED KURSDISPLAYEN */
+    /* VÄNSTERMENY - SÄNKT FÖR ATT UNDVIKA KROCK MED KURSDISPLAYEN */
     .controls-left { 
       position: absolute; 
-      top: 85px; /* Sänkt från 15px till 85px för att rensa ytan bredvid kursen */
+      top: 85px; 
       left: 15px; z-index: 1000; 
       display: flex; flex-direction: column; gap: 6px; 
       height: calc(100% - 230px); overflow-y: auto; 
@@ -134,6 +134,9 @@
     .home-marker-container { pointer-events: auto !important; }
     .home-icon { font-size: 26px; text-shadow: 0 0 8px var(--eco-green); cursor: pointer; }
     .mob-icon-style { font-size: 32px; text-shadow: 0 0 10px red; cursor: pointer; }
+    
+    .thinking-dots { color: #a855f7; font-style: italic; animation: blink 1.4s infinite both; }
+    @keyframes blink { 0% { opacity: .2; } 20% { opacity: 1; } 100% { opacity: .2; } }
   </style>
 </head>
 <body>
@@ -245,11 +248,9 @@
   <div id="logbook-modal" class="modal log-modal">
     <span class="close-x" onclick="closeModal('logbook-modal')">×</span>
     <h3 style="color:var(--log-gold); margin-top:0; margin-bottom:6px;">📜 Sagas Loggbok</h3>
-    
     <div class="modal-gold-sub-bar">
       <span>🪙 Samlade Guldmynt:</span><span id="gold-amount">0</span>
     </div>
-
     <div class="log-list" id="log-list-container"></div>
     <button class="btn" style="margin-top:10px; width:100%; text-align:center; border-color:var(--log-gold);" onclick="clearAllLogs()">🗑️ Nollställ Loggboken</button>
   </div>
@@ -262,7 +263,7 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    let state = { isNightMode: false, currentHeading: 0, isRouteLoading: false, showHinder: false, isMuted: false, autoCenterLocked: true, isListening: false };
+    let state = { isNightMode: false, currentHeading: 0, showHinder: false, isMuted: false, autoCenterLocked: true, isListening: false };
     let plottedWaypoints = []; let plotterPolyline = null;
     let currentBoatLatLng = L.latLng(57.6152, 11.8322); 
     let homePortData = null; let homePortMarker = null;
@@ -436,29 +437,71 @@
       const b = document.getElementById("ai-chat-box"); if(b) { b.innerHTML += `<div><b>${sender}:</b> ${text}</div>`; b.scrollTop = b.scrollHeight; }
     }
 
+    // UPPDATERAD SVARSMOTOR MED SÄKER STRUKTUR OCH TRY/CATCH/FINALLY
     async function sendCustomAIMsg(forcedText) {
-      const inp = document.getElementById("ai-user-input"); let t = forcedText || inp.value.trim(); if(!t) return;
-      if(!forcedText) { appendChatMsg("Du", t); inp.value = ""; }
-      const key = localStorage.getItem("gemini_api_key"); if(!key) { appendChatMsg("Saga", "⚠️ Skriv in en API-nyckel via 'Nyckel'-knappen först!"); return; }
+      const inp = document.getElementById("ai-user-input"); 
+      let t = forcedText || inp.value.trim(); 
+      if(!t) return;
       
-      appendChatMsg("Saga", "<span id='thinking'>Tänker... 🧭</span>");
+      if(!forcedText) { 
+        appendChatMsg("Du", t); 
+        inp.value = ""; 
+      }
+      
+      const key = localStorage.getItem("gemini_api_key"); 
+      if(!key) { 
+        appendChatMsg("Saga", "⚠️ Skriv in en API-nyckel via 'Nyckel'-knappen först!"); 
+        return; 
+      }
+      
+      // Skapa en distinkt och säker placeholder för laddningsindikatorn
+      const chatBox = document.getElementById("ai-chat-box");
+      const thinkingDiv = document.createElement("div");
+      thinkingDiv.id = "saga-thinking-placeholder";
+      thinkingDiv.innerHTML = `<b>Saga:</b> <span class="thinking-dots">Navigerar tankarna... 🧭</span>`;
+      chatBox.appendChild(thinkingDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+      
       try {
         const c = boatMarker.getLatLng();
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts: [{ text: `Du är Saga, en skarp båt-copilot i Göteborg. Position: ${c.lat}, ${c.lng}. Svara kort marint.\nAnvändare: ${t}` }] }] })
+          method: "POST", 
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            contents: [{ parts: [{ text: `Du är Saga, en skarp båt-copilot i Göteborg. Position: ${c.lat}, ${c.lng}. Svara kort marint.\nAnvändare: ${t}` }] }] 
+          })
         });
-        const d = await res.json(); document.getElementById('thinking').remove();
-        if(d.candidates) {
-          let reply = d.candidates[0].content.parts[0].text; appendChatMsg("Saga", reply);
-          if(!state.isMuted && 'speechSynthesis' in window) { let u = new SpeechSynthesisUtterance(reply); u.lang='sv-SE'; window.speechSynthesis.speak(u); }
+        
+        const d = await res.json();
+        
+        // Ta bort placeholder-elementet INNAN vi renderar det riktiga svaret
+        const placeholder = document.getElementById("saga-thinking-placeholder");
+        if(placeholder) placeholder.remove();
+        
+        if(d.candidates && d.candidates[0].content.parts[0].text) {
+          let reply = d.candidates[0].content.parts[0].text; 
+          appendChatMsg("Saga", reply);
+          
+          if(!state.isMuted && 'speechSynthesis' in window) { 
+            let u = new SynthesisUtterance(reply); 
+            u.lang='sv-SE'; 
+            window.speechSynthesis.speak(u); 
+          }
+        } else {
+          appendChatMsg("Saga", "Hittade inget bra svar i sjökortet just nu, kapten.");
         }
-      } catch(e) { if(document.getElementById('thinking')) document.getElementById('thinking').remove(); }
+      } catch(e) {
+        // Säkerställ att vi rensar bort laddningstexten även om anropet kraschar eller nätverket dör
+        const placeholder = document.getElementById("saga-thinking-placeholder");
+        if(placeholder) placeholder.remove();
+        appendChatMsg("Saga", "Ett nätverksfel dök upp vid horisonten. Försök igen!");
+        console.error(e);
+      }
     }
 
     window.addEventListener('DOMContentLoaded', () => {
       updateRoutesDropdown(); initSpeechRecognition(); initRealLifeGPS();
-      appendChatMsg("Saga", "V82 Anti-Overlap aktiv. Knappar flyttade nedåt för perfekt synlighet! 🌊");
+      appendChatMsg("Saga", "V83 Stabiliserad. AI-svarsmotorn är nu säkrad mot tomma svar! 🌊");
     });
   </script>
 </body>
