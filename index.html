@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no" />
-  <title>Sagas Navigator - Universal V85</title>
+  <title>Sagas Navigator - Universal V88</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -66,6 +66,8 @@
     .btn-log { border-color: var(--log-gold); color: var(--log-gold); }
     .btn-home { background: var(--panel-bg); border: 1px solid var(--eco-green); color: #a7f3d0; }
     
+    .btn-hazards-active { background: rgba(255, 0, 0, 0.2) !important; border-color: var(--sos-red) !important; color: #ff8080 !important; }
+
     .route-select { background: #001524; color: var(--main-cyan); border: 1px solid var(--main-cyan); padding: 8px; border-radius: 8px; font-size: 11px; font-weight: bold; width: 100%; box-sizing: border-box; cursor: pointer; }
 
     /* MODALER */
@@ -126,10 +128,16 @@
       transform-origin: 7px 16px; transition: transform 0.2s ease-out;
     }
 
-    /* LARM-ELEMENT */
-    .fika-panel, .mob-active-panel, .save-route-panel { position: absolute; top: 15px; right: 15px; z-index: 2050; background: rgba(0, 15, 30, 0.95); padding: 12px; border-radius: 12px; width: 180px; display: none; flex-direction: column; gap: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); border: 1px solid var(--main-cyan); }
+    /* PANELER OCH VARNINGAR */
+    .fika-panel, .mob-active-panel, .save-route-panel, .warning-panel { 
+      position: absolute; top: 15px; right: 15px; z-index: 2050; 
+      background: rgba(0, 15, 30, 0.95); padding: 12px; border-radius: 12px; 
+      width: 180px; display: none; flex-direction: column; gap: 4px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5); border: 1px solid var(--main-cyan); 
+    }
     .fika-panel { border-color: var(--fika-pink); }
     .mob-active-panel { border-color: var(--sos-red); background: rgba(40, 0, 0, 0.95); }
+    .warning-panel { border-color: var(--sos-red); background: rgba(20, 0, 0, 0.95); box-shadow: 0 0 15px rgba(255, 0, 0, 0.4); }
     .save-input { background: #0f172a; border: 1px solid var(--main-cyan); border-radius: 6px; color: white; padding: 6px; font-size: 11px; }
 
     .home-marker-container { pointer-events: auto !important; }
@@ -147,6 +155,14 @@
   <div class="heading-display">
     <span id="heading-top" class="heading-number">000°</span>
     <span id="cardinal-top" class="heading-cardinal">N</span>
+  </div>
+
+  <div class="warning-panel" id="warning-panel">
+    <div style="font-size:10px; font-weight:bold; color:var(--sos-red); display:flex; justify-content:space-between; align-items:center;">
+      <span>⚠️ SYNLIG SKÄRGÅRDSFARA</span>
+      <span style="cursor:pointer; color:white; font-size:14px;" onclick="document.getElementById('warning-panel').style.display='none'">×</span>
+    </div>
+    <div id="warning-text" style="color:#fca5a5; font-size:12px; font-weight:bold; margin-top:4px; line-height:1.2;">Hinder i närheten!</div>
   </div>
 
   <div class="fika-panel" id="fika-panel">
@@ -185,6 +201,9 @@
     <button class="btn btn-ai" onclick="openModal('ai-chat-modal')">🔮 SAGA SKEPPARE</button>
     <button class="btn btn-mob" onclick="triggerManOverboardManual()">🛟 MAN ÖVER BORD!</button>
     <button class="btn btn-sos" id="sos-main-btn" onclick="openSOS()">🆘 NÖD SOS</button>
+    
+    <button class="btn" id="toggle-hazards-btn" onclick="toggleHazardCirclesVisibility()">🚨 VISA FAROR</button>
+    
     <button class="btn btn-home" id="home-port-btn" onclick="openModal('home-port-modal')">🏠 HEMMAHAMN</button>
     <button class="btn btn-log" onclick="openLogbookModal()">📜 LOGGBOK</button>
     
@@ -262,11 +281,19 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    let state = { isNightMode: false, currentHeading: 0, isMuted: false, autoCenterLocked: true, isListening: false };
+    let state = { isNightMode: false, currentHeading: 0, isMuted: false, autoCenterLocked: true, isListening: false, showHazardsOnMap: false };
     let plottedWaypoints = []; let plotterPolyline = null;
     let currentBoatLatLng = L.latLng(57.6152, 11.8322); 
     let homePortData = null; let homePortMarker = null;
     let watchId = null; let activeMobMarker = null; let recognition = null;
+    let hazardMapLayers = [];
+
+    const localHazards = [
+      { name: "Svinholmsrevet Grund", lat: 57.6195, lng: 11.8210, desc: "Grynna / Stenar under ytan" },
+      { name: "Känsö Bränning", lat: 57.6290, lng: 11.7950, desc: "Bränning nära farled" },
+      { name: "Vinga Prick-Hinder", lat: 57.6321, lng: 11.6780, desc: "Grynna väster om Vinga" },
+      { name: "Långedrag Stengrund", lat: 57.6710, lng: 11.8510, desc: "Stenpir / Grund" }
+    ];
 
     const map = L.map("map", { zoomControl: false, attributionControl: false }).setView([currentBoatLatLng.lat, currentBoatLatLng.lng], 14);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
@@ -274,6 +301,34 @@
     const boatMarker = L.circleMarker([currentBoatLatLng.lat, currentBoatLatLng.lng], {
       radius: 11, color: '#00d4ff', fillColor: '#ff0055', fillOpacity: 0.9, weight: 3
     }).addTo(map);
+
+    // FIXERAD PRESET: Sätter GFA Askim som standard hemmahamn direkt i initieringen
+    function initHomePortPreset() {
+      // Koordinater för Askims racerbåtshamn (GFA)
+      homePortData = { name: "GFA Askim", lat: 57.6433, lng: 11.9365 };
+      localStorage.setItem("saga_home_port", JSON.stringify(homePortData));
+      
+      // Rita ut ikonen på kartan direkt
+      homePortMarker = L.marker([homePortData.lat, homePortData.lng], { 
+        icon: L.divIcon({ className:'home-marker-container', html:'<div class="home-icon">🏠</div>' }) 
+      }).addTo(map);
+    }
+
+    function toggleHazardCirclesVisibility() {
+      state.showHazardsOnMap = !state.showHazardsOnMap;
+      const btn = document.getElementById("toggle-hazards-btn");
+      if (state.showHazardsOnMap) {
+        btn.classList.add("btn-hazards-active"); btn.textContent = "🚨 GÖM FAROR";
+        localHazards.forEach(h => {
+          let layer = L.circle([h.lat, h.lng], { radius: 120, color: 'var(--sos-red)', fillColor: '#ff0000', fillOpacity: 0.15 }).addTo(map)
+                       .bindPopup(`<b>VARNING: ${h.name}</b><br>${h.desc}`);
+          hazardMapLayers.push(layer);
+        });
+      } else {
+        btn.classList.remove("btn-hazards-active"); btn.textContent = "🚨 VISA FAROR";
+        hazardMapLayers.forEach(layer => map.removeLayer(layer)); hazardMapLayers = [];
+      }
+    }
 
     map.on('movestart dragstart zoomstart', () => {
       if (state.autoCenterLocked) {
@@ -290,7 +345,6 @@
       map.setView(boatMarker.getLatLng(), map.getZoom());
     }
 
-    // FIXAT: Klickhändelse på kartan anropar nu rätt funktion utan att krascha skriptet
     map.on('click', (e) => { executeAddWaypointVisual(e.latlng.lat, e.latlng.lng); });
 
     function executeAddWaypointVisual(lat, lng) {
@@ -305,43 +359,33 @@
       document.getElementById("eta").textContent = Math.round((nm / 7) * 60) + " min";
     }
 
+    function checkProximityToHazards(currentLatLng) {
+      let activeWarning = false; let panel = document.getElementById("warning-panel"); let textEl = document.getElementById("warning-text");
+      for (let h of localHazards) {
+        let hazardLatLng = L.latLng(h.lat, h.lng); let distance = currentLatLng.distanceTo(hazardLatLng);
+        if (distance <= 400) {
+          activeWarning = true;
+          if(textEl) textEl.innerHTML = `⚠️ <b>${h.name}</b><br>Avstånd: ${Math.round(distance)}m!<br><span style="font-size:10px; opacity:0.8;">${h.desc}</span>`;
+          break;
+        }
+      }
+      if (activeWarning) panel.style.display = "flex"; else panel.style.display = "none";
+    }
+
     function initSpeechRecognition() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || window.mozSpeechRecognition || window.msSpeechRecognition;
       if (!SpeechRecognition) return;
-      
-      recognition = new SpeechRecognition(); 
-      recognition.lang = 'sv-SE';
-      recognition.continuous = false;
-      recognition.interimResults = false;
-
+      recognition = new SpeechRecognition(); recognition.lang = 'sv-SE'; recognition.continuous = false; recognition.interimResults = false;
       recognition.onstart = () => { state.isListening = true; document.getElementById("saga-mic-btn").classList.add("listening"); };
       recognition.onend = () => { state.isListening = false; document.getElementById("saga-mic-btn").classList.remove("listening"); };
       recognition.onerror = () => { state.isListening = false; document.getElementById("saga-mic-btn").classList.remove("listening"); };
-      recognition.onresult = (e) => {
-        const txt = e.results[0][0].transcript;
-        document.getElementById("ai-user-input").value = txt;
-        sendCustomAIMsg(txt);
-      };
+      recognition.onresult = (e) => { const txt = e.results[0][0].transcript; document.getElementById("ai-user-input").value = txt; sendCustomAIMsg(txt); };
     }
 
-    function toggleVoiceRecognition() { 
-      if(recognition) { 
-        if(state.isListening) recognition.stop(); else recognition.start(); 
-      } else { 
-        alert("Röstigenkänning stöds inte i denna browser. Prova Chrome eller mobil Safari."); 
-      } 
-    }
-    
+    function toggleVoiceRecognition() { if(recognition) { if(state.isListening) recognition.stop(); else recognition.start(); } else { alert("Röstigenkänning stöds inte i denna browser."); } }
     function triggerFileUpload() { document.getElementById('chat-hidden-file-input').click(); }
     function handleChatFileUploaded(input) { if(input.files && input.files[0]) { appendChatMsg("System", `Laddat upp: ${input.files[0].name}`); } }
-    
-    function toggleChatMute() { 
-      state.isMuted = !state.isMuted; 
-      const btn = document.getElementById('chat-mute-btn');
-      if(state.isMuted) { btn.textContent = "🔇 LJUD AV"; btn.classList.add("mute-active"); } 
-      else { btn.textContent = "🔊 LJUD PÅ"; btn.classList.remove("mute-active"); }
-    }
-    
+    function toggleChatMute() { state.isMuted = !state.isMuted; const btn = document.getElementById('chat-mute-btn'); if(state.isMuted) { btn.textContent = "🔇 LJUD AV"; btn.classList.add("mute-active"); } else { btn.textContent = "🔊 LJUD PÅ"; btn.classList.remove("mute-active"); } }
     function clearChatBox() { document.getElementById("ai-chat-box").innerHTML = ""; }
 
     function initRealLifeGPS() {
@@ -353,6 +397,7 @@
         currentBoatLatLng = L.latLng(lat, lng); boatMarker.setLatLng(currentBoatLatLng);
         if (state.autoCenterLocked) map.panTo(currentBoatLatLng);
         if (activeMobMarker) document.getElementById("mob-live-distance").textContent = `${Math.round(currentBoatLatLng.distanceTo(activeMobMarker.getLatLng()))} m`;
+        checkProximityToHazards(currentBoatLatLng);
         document.getElementById("ai-status").textContent = `🛰️ GPS Säkrad (±${Math.round(p.coords.accuracy)}m)`;
       }, () => { document.getElementById("ai-status").textContent = "🌐 Simulator Aktiv"; }, { enableHighAccuracy: true, timeout: 10000 });
     }
@@ -364,16 +409,13 @@
 
     function saveCurrentRouteToArray() {
       const name = document.getElementById("route-name-input").value.trim(); if (!name) return;
-      let r = JSON.parse(localStorage.getItem("saga_saved_routes") || "{}");
-      r[name] = plottedWaypoints.map(w => [w.latlng.lat, w.latlng.lng]);
-      localStorage.setItem("saga_saved_routes", JSON.stringify(r));
-      document.getElementById("save-route-panel").style.display = "none"; updateRoutesDropdown();
+      let r = JSON.parse(localStorage.getItem("saga_saved_routes") || "{}"); r[name] = plottedWaypoints.map(w => [w.latlng.lat, w.latlng.lng]);
+      localStorage.setItem("saga_saved_routes", JSON.stringify(r)); document.getElementById("save-route-panel").style.display = "none"; updateRoutesDropdown();
     }
 
     function updateRoutesDropdown() {
       const d = document.getElementById("saved-routes-dropdown"); d.innerHTML = '<option value="">📂 Hämta rutt...</option>';
-      let r = JSON.parse(localStorage.getItem("saga_saved_routes") || "{}");
-      for (let n in r) d.innerHTML += `<option value="${n}">${n}</option>`;
+      let r = JSON.parse(localStorage.getItem("saga_saved_routes") || "{}"); for (let n in r) d.innerHTML += `<option value="${n}">${n}</option>`;
     }
 
     function loadSelectedRoute(n) { clearRouteDisplay(); if(!n) return; let r = JSON.parse(localStorage.getItem("saga_saved_routes") || "{}")[n]; if (r) r.forEach(c => executeAddWaypointVisual(c[0], c[1])); }
@@ -406,63 +448,34 @@
     function promptApiKey() { const k = prompt("Mata in din Gemini API-nyckel:"); if(k) localStorage.setItem("gemini_api_key", k.trim()); }
     function clearSavedKey() { localStorage.removeItem("gemini_api_key"); alert("Nyckel rensad."); }
 
-    function appendChatMsg(sender, text) {
-      const b = document.getElementById("ai-chat-box"); if(b) { b.innerHTML += `<div><b>${sender}:</b> ${text}</div>`; b.scrollTop = b.scrollHeight; }
-    }
+    function appendChatMsg(sender, text) { const b = document.getElementById("ai-chat-box"); if(b) { b.innerHTML += `<div><b>${sender}:</b> ${text}</div>`; b.scrollTop = b.scrollHeight; } }
 
-    // FIXAT: Förstärkt system-prompt och felhantering så Saga aldrig tappar fattningen eller slänger ur sig standardfel
     async function sendCustomAIMsg(forcedText) {
-      const inp = document.getElementById("ai-user-input"); 
-      let t = forcedText || inp.value.trim(); 
-      if(!t) return;
-      
+      const inp = document.getElementById("ai-user-input"); let t = forcedText || inp.value.trim(); if(!t) return;
       if(!forcedText) { appendChatMsg("Du", t); inp.value = ""; }
-      const key = localStorage.getItem("gemini_api_key"); 
-      if(!key) { appendChatMsg("Saga", "⚠️ Skriv in en API-nyckel via 'Nyckel'-knappen först!"); return; }
-      
-      const chatBox = document.getElementById("ai-chat-box");
-      const thinkingDiv = document.createElement("div");
-      thinkingDiv.id = "saga-thinking-placeholder";
-      thinkingDiv.innerHTML = `<b>Saga:</b> <span class="thinking-dots">Navigerar tankarna... 🧭</span>`;
-      chatBox.appendChild(thinkingDiv);
-      chatBox.scrollTop = chatBox.scrollHeight;
-      
+      const key = localStorage.getItem("gemini_api_key"); if(!key) { appendChatMsg("Saga", "⚠️ Skriv in en API-nyckel via 'Nyckel'-knappen först!"); return; }
+      const chatBox = document.getElementById("ai-chat-box"); const thinkingDiv = document.createElement("div"); thinkingDiv.id = "saga-thinking-placeholder";
+      thinkingDiv.innerHTML = `<b>Saga:</b> <span class="thinking-dots">Navigerar tankarna... 🧭</span>`; chatBox.appendChild(thinkingDiv); chatBox.scrollTop = chatBox.scrollHeight;
       try {
         const c = boatMarker.getLatLng();
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            contents: [{ parts: [{ text: `Du är Saga, en extremt hjälpsam, erfaren och skarp marin copilot ombord på en båt i Göteborgs skärgård. Du befinner dig just nu på koordinaterna: Breddgrad (Lat): ${c.lat}, Längdgrad (Lng): ${c.lng}.\n\nVIKTIGT: Svara ALLTID på ett trevligt, marint och engagerat sätt. Om användaren bara säger hej, hälsa glatt tillbaka, presentera dig som deras navigationsassistent och fråga hur du kan hjälpa dem på sjön idag. Ge korta, koncisa svar anpassade för en skärm på bryggan.\n\nAnvändare: ${t}` }] }] 
-          })
+          body: JSON.stringify({ contents: [{ parts: [{ text: `Du är Saga, en marin copilot i Göteborgs skärgård. Koordinater: Lat ${c.lat}, Lng ${c.lng}. Din hemmahamn är inlagd som GFA Askim (Askims racerbåtshamn).\n\nVIKTIGT: Svara alltid trevligt, kortfattat och marint. Användare: ${t}` }] }] })
         });
-        
-        const d = await res.json();
-        const placeholder = document.getElementById("saga-thinking-placeholder");
-        if(placeholder) placeholder.remove();
-        
+        const d = await res.json(); const placeholder = document.getElementById("saga-thinking-placeholder"); if(placeholder) placeholder.remove();
         if(d.candidates && d.candidates[0].content.parts[0].text) {
-          let reply = d.candidates[0].content.parts[0].text; 
-          appendChatMsg("Saga", reply);
-          
-          if(!state.isMuted && 'speechSynthesis' in window) { 
-            let u = new SpeechSynthesisUtterance(reply); 
-            u.lang = 'sv-SE'; 
-            window.speechSynthesis.speak(u); 
-          }
-        } else {
-          appendChatMsg("Saga", "Ohoj! Jag hörde dig, men lyckades inte tyda sjökortet helt. Kan du upprepa frågan, kapten?");
-        }
-      } catch(e) {
-        const placeholder = document.getElementById("saga-thinking-placeholder");
-        if(placeholder) placeholder.remove();
-        appendChatMsg("Saga", "Det uppstod en liten storm i nätverket. Kontrollera din anslutning och försök igen!");
-        console.error(e);
-      }
+          let reply = d.candidates[0].content.parts[0].text; appendChatMsg("Saga", reply);
+          if(!state.isMuted && 'speechSynthesis' in window) { let u = new SpeechSynthesisUtterance(reply); u.lang = 'sv-SE'; window.speechSynthesis.speak(u); }
+        } else { appendChatMsg("Saga", "Kunde inte tyda sjökortet helt, kapten."); }
+      } catch(e) { const placeholder = document.getElementById("saga-thinking-placeholder"); if(placeholder) placeholder.remove(); appendChatMsg("Saga", "Storm i nätverket!"); }
     }
 
     window.addEventListener('DOMContentLoaded', () => {
       updateRoutesDropdown(); initSpeechRecognition(); initRealLifeGPS();
-      appendChatMsg("Saga", "Version 85 redo! Alla JavaScript-buggar är lagade och min samtalsmotor har trimmats för stabil gång. Vad har vi för kurs idag? 🌊");
+      // Kör preset-laddningen för hemmahamn
+      initHomePortPreset();
+      checkProximityToHazards(currentBoatLatLng);
+      appendChatMsg("Saga", "Version 88 laddad! GFA Askim (Askims racerbåtshamn) är nu inställd som din permanenta hemmahamn på kartan och i mitt system! 🏠🌊");
     });
   </script>
 </body>
